@@ -1,0 +1,14 @@
+jar { enabled = true }
+
+dependencies {
+    implementation project(':butterfly-common')
+    implementation project(':butterfly-auth')
+    implementation project(':butterfly-customer')
+
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
