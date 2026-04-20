@@ -1,0 +1,160 @@
+# Customer 모듈 API (역할2: 고객/이벤트/프로필)
+
+담당 테이블: `users`, `devices`, `events`, `events_category`, `user_tags`
+
+---
+
+## 1. SDK API (API Key 인증)
+
+클라이언트 앱/웹에서 직접 호출하는 API. 빠른 응답이 필수이며, 무거운 처리는 큐를 통해 워커에서 수행.
+
+| # | Method | URL | 설명 | 인증 | 비고 |
+|---|--------|-----|------|------|------|
+| 18 | POST | `/sdk/v1/users/identify` | 유저 식별/생성 | API Key | 로그인 시 호출 |
+| 19 | POST | `/sdk/v1/devices` | 디바이스 등록/토큰 갱신 | API Key | FCM 토큰 등록 |
+| 20 | POST | `/sdk/v1/events` | 이벤트 수집 (단건) | API Key | 큐 적재 후 즉시 응답 |
+| 21 | POST | `/sdk/v1/events/batch` | 이벤트 수집 (배치) | API Key | 큐 적재 후 즉시 응답 |
+
+### POST /sdk/v1/users/identify
+
+```json
+// Request
+{
+  "email": "customer@example.com",
+  "deviceId": 42
+}
+
+// Response
+{
+  "userId": 1001,
+  "isNew": false
+}
+```
+
+### POST /sdk/v1/devices
+
+```json
+// Request
+{
+  "userId": 1001,
+  "platform": "ANDROID",
+  "pushToken": "fcm_token_abc123...",
+  "timezone": "Asia/Seoul",
+  "language": "ko",
+  "appVersion": "2.1.0",
+  "osVersion": "14"
+}
+
+// Response
+{
+  "deviceId": 42,
+  "tokenValid": true
+}
+```
+
+### POST /sdk/v1/events
+
+```json
+// Request
+{
+  "userId": 1001,
+  "deviceId": 42,
+  "eventName": "purchase_complete",
+  "eventData": "{\"amount\": 35000, \"item\": \"운동화\"}"
+}
+
+// Response (즉시 응답, 실제 처리는 워커)
+{
+  "accepted": true
+}
+```
+
+---
+
+## 2. 유저 관리 (Management API, JWT 인증)
+
+관리 콘솔에서 고객 데이터를 조회·관리하는 API.
+
+| # | Method | URL | 설명 | 최소 권한 |
+|---|--------|-----|------|----------|
+| 22 | GET | `/api/projects/{projectId}/users` | 유저 목록 | VIEWER |
+| 23 | GET | `/api/projects/{projectId}/users/{userId}` | 유저 상세 프로필 | VIEWER |
+| 24 | PUT | `/api/projects/{projectId}/users/{userId}` | 유저 정보 수정 | EDITOR |
+| 25 | DELETE | `/api/projects/{projectId}/users/{userId}` | 유저 삭제 | ADMIN |
+| 26 | GET | `/api/projects/{projectId}/users/{userId}/devices` | 유저 디바이스 목록 | VIEWER |
+| 27 | GET | `/api/projects/{projectId}/users/{userId}/events` | 유저별 이벤트 이력 | VIEWER |
+| 28 | GET | `/api/projects/{projectId}/events` | 이벤트 전체 목록 | VIEWER |
+
+### GET /api/projects/{projectId}/users/{userId}
+
+```json
+// Response — 유저 상세 프로필 (태그, 디바이스, 최근 이벤트 포함)
+{
+  "userId": 1001,
+  "email": "customer@example.com",
+  "pushOptIn": true,
+  "tags": [
+    { "tagKey": "region", "tagValue": "서울" },
+    { "tagKey": "grade", "tagValue": "VIP" }
+  ],
+  "devices": [
+    {
+      "deviceId": 42,
+      "platform": "ANDROID",
+      "tokenValid": true,
+      "lastActiveAt": "2026-04-19T15:30:00"
+    }
+  ],
+  "recentEvents": [
+    {
+      "eventName": "purchase_complete",
+      "eventData": "{\"amount\": 35000}",
+      "createdAt": "2026-04-19T14:00:00"
+    }
+  ],
+  "createdAt": "2026-01-15T09:00:00"
+}
+```
+
+---
+
+## 3. 유저 태그 관리
+
+| # | Method | URL | 설명 | 최소 권한 |
+|---|--------|-----|------|----------|
+| 29 | GET | `/api/projects/{projectId}/users/{userId}/tags` | 유저 태그 조회 | VIEWER |
+| 30 | POST | `/api/projects/{projectId}/users/{userId}/tags` | 태그 추가 | EDITOR |
+| 31 | PUT | `/api/projects/{projectId}/users/{userId}/tags/{tagId}` | 태그 수정 | EDITOR |
+| 32 | DELETE | `/api/projects/{projectId}/users/{userId}/tags/{tagId}` | 태그 삭제 | EDITOR |
+
+### POST /api/projects/{projectId}/users/{userId}/tags
+
+```json
+// Request
+{
+  "tagKey": "region",
+  "tagValue": "서울"
+}
+```
+
+---
+
+## 4. 이벤트 카테고리(태그 정의) 관리
+
+| # | Method | URL | 설명 | 최소 권한 |
+|---|--------|-----|------|----------|
+| 33 | GET | `/api/projects/{projectId}/event-categories` | 태그 정의 목록 | VIEWER |
+| 34 | POST | `/api/projects/{projectId}/event-categories` | 태그 정의 생성 | ADMIN |
+| 35 | PUT | `/api/projects/{projectId}/event-categories/{categoryId}` | 태그 정의 수정 | ADMIN |
+| 36 | DELETE | `/api/projects/{projectId}/event-categories/{categoryId}` | 태그 정의 삭제 | ADMIN |
+
+### POST /api/projects/{projectId}/event-categories
+
+```json
+// Request
+{
+  "tagKey": "region",
+  "displayName": "거주지역",
+  "tagType": "STRING"
+}
+```
