@@ -1,0 +1,24 @@
+plugins {
+    id 'org.springframework.boot'
+}
+
+bootJar { enabled = true }
+jar { enabled = false }
+
+dependencies {
+    implementation project(':butterfly-common')
+    implementation project(':butterfly-auth')
+    implementation project(':butterfly-customer')
+    implementation project(':butterfly-segment')
+    implementation project(':butterfly-campaign')
+    implementation project(':butterfly-delivery')
+    implementation project(':butterfly-analytics')
+
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
