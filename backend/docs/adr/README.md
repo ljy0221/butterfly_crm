@@ -1,3 +1,5 @@
+<!-- markdownlint-disable MD040 MD060 -->
+
 # Architecture Decision Records (ADR)
 
 butterfly 프로젝트의 주요 아키텍처 결정을 기록한다.
@@ -53,3 +55,5 @@ consulted: ...
 | [ADR-0001](0001-segment-condition-tree-json.md) | accepted | 세그먼트 조건 트리를 JSON 컬럼으로 저장 | 2026-04-21 |
 | [ADR-0002](0002-campaign-definition-execution-split.md) | accepted | 캠페인 정의와 실행 회차 분리 | 2026-04-21 |
 | [ADR-0003](0003-analytics-aggregation-tables.md) | proposed | 분석용 일자별 집계 테이블 도입 (Blocker 1) | 2026-04-21 |
+| [ADR-0004](0004-audit-log-architecture.md) | accepted | 감사 로그 아키텍처 (테이블·서비스·조회 API) | 2026-04-21 |
+| [ADR-0005](0005-auth-filter-placement.md) | accepted | 인증/인가 필터 배치 및 `@PreAuthorize` 통일 | 2026-04-21 |

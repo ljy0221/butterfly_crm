@@ -1,20 +1,30 @@
+<!-- markdownlint-disable MD029 MD024 MD032 MD031 MD060 MD022 -->
+
 # ERD 및 API 명세 리뷰 제안서 (역할 6: 분석/통합 검증)
 
 작성자: 역할 6 (분석 / 대시보드 / 통합 검증)
 작성일: 2026-04-21
-최종 수정: 2026-04-21 (역할 3·4 합의 반영)
+최종 수정: 2026-04-21 (역할 1·3·4 합의 반영)
 대상: 전체 백엔드 팀 (역할 1~6)
 상태: 역할 3·4 합의 완료, 역할 1·2·5 합의 필요
 
 ## 합의 이력
 
-- **2026-04-21 (역할 3)**: 세그먼트 조건 트리 JSON 방식 확정 (항목 11)
-- **2026-04-21 (역할 4)**: 캠페인 도메인 전면 재설계 합의 — 캠페인 정의 ↔ 실행 회차 분리 (항목 5 및 연쇄 변경)
+- **2026-04-21 (역할 3)**: 세그먼트 조건 트리 JSON 방식 확정 (항목 11) → [ADR-0001](../adr/0001-segment-condition-tree-json.md)
+- **2026-04-21 (역할 4)**: 캠페인 도메인 전면 재설계 합의 — 캠페인 정의 ↔ 실행 회차 분리 (항목 5 및 연쇄 변경) → [ADR-0002](../adr/0002-campaign-definition-execution-split.md)
   - `campaigns.status` 생애주기 재정의: `DRAFT / ACTIVE / PAUSED / ARCHIVED`
   - `campaign_executions` 테이블 신설 → 발송 상태(SCHEDULED/SENDING/COMPLETED/FAILED/**CANCELED**) 및 스냅샷 보유
   - `campaign_stats` PK를 `execution_id`로 변경 (반복 발송 회차별 1:1)
   - `templates` 테이블 신설
   - `channel_credentials` 테이블 신설
+- **2026-04-21 (역할 1)**: 감사 로그 및 인증/인가 필터 확정 (항목 6 및 신규 항목 E) → [ADR-0004](../adr/0004-audit-log-architecture.md), [ADR-0005](../adr/0005-auth-filter-placement.md)
+  - `audit_logs` 테이블 스키마 확정: `project_id` NULL 허용, `action` VARCHAR + 앱 상수, `target_id` VARCHAR
+  - `metadata` JSON에 before/after diff 저장 (민감값 마스킹 필수)
+  - INSERT 주체: `butterfly-auth`의 `AuditLogService`를 각 도메인이 명시적 호출 (AOP 미사용)
+  - 감사 로그 조회 API는 MVP 포함 (프로젝트별 목록/필터/cursor 페이지네이션)
+  - 공통 인증 필터(JWT 파싱) + 프로젝트 권한 필터(`project_members` 역할 검증) 2종을 `butterfly-auth`가 제공
+  - 권한 선언은 `@PreAuthorize` 방식으로 전 도메인 통일 (SpEL + 권한 평가 빈)
+  - 역할 조회 캐싱: Redis TTL 5분 + 역할 변경 시 즉시 무효화
 
 ---
 
@@ -23,23 +33,30 @@
 현재 [backend/docs/erd.md](../erd.md)와 [backend/docs/api/](../api/)를 통합 검증 시각에서 리뷰한 결과, 다음 이슈를 확인했다.
 
 **Blocker (분석 파이프라인 착수 전 반드시 합의):**
+
 1. 집계 테이블 3종(`campaign_metric_daily`, `channel_metric_daily`, `segment_metric_daily`) 부재 — 현재 ERD로는 `dashboard?from=..&to=..` API 자체가 불가능
 2. `notification_logs`에 `project_id` 없음 + 집계용 인덱스 부재 — 멀티테넌시 규칙 위반 + 대시보드 성능 문제
 3. 발송 상태 카운트 규칙 미정의 (전이식 vs 누적) — 집계 로직이 정해지지 않음
 4. SDK 도달/클릭 콜백 인증 취약 — 분석 데이터 자체를 신뢰할 수 없음
 
 **High (MVP 전 정리):**
-5. ✅ ~~`campaigns.status`에 `CANCELED` 없음~~ → **역할 4 합의 완료**: 캠페인 도메인 전면 재설계로 해결 (§2-1 참조)
-6. `audit_logs` 테이블 자체 부재 (요구사항은 감사 로그 필수)
+
+5. ✅ ~~`campaigns.status`에 `CANCELED` 없음~~ → **역할 4 합의 완료** ([ADR-0002](../adr/0002-campaign-definition-execution-split.md))
+6. ✅ ~~`audit_logs` 테이블 부재~~ → **역할 1 합의 완료** ([ADR-0004](../adr/0004-audit-log-architecture.md))
 7. 전환(conversion) 이벤트 스코프 미정 — requirements 3-6은 필수 명시
-8. 프로젝트 타임존 정책 부재 — 일자 버킷팅 기준 모호
+8. 프로젝트 타임존 정책 부재 — 일자 버킷팅 기준 모호 (역할 1 답변 대기)
 
 **Medium (MVP 스코프 안에서 정리):**
+
 9. 다수 테이블 `project_id` 누락 (`segment_rules`, `devices`, `events_category`, `campaign_stats`)
 10. FK 제약 3개만 정의됨 → 데이터 무결성 취약
-11. 세그먼트 규칙 AND/OR 중첩 스키마 부재 (requirements 3-3 필수)
+11. ✅ ~~세그먼트 규칙 AND/OR 중첩 스키마 부재~~ → **역할 3 합의 완료** ([ADR-0001](../adr/0001-segment-condition-tree-json.md))
 12. `users.project_id` 주석 오류 (tenant_id가 아님)
 13. `campaigns.channel` "테이블 분리 필요" 주석 — MVP 이후 계획 명시 필요
+
+**추가 확정 (역할 1 합의):**
+
+E. 공통 인증/인가 필터 배치 — `butterfly-auth` 제공, `@PreAuthorize` 통일 ([ADR-0005](../adr/0005-auth-filter-placement.md))
 
 ---
 
@@ -531,13 +548,14 @@ Export는 운영 현장에서 거의 항상 요구됨. 집계 테이블 기반�
 | 3 | 발송 카운트 규칙 (타임스탬프 기준 권장) | 역할 5 + 6 | Y |
 | 4 | SDK 콜백 서명 토큰 도입 여부 | 역할 5 | Y |
 | 5 | 캠페인 도메인 재설계 (정의/회차 분리, templates/channel_credentials 신설) | 역할 4 | ✅ 2026-04-21 확정 |
-| 6 | `audit_logs` 테이블 확정 | 역할 1 | N |
+| 6 | `audit_logs` 테이블 확정 | 역할 1 | ✅ 2026-04-21 확정 (ADR-0004) |
 | 7 | 전환 이벤트 MVP 포함/제외 | 전체 | N |
-| 8 | 프로젝트 타임존 정책 | 전체 | N |
-| 9 | 세그먼트 `condition_tree` JSON 도입 | 역할 3 | ✅ 2026-04-21 확정 |
+| 8 | 프로젝트 타임존 정책 | 역할 1 | 답변 대기 |
+| 9 | 세그먼트 `condition_tree` JSON 도입 | 역할 3 | ✅ 2026-04-21 확정 (ADR-0001) |
 | 10 | `clickRate` 분모 정의 (delivered vs sent) | 역할 6 | N |
 | 11 | API 응답 포맷 예시 통일 | 전체 | N |
 | 12 | Export API 포함 여부 | 역할 6 | N |
+| 13 | 공통 인증/인가 필터 배치 및 `@PreAuthorize` 통일 | 역할 1 | ✅ 2026-04-21 확정 (ADR-0005) |
 
 ---
 
