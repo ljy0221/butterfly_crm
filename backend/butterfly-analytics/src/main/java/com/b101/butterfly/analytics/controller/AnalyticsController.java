@@ -13,6 +13,7 @@ import com.b101.butterfly.global.response.PageResponse;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,12 +23,14 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 분석/대시보드 API (backend/docs/api/06-analytics.md).
  *
- * <p>Management API — JWT 인증 전제. 인증/인가 필터는 butterfly-auth/butterfly-api에서 공통 적용.
- * 이 컨트롤러는 {@code projectId} 경로 변수를 받지만, 실제 권한 검증은 공통 필터가 처리한다고 전제.
+ * <p>Management API — JWT 인증 + 프로젝트 권한 검증은 butterfly-auth가 공통 적용 (ADR-0005).
+ * 분석 API는 전부 조회성이므로 클래스 레벨에 VIEWER 최소 권한을 걸고, 엔드포인트별 개별
+ * 애너테이션은 생략한다. 향후 EDITOR 이상이 요구되는 엔드포인트가 추가되면 메서드 레벨에서 override.
  */
 @RestController
 @RequestMapping("/api/projects/{projectId}")
 @RequiredArgsConstructor
+@PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;

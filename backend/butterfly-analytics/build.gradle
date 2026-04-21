@@ -7,6 +7,10 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    // ADR-0005: @PreAuthorize 사용을 위해 security 의존 필요.
+    // butterfly-auth가 security를 implementation으로 가져 전이가 안 되므로 각 도메인에서 직접 선언.
+    // TODO: butterfly-auth에서 java-library 플러그인 + api configuration으로 승격 시 제거 가능.
+    implementation 'org.springframework.boot:spring-boot-starter-security'
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
