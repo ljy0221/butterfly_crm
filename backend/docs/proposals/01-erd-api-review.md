@@ -25,6 +25,10 @@
   - 공통 인증 필터(JWT 파싱) + 프로젝트 권한 필터(`project_members` 역할 검증) 2종을 `butterfly-auth`가 제공
   - 권한 선언은 `@PreAuthorize` 방식으로 전 도메인 통일 (SpEL + 권한 평가 빈)
   - 역할 조회 캐싱: Redis TTL 5분 + 역할 변경 시 즉시 무효화
+- **2026-04-21 (팀 전체)**: 프로젝트 타임존 정책 확정 (항목 8)
+  - MVP 타겟 시장이 한국 한정이므로 `projects.timezone` 컬럼 미추가
+  - 서버 JVM 기본 타임존을 `Asia/Seoul`로 고정, 집계 `bucket_date`도 동일 기준
+  - 해외 확장 시 재논의 (ADR 신설 예정)
 
 ---
 
@@ -44,7 +48,7 @@
 5. ✅ ~~`campaigns.status`에 `CANCELED` 없음~~ → **역할 4 합의 완료** ([ADR-0002](../adr/0002-campaign-definition-execution-split.md))
 6. ✅ ~~`audit_logs` 테이블 부재~~ → **역할 1 합의 완료** ([ADR-0004](../adr/0004-audit-log-architecture.md))
 7. 전환(conversion) 이벤트 스코프 미정 — requirements 3-6은 필수 명시
-8. 프로젝트 타임존 정책 부재 — 일자 버킷팅 기준 모호 (역할 1 답변 대기)
+8. ✅ ~~프로젝트 타임존 정책~~ → **팀 합의 완료 (2026-04-21)**: MVP는 한국 시장 한정이라 `Asia/Seoul`을 서버 레벨에서 고정. `projects.timezone` 컬럼 미추가. 향후 해외 확장 시 재논의.
 
 **Medium (MVP 스코프 안에서 정리):**
 
@@ -363,24 +367,29 @@ CREATE TABLE `conversion_events` (
 
 ---
 
-### 2-4. 타임존 정책 확정
+### 2-4. 타임존 정책 확정 (✅ 2026-04-21 팀 합의: MVP 한국 한정)
 
 #### 문제
 
 - `?from=2026-04-01&to=2026-04-20` 질의가 **어느 타임존 기준 "하루"인지** 명시되지 않음
 - 일간 집계 테이블 PK가 `bucket_date`(DATE)인 이상 반드시 tz 기준이 있어야 함
-- 글로벌 서비스가 아니므로 복잡할 이유가 없음
 
-#### 제안
+#### 결정
 
-- `projects` 테이블에 `timezone VARCHAR(50) NOT NULL DEFAULT 'Asia/Seoul'` 추가
-- Worker 집계 시 `sent_at`(UTC 저장) → 해당 프로젝트 tz 변환 → `DATE(...)`로 버킷팅
-- API 파라미터는 ISO date만 받고, 서버가 프로젝트 tz로 해석
+MVP 타겟 시장이 한국으로 좁혀진 상태이므로 **프로젝트별 타임존을 도입하지 않고
+서버 레벨에서 `Asia/Seoul`을 고정**한다. `projects.timezone` 컬럼 추가는 **기각**.
 
-```sql
-ALTER TABLE `projects`
-  ADD COLUMN `timezone` VARCHAR(50) NOT NULL DEFAULT 'Asia/Seoul';
-```
+- Worker 집계 시 `sent_at`(UTC 저장) → **`Asia/Seoul` 고정 변환** → `DATE(...)`로 버킷팅
+- API 파라미터의 ISO date는 **`Asia/Seoul` 기준 하루**로 해석
+- 서버 JVM의 기본 타임존은 `Asia/Seoul`로 운영 환경에서 고정 (배포 설정 필수)
+- 집계 테이블 `bucket_date` 주석을 "`Asia/Seoul` 기준 일자"로 확정 (ADR-0003 동일 적용)
+
+#### 향후 확장 시 재논의
+
+해외 프로젝트가 추가되면 다음 중 택일:
+
+- `projects.timezone` 컬럼 추가 + 기존 집계 재계산
+- 테넌트 단위로 별도 분석 저장소 분리
 
 ---
 
@@ -550,7 +559,7 @@ Export는 운영 현장에서 거의 항상 요구됨. 집계 테이블 기반�
 | 5 | 캠페인 도메인 재설계 (정의/회차 분리, templates/channel_credentials 신설) | 역할 4 | ✅ 2026-04-21 확정 |
 | 6 | `audit_logs` 테이블 확정 | 역할 1 | ✅ 2026-04-21 확정 (ADR-0004) |
 | 7 | 전환 이벤트 MVP 포함/제외 | 전체 | N |
-| 8 | 프로젝트 타임존 정책 | 역할 1 | 답변 대기 |
+| 8 | 프로젝트 타임존 정책 | 전체 | ✅ 2026-04-21 확정 (MVP 한국 한정, Asia/Seoul 서버 고정) |
 | 9 | 세그먼트 `condition_tree` JSON 도입 | 역할 3 | ✅ 2026-04-21 확정 (ADR-0001) |
 | 10 | `clickRate` 분모 정의 (delivered vs sent) | 역할 6 | N |
 | 11 | API 응답 포맷 예시 통일 | 전체 | N |

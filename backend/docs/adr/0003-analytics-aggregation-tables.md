@@ -27,7 +27,7 @@ consulted: 역할 5 (발송 워커), 역할 4 (캠페인)
 
 - 대시보드 응답 시간 수 초 이내 (requirements 3-6 / 4-1)
 - 반복 발송(RECURRING) 회차별 집계가 가능해야 한다 ([ADR-0002](0002-campaign-definition-execution-split.md))
-- 프로젝트 타임존 기준 "하루" 버킷팅이 정확해야 한다 (제안서 §2-4)
+- 일자 버킷팅 기준 타임존이 명시되어야 한다 — MVP는 `Asia/Seoul` 서버 고정 (제안서 §2-4, 팀 합의 2026-04-21)
 - Worker 재집계가 멱등해야 한다 (재처리 시 카운트가 두 배로 오르면 안 됨)
 - 멀티테넌시 — 모든 집계 테이블은 `project_id`가 선두 인덱스여야 한다 (requirements 4-5)
 
@@ -66,7 +66,7 @@ CREATE TABLE `campaign_metric_daily` (
   `project_id`       BIGINT     NOT NULL,
   `campaign_id`      BIGINT     NOT NULL,
   `execution_id`     BIGINT     NOT NULL COMMENT '발송 회차 ID (RECURRING 대응)',
-  `bucket_date`      DATE       NOT NULL COMMENT '프로젝트 타임존 기준 일자',
+  `bucket_date`      DATE       NOT NULL COMMENT 'Asia/Seoul 기준 일자 (서버 JVM 타임존 고정)',
   `sent_count`       INT        NOT NULL DEFAULT 0,
   `delivered_count`  INT        NOT NULL DEFAULT 0,
   `clicked_count`    INT        NOT NULL DEFAULT 0,
@@ -109,7 +109,7 @@ CREATE TABLE `segment_metric_daily` (
 
 1. **실시간 증분** — Worker가 발송/콜백 이벤트 처리 시 해당 버킷에 원자적 `INSERT ... ON DUPLICATE KEY UPDATE` (MySQL upsert)
 2. **재집계 배치** — 1시간 주기로 `notification_logs`에서 지난 25시간 구간을 완전 재집계하여 실시간 증분 누락을 복구 (멱등)
-3. **타임존** — `notification_logs.sent_at`(UTC 저장)을 해당 프로젝트 `timezone`으로 변환해 `DATE()`로 버킷팅
+3. **타임존** — `notification_logs.sent_at`(UTC 저장)을 `Asia/Seoul`로 변환해 `DATE()`로 버킷팅. MVP 한국 한정이라 프로젝트별 타임존 컬럼은 도입하지 않는다 (제안서 §2-4 팀 합의). 운영 환경 JVM은 `-Duser.timezone=Asia/Seoul`로 고정.
 
 ### 카운트 규칙 (제안서 §1-3)
 
@@ -131,7 +131,7 @@ CREATE TABLE `segment_metric_daily` (
 
 - `notification_logs.project_id` 컬럼 추가 + 인덱스 (제안서 §1-2, 역할 5 합의 필요) — **Blocker**
 - 발송 카운트 규칙 (제안서 §1-3, 역할 5) — **Blocker**
-- 프로젝트 타임존 컬럼 (제안서 §2-4, 역할 1) — **High**
+- ~~프로젝트 타임존 컬럼~~ (제안서 §2-4) — ✅ 2026-04-21 팀 합의: `Asia/Seoul` 서버 고정으로 대체 (컬럼 미도입)
 - 캠페인 정의/실행 분리 ([ADR-0002](0002-campaign-definition-execution-split.md)) — ✅ 확정
 
 ## Consequences
