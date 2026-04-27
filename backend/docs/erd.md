@@ -83,7 +83,7 @@ CREATE TABLE `refresh_tokens` (
 
 CREATE TABLE `token_blacklist` (
     `blacklist_id` BIGINT       NOT NULL AUTO_INCREMENT  COMMENT '블랙리스트 ID',
-    `token`        VARCHAR(500) NOT NULL                 COMMENT '만료 처리된 Access Token',
+    `token`        VARCHAR(500) NOT NULL                 COMMENT 'jti (JWT ID) — Access Token 무효화 키',
     `expires_at`   DATETIME     NOT NULL                 COMMENT '원래 만료 시각 (이후 정리 배치 대상)',
     `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '블랙리스트 등록 시각'
 );
@@ -92,7 +92,7 @@ CREATE TABLE `audit_logs` (
     `audit_id`         BIGINT       NOT NULL AUTO_INCREMENT  COMMENT '감사 로그 ID',
     `project_id`       BIGINT       NULL                     COMMENT '프로젝트 ID (시스템 레벨 시 NULL)',
     `member_id`        BIGINT       NOT NULL                 COMMENT '작업 수행 회원 ID',
-    `action`           VARCHAR(100) NOT NULL                 COMMENT '작업 종류 (FCM_KEY_UPDATE, API_KEY_REISSUE 등)',
+    `action`           VARCHAR(100) NOT NULL                 COMMENT '작업 종류 (API_KEY_ISSUED, API_KEY_REVOKED, FCM_CREDENTIAL_UPDATED, MEMBER_ROLE_CHANGED 등 — AuditAction 상수)',
     `target_type`      VARCHAR(50)  NOT NULL                 COMMENT '대상 엔티티 타입',
     `target_id`        BIGINT       NULL                     COMMENT '대상 엔티티 ID',
     `detail`           JSON         NULL                     COMMENT '추가 상세 (변경 전/후 값 등)',

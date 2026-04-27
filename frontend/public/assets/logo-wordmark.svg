@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 36" width="220" height="36">
+  
+  
+  <rect class="mark" x="2" y="8" width="18" height="6" rx="3" opacity="0.35"></rect>
+  <rect class="mark" x="6" y="16" width="22" height="6" rx="3" opacity="0.65"></rect>
+  <rect class="mark" x="2" y="24" width="16" height="6" rx="3"></rect>
+  <text class="t word" x="42" y="25">CRM <tspan class="mark" style="fill:#3b5bdb">CAMP</tspan></text>
+</svg>

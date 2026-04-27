@@ -2,11 +2,16 @@
 
 <!-- markdownlint-disable MD022 MD032 MD029 MD024 MD031 MD040 -->
 
+> **⚠️ Outdated (역사 자료)** — 본 제안서는 2026-04-27 요구명세서 개정 후 [ADR-0006](../adr/0006-segment-condition-spec-v2.md)으로 결정되었다.
+> 일부 제안(`condition_json` 컬럼명, STATIC/DYNAMIC 하이브리드, `event_daily_counts`)은 채택되지 않았고,
+> 일부(JSON Discriminated Union, EVENT 확장, `schemaVersion`)는 ADR-0006에 반영되었다.
+> 새 구현은 ADR-0006을 따른다. 본 문서는 결정 맥락 보존용으로 유지한다.
+
 **작성일:** 2026-04-22
 **작성자:** 역할 3 (세그먼트 엔진)
 **대상:** 역할 3 (세그먼트 엔진), 역할 6 (분석/통합 검증), 역할 2 (이벤트 수집 담당)
-**상태:** 합의 대기
-**관련 ADR:** [ADR-0001](../adr/0001-segment-condition-tree-json.md) (본 제안서로 개정 요청, 승인 시 ADR-0007 supersede 예정)
+**상태:** outdated — ADR-0006으로 결정됨
+**관련 ADR:** [ADR-0001](../adr/0001-segment-condition-tree-json.md) (superseded), [ADR-0006](../adr/0006-segment-condition-spec-v2.md) (본 제안서 일부 흡수, 일부 폐기)
 
 ---
 

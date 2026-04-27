@@ -1,109 +1,367 @@
-# Segment 모듈 API (역할3: 세그먼트 엔진)
+# Segment 모듈 API (butterfly-segment)
 
-담당 테이블: `segments`, `segment_rules`
+담당 테이블: `segments`, `segment_members`, `segment_favorites`, `segment_snapshots`, `segment_snapshot_users`
+
+> **변경 이력**
+> - 2026-04-27: ERD 개정 반영 — `segment_rules` 테이블 폐기, `condition_tree` JSON 단일 소스로 변경 (ADR-0001).
+>   빌드 상태 추적, 즐겨찾기, 캠페인 연결 조회, 모수 재계산 API 추가.
 
 ---
 
-## 세그먼트 관리
+## 1. 세그먼트 CRUD
 
 | # | Method | URL | 설명 | 최소 권한 | 비고 |
 |---|--------|-----|------|----------|------|
-| 37 | POST | `/api/projects/{projectId}/segments` | 세그먼트 생성 | EDITOR | 규칙(rules)과 함께 생성 |
-| 38 | GET | `/api/projects/{projectId}/segments` | 세그먼트 목록 | VIEWER | |
-| 39 | GET | `/api/projects/{projectId}/segments/{segmentId}` | 세그먼트 상세 | VIEWER | 규칙 포함 |
-| 40 | PUT | `/api/projects/{projectId}/segments/{segmentId}` | 세그먼트 수정 | EDITOR | 규칙 전체 교체 |
-| 41 | DELETE | `/api/projects/{projectId}/segments/{segmentId}` | 세그먼트 삭제 | EDITOR | |
-| 42 | POST | `/api/projects/{projectId}/segments/preview` | 미리보기 (예상 모수) | EDITOR | 저장 전 조건으로 계산 |
-| 43 | GET | `/api/projects/{projectId}/segments/{segmentId}/users` | 대상 유저 목록 | VIEWER | 페이지네이션 |
+| 37 | POST   | `/api/projects/{projectId}/segments`                       | 세그먼트 생성              | EDITOR | `condition_tree`로 생성. 생성 직후 `build_status=PENDING` |
+| 38 | GET    | `/api/projects/{projectId}/segments`                       | 세그먼트 목록              | VIEWER | 검색/필터/정렬/페이지네이션 |
+| 39 | GET    | `/api/projects/{projectId}/segments/{segmentId}`           | 세그먼트 상세              | VIEWER | 조건 트리 + 빌드 상태 + 사용 중 캠페인 |
+| 40 | PUT    | `/api/projects/{projectId}/segments/{segmentId}`           | 세그먼트 수정              | EDITOR | 진행 중(READY/SEND) 캠페인 연결 시 거절 또는 강한 경고 |
+| 41 | DELETE | `/api/projects/{projectId}/segments/{segmentId}`           | 세그먼트 삭제 (soft)       | EDITOR | 진행 중 캠페인 연결 시 거절 |
+| 42 | POST   | `/api/projects/{projectId}/segments/preview`               | 예상 모수 미리보기         | EDITOR | 저장 없이 조건만 평가 (HLL 추정) |
+| 43 | GET    | `/api/projects/{projectId}/segments/{segmentId}/users`     | 대상 유저 목록             | VIEWER | 페이지네이션 (P1) |
+| 44 | POST   | `/api/projects/{projectId}/segments/{segmentId}/rebuild`   | 모수 재계산/멤버 재빌드     | EDITOR | 비동기, `build_status=BUILDING` 전환 |
+| 45 | GET    | `/api/projects/{projectId}/segments/{segmentId}/campaigns` | 이 세그먼트를 쓰는 캠페인 목록 | VIEWER | 캠페인 상태별 그룹화 |
 
-### POST /api/projects/{projectId}/segments
+## 2. 즐겨찾기 (P1)
 
+| # | Method | URL | 설명 | 최소 권한 |
+|---|--------|-----|------|----------|
+| 46 | GET    | `/api/projects/{projectId}/segments/favorites`                  | 자주 쓰는 세그먼트 목록 | VIEWER |
+| 47 | POST   | `/api/projects/{projectId}/segments/{segmentId}/favorite`       | 즐겨찾기 등록           | VIEWER |
+| 48 | DELETE | `/api/projects/{projectId}/segments/{segmentId}/favorite`       | 즐겨찾기 해제           | VIEWER |
+
+---
+
+## 3. 요청/응답 예시
+
+### 37. POST `/api/projects/{projectId}/segments`
+
+**Request**
 ```json
-// Request
 {
-  "name": "서울 VIP 유저",
-  "rules": [
-    {
-      "ruleType": "TAG",
-      "field": "region",
-      "operator": "EQ",
-      "value": "서울"
-    },
-    {
-      "ruleType": "TAG",
-      "field": "grade",
-      "operator": "IN",
-      "value": "VIP,VVIP"
-    }
-  ]
-}
-
-// Response
-{
-  "segmentId": 1,
-  "name": "서울 VIP 유저",
-  "estimatedCount": 2340,
-  "rules": [
-    {
-      "ruleId": 1,
-      "ruleType": "TAG",
-      "field": "region",
-      "operator": "EQ",
-      "value": "서울"
-    },
-    {
-      "ruleId": 2,
-      "ruleType": "TAG",
-      "field": "grade",
-      "operator": "IN",
-      "value": "VIP,VVIP"
-    }
-  ],
-  "createdAt": "2026-04-20T10:00:00"
+  "name": "검정 구두 260 구매 유저",
+  "description": "최근 30일 내 검정색 남성 구두 260 사이즈를 3회 이상 구매한 서울 거주 유저",
+  "conditionTree": {
+    "logic": "and",
+    "conditions": [
+      {
+        "type": "event",
+        "category": "purchase",
+        "filters": [
+          { "key": "color", "op": "eq", "value": "검정" },
+          { "key": "size",  "op": "eq", "value": "260" }
+        ],
+        "period":   { "type": "relative", "days": 30 },
+        "minCount": 3
+      },
+      {
+        "type": "tag",
+        "key":  "region",
+        "op":   "eq",
+        "value": "서울"
+      },
+      {
+        "type": "user",
+        "key":  "birthYear",
+        "op":   "lt",
+        "value": 2000
+      }
+    ]
+  }
 }
 ```
 
-### POST /api/projects/{projectId}/segments/preview
-
+**Response 201**
 ```json
-// Request — 저장하지 않고 조건만 보내서 예상 모수 확인
 {
-  "rules": [
-    {
-      "ruleType": "TAG",
-      "field": "region",
-      "operator": "EQ",
-      "value": "서울"
-    }
-  ]
+  "segmentId": 1024,
+  "name": "검정 구두 260 구매 유저",
+  "description": "최근 30일 내 ...",
+  "buildStatus": "PENDING",
+  "estimatedCount": null,
+  "estimatedAt": null,
+  "lastBuiltAt": null,
+  "schemaVersion": 3,
+  "createdBy": 17,
+  "createdAt": "2026-04-27T10:00:00"
 }
+```
 
-// Response
+**제약**
+- `name`: 1~30자, 프로젝트 내 중복 불가 (UNIQUE `(project_id, name, is_deleted)`)
+- `description`: 0~100자
+- `conditionTree.conditions`: 최소 1개 이상
+
+---
+
+### 38. GET `/api/projects/{projectId}/segments`
+
+**Query Parameters**
+
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `q`           | string | 세그먼트명 검색 (LIKE) |
+| `createdBy`   | long   | 생성자 member_id 필터 |
+| `createdFrom` | date   | 생성일 범위 시작 |
+| `createdTo`   | date   | 생성일 범위 끝 |
+| `buildStatus` | enum   | `PENDING/BUILDING/READY/FAILED` |
+| `sort`        | string | `createdAt`, `estimatedCount`, `lastBuiltAt` (default: `updatedAt`) |
+| `order`       | string | `asc`, `desc` (default: `desc`) |
+| `page`        | int    | 0-base |
+| `size`        | int    | default 20 |
+
+**Response 200**
+```json
 {
-  "estimatedCount": 5120
+  "content": [
+    {
+      "segmentId": 1024,
+      "name": "검정 구두 260 구매 유저",
+      "description": "...",
+      "estimatedCount": 1820,
+      "buildStatus": "READY",
+      "createdBy": { "memberId": 17, "name": "남정연" },
+      "createdAt": "2026-04-27T10:00:00",
+      "updatedAt": "2026-04-27T10:30:00",
+      "linkedCampaignCount": 3,
+      "favorited": true
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 42,
+  "totalPages": 3
 }
 ```
 
 ---
 
-## 규칙 타입 (rule_type)
+### 39. GET `/api/projects/{projectId}/segments/{segmentId}`
 
-| 타입 | 설명 | 예시 |
-|------|------|------|
-| TAG | 유저 태그 조건 | region = 서울 |
-| EVENT | 이벤트 발생 조건 | purchase_complete 발생 유저 |
-| DEVICE | 디바이스 속성 조건 | platform = ANDROID |
-| USER | 유저 속성 조건 | push_opt_in = true |
+**Response 200**
+```json
+{
+  "segmentId": 1024,
+  "name": "검정 구두 260 구매 유저",
+  "description": "...",
+  "conditionTree": { "logic": "and", "conditions": [ ... ] },
+  "schemaVersion": 3,
+  "estimatedCount": 1820,
+  "estimatedAt": "2026-04-27T10:30:00",
+  "lastBuiltAt": "2026-04-27T10:32:14",
+  "buildStatus": "READY",
+  "createdBy": { "memberId": 17, "name": "남정연" },
+  "createdAt": "2026-04-27T10:00:00",
+  "updatedAt": "2026-04-27T10:30:00",
+  "linkedCampaigns": [
+    { "campaignId": 501, "name": "5월 봄 시즌", "campaignStatus": "ACTIVE" },
+    { "campaignId": 502, "name": "VIP 사은품",   "campaignStatus": "DRAFT" }
+  ],
+  "favorited": true
+}
+```
 
-## 연산자 (operator)
+---
+
+### 40. PUT `/api/projects/{projectId}/segments/{segmentId}`
+
+수정 요청 본문은 생성과 동일.
+
+**거절 응답 (409 CONFLICT)** — 진행 중 캠페인 연결 시
+```json
+{
+  "code": "SEGMENT_409_LINKED_ACTIVE_CAMPAIGN",
+  "message": "이 세그먼트를 사용 중인 활성 캠페인이 있어 수정할 수 없습니다.",
+  "linkedCampaigns": [
+    { "campaignId": 501, "name": "5월 봄 시즌", "campaignStatus": "ACTIVE" }
+  ]
+}
+```
+
+---
+
+### 42. POST `/api/projects/{projectId}/segments/preview`
+
+저장 없이 `conditionTree`만 받아서 예상 모수를 즉시 반환.
+
+**Request**
+```json
+{
+  "conditionTree": {
+    "logic": "and",
+    "conditions": [
+      { "type": "tag", "key": "region", "op": "eq", "value": "서울" }
+    ]
+  }
+}
+```
+
+**Response 200**
+```json
+{
+  "estimatedCount": 5120,
+  "method": "HLL",
+  "estimatedAt": "2026-04-27T10:35:00"
+}
+```
+
+> `method`: `HLL`(HyperLogLog 근사) 또는 `EXACT`(실측). 100만 유저 스케일에서는 `HLL` 기본.
+
+---
+
+### 43. GET `/api/projects/{projectId}/segments/{segmentId}/users` (P1)
+
+세그먼트 매칭 유저 목록 (`segment_members` 기반).
+
+**Query Parameters**: `page`, `size`, `sort` (`matchedAt`, `userId`)
+
+**Response 200**
+```json
+{
+  "content": [
+    {
+      "userId": 9001,
+      "externalId": "ext-9001",
+      "email": "user@example.com",
+      "lastActiveAt": "2026-04-26T22:14:00",
+      "matchedAt": "2026-04-27T10:32:10"
+    }
+  ],
+  "page": 0,
+  "size": 50,
+  "totalElements": 1820
+}
+```
+
+---
+
+### 44. POST `/api/projects/{projectId}/segments/{segmentId}/rebuild`
+
+비동기 재빌드 트리거. `build_status`가 `BUILDING`으로 전환되고 큐에 작업이 적재됨.
+
+**Response 202 Accepted**
+```json
+{
+  "segmentId": 1024,
+  "buildStatus": "BUILDING",
+  "queuedAt": "2026-04-27T10:40:00"
+}
+```
+
+빌드 진행 상태 폴링은 39번(상세 조회)으로.
+
+---
+
+### 45. GET `/api/projects/{projectId}/segments/{segmentId}/campaigns`
+
+이 세그먼트를 사용 중인 캠페인 목록. 수정/삭제 가능 여부 판단용.
+
+**Response 200**
+```json
+{
+  "active":   [ { "campaignId": 501, "name": "5월 봄 시즌", "campaignStatus": "ACTIVE" } ],
+  "paused":   [],
+  "draft":    [ { "campaignId": 502, "name": "VIP 사은품",   "campaignStatus": "DRAFT" } ],
+  "ended":    [ { "campaignId": 480, "name": "4월 봄맞이",   "campaignStatus": "ENDED"  } ],
+  "totalCount": 3
+}
+```
+
+---
+
+### 46. GET `/api/projects/{projectId}/segments/favorites` (P1)
+
+**Response 200** — 즐겨찾기 우선, 그다음 최근 캠페인에 사용된 순
+
+```json
+{
+  "favorites": [
+    { "segmentId": 1024, "name": "검정 구두 260 구매 유저", "estimatedCount": 1820, "favoritedAt": "2026-04-26T09:00:00" }
+  ],
+  "recentlyUsed": [
+    { "segmentId":  990, "name": "휴면 30일", "estimatedCount": 12400, "lastUsedAt": "2026-04-25T18:30:00" }
+  ]
+}
+```
+
+---
+
+## 4. condition_tree 스키마
+
+ADR-0001 참조. 단일 진실 소스(JSON).
+
+### 노드 타입
+
+```jsonc
+// 그룹 노드 (재귀 가능)
+{
+  "logic": "and" | "or",
+  "conditions": [ <조건 노드 또는 그룹 노드> ]
+}
+```
+
+### 조건 노드 — `type`별
+
+| `type` | 의미 | 추가 필드 |
+|--------|------|---------|
+| `event`  | 이벤트 발생 조건             | `category`, `filters[]`, `period`, `minCount` |
+| `tag`    | `user_tags` 태그 필터        | `key`, `op`, `value` |
+| `user`   | `users` 컬럼 필터            | `key`, `op`, `value` (예: `birthDate`, `pushOptIn`) |
+| `device` | `devices` 컬럼 필터          | `key`, `op`, `value` (예: `platform`) |
+
+### `period` (이벤트 조건 한정)
+
+| `type` | 필드 | 설명 |
+|--------|------|------|
+| `relative`   | `days`              | 최근 N일 |
+| `absolute`   | `startDate`, `endDate` | YYYY-MM-DD |
+| `cumulative` | (없음)              | 전체 기간 |
+
+### 연산자 (`op`)
 
 | 연산자 | 설명 |
 |--------|------|
-| EQ | 같음 |
-| NEQ | 같지 않음 |
-| GT | 초과 |
-| LT | 미만 |
-| GTE | 이상 |
-| LTE | 이하 |
-| IN | 포함 (쉼표 구분, 예: "VIP,VVIP") |
-| CONTAINS | 문자열 포함 |
+| `eq`       | 같음 |
+| `neq`      | 같지 않음 |
+| `gt`       | 초과 |
+| `lt`       | 미만 |
+| `gte`      | 이상 |
+| `lte`      | 이하 |
+| `in`       | 포함 (배열, 예: `["VIP","VVIP"]`) |
+| `contains` | 문자열 포함 |
+
+---
+
+## 5. 빌드 상태 (`build_status`)
+
+| 값 | 의미 |
+|---|---|
+| `PENDING`  | 생성/수정 직후, 빌드 대기 중 |
+| `BUILDING` | events 스캔 + `segment_members` 적재 중 |
+| `READY`    | 빌드 완료, 캠페인에서 사용 가능 |
+| `FAILED`   | 빌드 실패 — 재시도(`POST /rebuild`) 필요 |
+
+---
+
+## 6. 권한 매트릭스
+
+| 행위 | VIEWER | EDITOR | OWNER |
+|------|:------:|:------:|:-----:|
+| 목록/상세/유저 목록/즐겨찾기 조회 | ✅ | ✅ | ✅ |
+| 즐겨찾기 등록/해제 | ✅ | ✅ | ✅ |
+| 생성/수정/삭제/미리보기/재빌드 | ❌ | ✅ | ✅ |
+
+---
+
+## 7. 주요 에러 코드
+
+| 코드 | HTTP | 설명 |
+|------|:----:|------|
+| `SEGMENT_400_NAME_LENGTH`           | 400 | 이름이 1~30자 범위를 벗어남 |
+| `SEGMENT_400_NAME_DUPLICATED`       | 400 | 동일 프로젝트 내 이름 중복 |
+| `SEGMENT_400_DESCRIPTION_LENGTH`    | 400 | 설명이 100자 초과 |
+| `SEGMENT_400_EMPTY_CONDITIONS`      | 400 | 조건이 1개 미만 |
+| `SEGMENT_400_INVALID_CONDITION_TREE`| 400 | condition_tree 스키마 위반 |
+| `SEGMENT_404_NOT_FOUND`             | 404 | 세그먼트 미존재 또는 삭제됨 |
+| `SEGMENT_409_LINKED_ACTIVE_CAMPAIGN`| 409 | 진행 중 캠페인에 연결되어 수정/삭제 불가 |
+| `SEGMENT_409_BUILD_IN_PROGRESS`     | 409 | 빌드 진행 중 — 재요청 시 충돌 |
