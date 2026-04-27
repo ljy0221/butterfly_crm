@@ -1,4 +1,5 @@
 # Butterfly CI/CD - Phase 3-2: Gradle build
+# Note: artifacts skipped due to GitLab size limit (will be replaced by Docker images in Phase 7)
 
 stages:
   - smoke
@@ -36,10 +37,7 @@ gradle-build:
     - echo "=========================================="
     - echo "Building all modules (test skipped)"
     - echo "=========================================="
-    - ./gradlew clean assemble -x test --no-daemon --info
-  artifacts:
-    name: "build-$CI_COMMIT_SHORT_SHA"
-    paths:
-      - backend/*/build/libs/*.jar
-    expire_in: 1 day
-    when: on_success
+    - ./gradlew clean assemble -x test --no-daemon
+    - echo "=========================================="
+    - echo "Build successful. Generated jars:"
+    - ls -lh backend/*/build/libs/*.jar
