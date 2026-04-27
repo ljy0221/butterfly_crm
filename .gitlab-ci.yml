@@ -1,10 +1,12 @@
-# Butterfly CI/CD - Phase 3-1: Minimal smoke test
+# Butterfly CI/CD - Phase 3-2: Gradle build
 
 stages:
   - smoke
+  - build
 
 variables:
   BACKEND_DIR: backend
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
 
 smoke-test:
   stage: smoke
@@ -15,20 +17,29 @@ smoke-test:
         - .gitlab-ci.yml
   script:
     - echo "=========================================="
-    - echo "Runner is working!"
-    - echo "Pod scheduled and started"
+    - echo "Smoke test passed"
+    - 'echo "Pipeline: $CI_PIPELINE_ID, Commit: $CI_COMMIT_SHORT_SHA"'
     - echo "=========================================="
-    - 'echo "Job ID: $CI_JOB_ID"'
-    - 'echo "Pipeline ID: $CI_PIPELINE_ID"'
-    - 'echo "Branch: $CI_COMMIT_REF_NAME"'
-    - 'echo "Commit: $CI_COMMIT_SHORT_SHA"'
-    - 'echo "Runner: $CI_RUNNER_DESCRIPTION"'
+
+gradle-build:
+  stage: build
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+    - ./gradlew --version
+  script:
     - echo "=========================================="
-    - echo "Verifying environment:"
-    - uname -a
-    - cat /etc/os-release | head -3
+    - echo "Building all modules (test skipped)"
     - echo "=========================================="
-    - echo "Verifying repo checkout:"
-    - ls -la
-    - echo "---"
-    - ls -la $BACKEND_DIR | head -15
+    - ./gradlew clean assemble -x test --no-daemon --info
+  artifacts:
+    name: "build-$CI_COMMIT_SHORT_SHA"
+    paths:
+      - backend/*/build/libs/*.jar
+    expire_in: 1 day
+    when: on_success
