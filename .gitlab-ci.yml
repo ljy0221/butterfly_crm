@@ -1,5 +1,4 @@
-# Butterfly CI/CD - Phase 3-2: Gradle build
-# Note: artifacts skipped due to GitLab size limit (will be replaced by Docker images in Phase 7)
+# Butterfly CI/CD - Phase 2b: S3 cache enabled
 
 stages:
   - smoke
@@ -8,6 +7,8 @@ stages:
 variables:
   BACKEND_DIR: backend
   GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
+  # Gradle이 캐시 디렉토리를 어디에 만들지
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
 smoke-test:
   stage: smoke
@@ -29,6 +30,20 @@ gradle-build:
     - changes:
         - backend/**/*
         - .gitlab-ci.yml
+  
+  # S3 캐시 설정
+  cache:
+    key:
+      files:
+        - backend/build.gradle
+        - backend/settings.gradle
+        - backend/gradle/wrapper/gradle-wrapper.properties
+      prefix: "$CI_COMMIT_REF_SLUG"
+    paths:
+      - .gradle/caches/
+      - .gradle/wrapper/
+    policy: pull-push
+  
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
@@ -39,5 +54,6 @@ gradle-build:
     - echo "=========================================="
     - ./gradlew clean assemble -x test --no-daemon
     - echo "=========================================="
-    - echo "Build successful. Generated jars:"
+    - echo "Build successful. Cache stats:"
+    - du -sh "$GRADLE_USER_HOME"/caches 2>/dev/null || echo "(no cache dir)"
     - ls -lh */build/libs/*.jar
