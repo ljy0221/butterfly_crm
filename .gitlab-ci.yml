@@ -1,9 +1,10 @@
-# Butterfly CI/CD - Phase 4: Unit Test added
+# Butterfly CI/CD - Phase 6: Checkstyle added
 
 stages:
   - smoke
   - build
   - test
+  - quality
 
 variables:
   BACKEND_DIR: backend
@@ -72,3 +73,26 @@ unit-test:
     paths:
       - "backend/*/build/reports/tests/test/"
   allow_failure: true
+
+checkstyle:
+  stage: quality
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew checkstyleMain --no-daemon
+    - echo "=========================================="
+    - echo "Checkstyle violation summary:"
+    - 'find . -name "main.xml" -path "*/checkstyle/*" -exec sh -c "echo {}: $(grep -c \"<error\" {}) errors" \;'
+  artifacts:
+    name: "checkstyle-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 1 week
+    paths:
+      - "backend/*/build/reports/checkstyle/"
