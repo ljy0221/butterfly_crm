@@ -8,7 +8,7 @@ import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.campaign.domain.enums.RepeatType;
 import com.b101.butterfly.campaign.campaign.domain.enums.SendMode;
 import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.MessageTemplate;
+import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;
 import jakarta.persistence.CascadeType;
