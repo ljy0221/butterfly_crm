@@ -73,8 +73,11 @@ public class CampaignExecution extends SoftDeletedDomain {
         this.failedCount = 0;
     }
 
-    public static CampaignExecution ready(Campaign campaign, Integer runRound,
-            Integer targetCount) {
+    public static CampaignExecution ready(
+            Campaign campaign,
+            Integer runRound,
+            Integer targetCount
+    ) {
         if (campaign == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_REQUIRED);
         }
