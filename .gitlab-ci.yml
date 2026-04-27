@@ -54,3 +54,5 @@ gradle-build:
     - echo "Build successful. Cache stats:"
     - du -sh "$GRADLE_USER_HOME"/caches 2>/dev/null || echo "(no cache dir)"
     - ls -lh */build/libs/*.jar
+
+# Cache test trigger
