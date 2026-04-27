@@ -37,3 +37,6 @@ out/
 .vscode/
 
 .claude/
+backend/docs/기능명세서_모듈별.md
+backend/docs/기능요구사항정의서.md
+/CRM CAMP Design System

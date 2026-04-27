@@ -1,0 +1,259 @@
+/* =================================================================
+   Butterfly Design System — Colors & Type
+   Brand: Butterfly (internal codename CRM CAMP)
+   Source: Figma "멀티테넌트 CRM 캠페인 플로우 콘셉트" /
+           Concept-V11-Creative-2-UI / Common-Guide-Board
+   Primary violet (#524993) sampled from the Butterfly logo mark.
+   ================================================================= */
+
+/* ---------- WEBFONTS: Hyundai Sans (brand face) ----------
+   "Head Office" is the display face (headlines, hero numerals, UI emphasis).
+   "Text Office" is the text face (body, labels, data tables) and carries
+   italics. Korean fallback stack handles Hangul until a full CJK cut is
+   provided. */
+
+@font-face {
+  font-family: "Hyundai Sans Head";
+  font-weight: 300; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansHeadOffice-Light.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Head";
+  font-weight: 400; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansHeadOffice-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Head";
+  font-weight: 500; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansHeadOffice-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Head";
+  font-weight: 700; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansHeadOffice-Bold.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Hyundai Sans Text";
+  font-weight: 400; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansTextOffice-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Text";
+  font-weight: 400; font-style: italic; font-display: swap;
+  src: url("/fonts/HyundaiSansTextOffice-Italic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Text";
+  font-weight: 500; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansTextOffice-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Text";
+  font-weight: 500; font-style: italic; font-display: swap;
+  src: url("/fonts/HyundaiSansTextOffice-MediumItalic.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Text";
+  font-weight: 700; font-style: normal; font-display: swap;
+  src: url("/fonts/HyundaiSansTextOffice-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Hyundai Sans Text";
+  font-weight: 700; font-style: italic; font-display: swap;
+  src: url("/fonts/HyundaiSansTextOffice-BoldItalic.woff2") format("woff2");
+}
+
+:root {
+  /* ---------- TYPOGRAPHY ---------- */
+  /* Display face — headlines, hero numerals, wordmarks, big UI labels */
+  --font-display: "Hyundai Sans Head", "Pretendard",
+    "Apple SD Gothic Neo", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  /* Text face — body, labels, tables, forms */
+  --font-sans: "Hyundai Sans Text", "Pretendard",
+    "Apple SD Gothic Neo", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Menlo", monospace;
+
+  /* Weights actually shipped (Hyundai Sans files present) */
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-bold: 700;
+  --fw-extrabold: 700; /* alias — no 800 weight shipped */
+
+  /* Type scale (from Common-Guide-Board "타이포그래피 스케일") */
+  --fs-h1: 28px;   --lh-h1: 36px;
+  --fs-h2: 20px;   --lh-h2: 28px;
+  --fs-body1: 16px; --lh-body1: 24px;
+  --fs-body2: 14px; --lh-body2: 20px;
+  --fs-caption: 12px; --lh-caption: 16px;
+  --fs-micro: 10px; --lh-micro: 15px;
+
+  /* Heavy display used in hero/onboarding frames */
+  --fs-display: 40px; --lh-display: 48px;
+
+  /* ---------- COLOR — CORE (from Figma guide) ----------
+     Original palette — deep navy-blue primary from Common-Guide-Board.
+     (Brand logo is violet, but the product UI retains the designed blue system.) */
+  --color-primary:       #2563eb;   /* rgb(37,99,235)  */
+  --color-primary-strong:#3b5bdb;   /* rgb(59,91,219)  — deep navy-blue */
+  --color-primary-muted: #3763c9;   /* rgb(55,99,201)  — marketing */
+  --color-primary-hover: #1d4ed8;
+  --color-primary-soft:  rgba(59,91,219,0.08);
+  --color-primary-chip:  rgba(59,91,219,0.15);
+  --color-primary-50:    #eff3fe;
+  --color-primary-100:   #dbe3fb;
+  --color-primary-200:   #bcc8f4;
+  --color-primary-400:   #637fff;
+  --color-primary-700:   #3b5bdb;
+  --color-primary-900:   #1e2f7a;
+
+  --color-secondary:     #64748b;   /* slate */
+  --color-success:       #16a34a;
+  --color-warning:       #f59e0b;
+  --color-error:         #ef4444;
+
+  /* ---------- COLOR — SURFACES ---------- */
+  --bg-canvas:           #f5f7fb;   /* rgb(245,247,251) */
+  --bg-subtle:           #f8fafc;
+  --bg-alt:              #f7f8fa;
+  --bg-surface:          #ffffff;
+  --bg-sidebar:          #182034;   /* rgb(24,32,52)  navy */
+  --bg-sidebar-hero:     #161b2a;
+  --bg-sidebar-raised:   #283044;
+  --bg-sidebar-divider:  #374151;
+  --bg-sidebar-item-bg:  rgba(59,91,219,0.15);
+
+  /* ---------- COLOR — BORDERS ---------- */
+  --border-default:      #e2e8f0;
+  --border-strong:       #dbe0f0;
+  --border-subtle:       #eeeeee;
+
+  /* ---------- COLOR — TEXT ---------- */
+  --fg-primary:          #1f2937;
+  --fg-strong:           #202634;
+  --fg-body:             #2b2e3a;
+  --fg-secondary:        #64748b;
+  --fg-muted:            #6b7280;
+  --fg-faint:            #94a3b8;
+  --fg-disabled:         #a0a8b4;
+  --fg-on-dark:          #ffffff;
+  --fg-on-dark-muted:    #94a3b8;
+  --fg-link:             #2563eb;
+
+  /* ---------- COLOR — STATE BGs ---------- */
+  --state-success-bg:    rgba(22,163,74,0.10);
+  --state-warning-bg:    rgba(245,158,11,0.10);
+  --state-error-bg:      rgba(239,68,68,0.10);
+  --state-info-bg:       rgba(37,99,235,0.10);
+
+  /* ---------- RADII ---------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-pill: 999px;
+
+  /* ---------- SPACING ---------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* ---------- ELEVATION ---------- */
+  --shadow-1: 0 1px 4px 0 rgba(0,0,0,0.04);
+  --shadow-2: 0 4px 16px -2px rgba(0,0,0,0.08);
+  --shadow-3: 0 8px 32px -4px rgba(0,0,0,0.30);
+  --shadow-halo: 0 0 40px 0 rgba(0,0,0,0.04);
+
+  /* ---------- TRANSITIONS ---------- */
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+}
+
+/* =================================================================
+   SEMANTIC ELEMENT DEFAULTS
+   ================================================================= */
+html, body {
+  font-family: var(--font-sans);
+  color: var(--fg-primary);
+  background: var(--bg-surface);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum" 0;
+}
+
+h1, .h1 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  color: var(--fg-strong);
+  letter-spacing: -0.01em;
+}
+h2, .h2 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-h2);
+  color: var(--fg-strong);
+  letter-spacing: -0.005em;
+}
+h3, .h3 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-body1);
+  line-height: var(--lh-body1);
+  color: var(--fg-primary);
+}
+p, .body1 {
+  font-size: var(--fs-body1);
+  line-height: var(--lh-body1);
+  color: var(--fg-primary);
+}
+.body2 {
+  font-size: var(--fs-body2);
+  line-height: var(--lh-body2);
+  color: var(--fg-primary);
+}
+.caption {
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--fg-secondary);
+}
+.micro {
+  font-size: var(--fs-micro);
+  line-height: var(--lh-micro);
+  color: var(--fg-secondary);
+}
+code, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* ---- Global resets (from original index.html) ---- */
+html, body {
+  margin: 0; padding: 0;
+  background: #f5f7fb;
+  font-family: var(--font-sans);
+  color: #1f2937;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+* { box-sizing: border-box; }
+button { font-family: inherit; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+#root { min-height: 100vh; }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
