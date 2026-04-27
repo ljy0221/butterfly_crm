@@ -1,5 +1,4 @@
 # Butterfly CI/CD - Phase 3-1: Minimal smoke test
-# Goal: Verify Runner is operational
 
 stages:
   - smoke
@@ -19,11 +18,11 @@ smoke-test:
     - echo "Runner is working!"
     - echo "Pod scheduled and started"
     - echo "=========================================="
-    - echo "Job ID:        $CI_JOB_ID"
-    - echo "Pipeline ID:   $CI_PIPELINE_ID"
-    - echo "Branch:        $CI_COMMIT_REF_NAME"
-    - echo "Commit:        $CI_COMMIT_SHORT_SHA"
-    - echo "Runner:        $CI_RUNNER_DESCRIPTION"
+    - 'echo "Job ID: $CI_JOB_ID"'
+    - 'echo "Pipeline ID: $CI_PIPELINE_ID"'
+    - 'echo "Branch: $CI_COMMIT_REF_NAME"'
+    - 'echo "Commit: $CI_COMMIT_SHORT_SHA"'
+    - 'echo "Runner: $CI_RUNNER_DESCRIPTION"'
     - echo "=========================================="
     - echo "Verifying environment:"
     - uname -a
