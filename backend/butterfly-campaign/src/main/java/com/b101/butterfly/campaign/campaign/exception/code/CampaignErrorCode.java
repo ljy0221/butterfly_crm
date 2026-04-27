@@ -21,6 +21,16 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_005", "캠페인 처리 시 캠페인 설명 정보는 필수입니다.", HttpStatus.BAD_REQUEST),
     CAMPAIGN_SEGMENT_REQUIRED(
             "CAMPAIGN_006", "캠페인 처리 시 세그먼트 정보는 필수입니다.", HttpStatus.BAD_REQUEST),
+    SCHEDULED_AT_REQUIRED(
+            "CAMPAIGN_007", "예약 발송 시각은 필수입니다.", HttpStatus.BAD_REQUEST),
+    SCHEDULED_AT_IN_PAST(
+            "CAMPAIGN_008", "발송 예정 시각은 현재보다 과거일 수 없습니다.", HttpStatus.BAD_REQUEST),
+    RECURRING_CRON_REQUIRED(
+            "CAMPAIGN_009", "반복 캠페인은 크론(Cron) 표현식이 필수입니다.", HttpStatus.BAD_REQUEST),
+    REPEAT_TYPE_REQUIRED(
+            "CAMPAIGN_010", "반복 캠페인은 반복 유형(Repeat Type) 설정이 필수입니다.", HttpStatus.BAD_REQUEST),
+    RECURRING_COUNT_INVALID(
+            "CAMPAIGN_011", "목표 반복 발송 횟수는 1 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
     ;
 
     private final String code;

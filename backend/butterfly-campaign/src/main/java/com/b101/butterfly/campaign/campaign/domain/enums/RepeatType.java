@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.service.campaign.domain.enums;
+package com.b101.butterfly.campaign.campaign.domain.enums;
 
 import lombok.Getter;
 
