@@ -7,6 +7,7 @@ plugins {
 subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'checkstyle'
 
     group = 'com.b101.butterfly'
     version = '0.0.1-SNAPSHOT'
@@ -44,5 +45,23 @@ subprojects {
 
     tasks.named('test') {
         useJUnitPlatform()
+    }
+
+    // ===== Checkstyle 설정 =====
+    checkstyle {
+        toolVersion = '10.12.5'
+        configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+        // 위반 발견되어도 빌드 실패 안 함 (warning만)
+        ignoreFailures = true
+        // test 코드는 검사 제외
+        sourceSets = [sourceSets.main]
+    }
+
+    // checkstyle 리포트를 HTML + XML 둘 다 생성
+    tasks.withType(Checkstyle).configureEach {
+        reports {
+            html.required = true
+            xml.required = true
+        }
     }
 }
