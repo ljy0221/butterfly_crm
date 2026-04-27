@@ -1,35 +1,16 @@
-# Butterfly CI/CD - Phase 2b: S3 cache enabled
+# Butterfly CI/CD - Phase 4: Unit Test added
 
 stages:
   - smoke
   - build
+  - test
 
 variables:
   BACKEND_DIR: backend
   GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
-smoke-test:
-  stage: smoke
-  image: alpine:3.20
-  rules:
-    - changes:
-        - backend/**/*
-        - .gitlab-ci.yml
-  script:
-    - echo "=========================================="
-    - echo "Smoke test passed"
-    - 'echo "Pipeline: $CI_PIPELINE_ID, Commit: $CI_COMMIT_SHORT_SHA"'
-    - echo "=========================================="
-
-gradle-build:
-  stage: build
-  image: eclipse-temurin:21-jdk
-  rules:
-    - changes:
-        - backend/**/*
-        - .gitlab-ci.yml
-  
+.gradle-cache: &gradle-cache
   cache:
     key:
       files:
@@ -40,19 +21,54 @@ gradle-build:
       - .gradle/caches/
       - .gradle/wrapper/
     policy: pull-push
-  
+
+smoke-test:
+  stage: smoke
+  image: alpine:3.20
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  script:
+    - echo "Smoke test passed"
+    - 'echo "Pipeline: $CI_PIPELINE_ID, Commit: $CI_COMMIT_SHORT_SHA"'
+
+gradle-build:
+  stage: build
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
     - ./gradlew --version
   script:
-    - echo "=========================================="
-    - echo "Building all modules (test skipped)"
-    - echo "=========================================="
     - ./gradlew clean assemble -x test --no-daemon
-    - echo "=========================================="
-    - echo "Build successful. Cache stats:"
-    - du -sh "$GRADLE_USER_HOME"/caches 2>/dev/null || echo "(no cache dir)"
     - ls -lh */build/libs/*.jar
 
-# Cache test trigger
+unit-test:
+  stage: test
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew test --no-daemon
+  artifacts:
+    name: "test-reports-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 1 week
+    reports:
+      junit:
+        - "backend/*/build/test-results/test/TEST-*.xml"
+    paths:
+      - "backend/*/build/reports/tests/test/"
+  allow_failure: true
