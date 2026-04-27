@@ -40,4 +40,4 @@ gradle-build:
     - ./gradlew clean assemble -x test --no-daemon
     - echo "=========================================="
     - echo "Build successful. Generated jars:"
-    - ls -lh backend/*/build/libs/*.jar
+    - ls -lh */build/libs/*.jar
