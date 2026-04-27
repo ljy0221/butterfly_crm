@@ -1,11 +1,15 @@
 ---
-status: accepted
+status: superseded by ADR-0006
 date: 2026-04-21
 decision-makers: 역할 3 (세그먼트 엔진)
 consulted: 역할 6 (분석/통합 검증)
 ---
 
 # ADR-0001: 세그먼트 조건 트리를 JSON 컬럼으로 저장
+
+> **⚠️ Superseded** — 본 결정의 큰 방향(JSON 단일 소스, `segment_rules` 미사용, ANTLR 거절)은 유지되지만,
+> 노드 표기·리프 필드 구조·트리 깊이 등은 [ADR-0006](0006-segment-condition-spec-v2.md)로 교체되었다.
+> 새 구현은 ADR-0006을 따른다. 본 문서는 의사결정 히스토리 보존용으로 유지한다.
 
 ## Context and Problem Statement
 
