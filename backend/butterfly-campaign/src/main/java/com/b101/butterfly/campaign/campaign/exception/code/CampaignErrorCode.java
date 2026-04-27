@@ -31,6 +31,13 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_010", "반복 캠페인은 반복 유형(Repeat Type) 설정이 필수입니다.", HttpStatus.BAD_REQUEST),
     RECURRING_COUNT_INVALID(
             "CAMPAIGN_011", "목표 반복 발송 횟수는 1 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
+    // 캠페인 실행(CampaignExecution) 관련 에러
+    CAMPAIGN_REQUIRED(
+            "CAMPAIGN_012", "캠페인 실행 이력 생성 시 캠페인 정보는 필수입니다.", HttpStatus.BAD_REQUEST),
+    INVALID_RUN_ROUND(
+            "CAMPAIGN_013", "실행 회차는 1 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
+    INVALID_TARGET_COUNT(
+            "CAMPAIGN_014", "발송 대상자 수는 0 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
     ;
 
     private final String code;
