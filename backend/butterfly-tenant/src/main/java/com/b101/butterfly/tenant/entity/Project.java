@@ -1,7 +1,7 @@
-package com.b101.butterfly.auth.entity;
+package com.b101.butterfly.tenant.entity;
 
-import com.b101.butterfly.auth.constant.ProjectPlan;
 import com.b101.butterfly.global.entity.BaseEntity;
+import com.b101.butterfly.tenant.constant.ProjectPlan;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

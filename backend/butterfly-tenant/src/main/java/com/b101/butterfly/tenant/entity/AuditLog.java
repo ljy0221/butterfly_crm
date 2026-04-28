@@ -1,4 +1,4 @@
-package com.b101.butterfly.auth.entity;
+package com.b101.butterfly.tenant.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
