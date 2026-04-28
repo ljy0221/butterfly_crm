@@ -16,6 +16,7 @@ import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentService;
+import com.b101.butterfly.segment.service.preview.PreviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -49,6 +50,7 @@ public class SegmentController {
 
     private final SegmentService segmentService;
     private final SegmentFavoriteService segmentFavoriteService;
+    private final PreviewService previewService;
 
     @PostMapping
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
@@ -99,8 +101,7 @@ public class SegmentController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ApiResponse<PreviewResponse> preview(
             @PathVariable Long projectId, @Valid @RequestBody PreviewRequest request) {
-        // TODO Phase 5 — PreviewService 호출 (HLL TAG/USER/DEVICE 한정)
-        return ApiResponse.ok(new PreviewResponse(0, "HLL", LocalDateTime.now()));
+        return ApiResponse.ok(previewService.preview(projectId, request.conditionTree()));
     }
 
     @GetMapping("/{segmentId}/users")
