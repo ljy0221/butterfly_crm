@@ -19,6 +19,7 @@ import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.exception.SegmentValidationExceptionHandler;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentService;
+import com.b101.butterfly.segment.service.preview.PreviewService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.DisplayName;
@@ -64,6 +65,7 @@ class SegmentControllerWebMvcTest {
 
     @MockitoBean private SegmentService segmentService;
     @MockitoBean private SegmentFavoriteService segmentFavoriteService;
+    @MockitoBean private PreviewService previewService;
 
     @Test
     @DisplayName("POST /segments — 정상 요청은 201 + ApiResponse 래핑")
@@ -163,8 +165,13 @@ class SegmentControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("POST /segments/preview — 더미 PreviewResponse")
-    void previewReturnsStub() throws Exception {
+    @DisplayName("POST /segments/preview — PreviewService 응답 반환")
+    void previewReturnsResponse() throws Exception {
+        when(previewService.preview(eq(1L), any()))
+                .thenReturn(
+                        new com.b101.butterfly.segment.dto.response.PreviewResponse(
+                                5120, "HLL", LocalDateTime.now()));
+
         String body =
                 objectMapper.writeValueAsString(
                         new java.util.HashMap<String, Object>() {
@@ -178,7 +185,8 @@ class SegmentControllerWebMvcTest {
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.method").value("HLL"));
+                .andExpect(jsonPath("$.data.method").value("HLL"))
+                .andExpect(jsonPath("$.data.estimatedCount").value(5120));
     }
 
     @Test
