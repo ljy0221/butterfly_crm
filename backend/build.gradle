@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.13' apply false
     id 'io.spring.dependency-management' version '1.1.7' apply false
+    id 'com.google.cloud.tools.jib' version '3.4.4' apply false
 }
 
 subprojects {
@@ -47,21 +48,68 @@ subprojects {
         useJUnitPlatform()
     }
 
-    // ===== Checkstyle 설정 =====
+    // ===== Checkstyle =====
     checkstyle {
         toolVersion = '10.12.5'
         configFile = rootProject.file('config/checkstyle/checkstyle.xml')
-        // 위반 발견되어도 빌드 실패 안 함 (warning만)
         ignoreFailures = true
-        // test 코드는 검사 제외
         sourceSets = [sourceSets.main]
     }
 
-    // checkstyle 리포트를 HTML + XML 둘 다 생성
     tasks.withType(Checkstyle).configureEach {
         reports {
             html.required = true
             xml.required = true
+        }
+    }
+
+    // ===== Jib (Spring Boot 모듈에만 자동 적용) =====
+    afterEvaluate {
+        if (plugins.hasPlugin('org.springframework.boot')) {
+            apply plugin: 'com.google.cloud.tools.jib'
+
+            // 환경변수에서 registry 정보 가져오기 (CI 환경)
+            def registryNamespace = System.getenv('GHCR_NAMESPACE') ?: "ghcr.io/local"
+            def registryUsername = System.getenv('GHCR_USERNAME') ?: ""
+            def registryToken = System.getenv('GHCR_TOKEN') ?: ""
+            def gitSha = System.getenv('CI_COMMIT_SHORT_SHA') ?: "local"
+            def branch = (System.getenv('CI_COMMIT_REF_SLUG') ?: "local").toLowerCase()
+
+            jib {
+                from {
+                    image = 'eclipse-temurin:21-jre'
+                    platforms {
+                        platform {
+                            architecture = 'amd64'
+                            os = 'linux'
+                        }
+                        platform {
+                            architecture = 'arm64'
+                            os = 'linux'
+                        }
+                    }
+                }
+                to {
+                    image = "${registryNamespace}/${project.name}"
+                    tags = [gitSha, branch, 'latest']
+                    auth {
+                        username = registryUsername
+                        password = registryToken
+                    }
+                }
+                container {
+                    jvmFlags = [
+                        '-XX:+UseContainerSupport',
+                        '-XX:MaxRAMPercentage=75.0',
+                        '-Djava.security.egd=file:/dev/./urandom'
+                    ]
+                    ports = ['8080']
+                    environment = [
+                        'SPRING_PROFILES_ACTIVE': 'prod'
+                    ]
+                    creationTime = 'USE_CURRENT_TIMESTAMP'
+                }
+            }
         }
     }
 }
