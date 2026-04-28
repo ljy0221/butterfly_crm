@@ -1,10 +1,11 @@
-# Butterfly CI/CD - Phase 6: Checkstyle added
+# Butterfly CI/CD - Phase 7: Docker images via Jib
 
 stages:
   - smoke
   - build
   - test
   - quality
+  - package
 
 variables:
   BACKEND_DIR: backend
@@ -23,13 +24,17 @@ variables:
       - .gradle/wrapper/
     policy: pull-push
 
-smoke-test:
-  stage: smoke
-  image: alpine:3.20
+# 검증 stage들의 공통 rule (backend 변경 + 어떤 브랜치든)
+.backend-changes-rule: &backend-changes-rule
   rules:
     - changes:
         - backend/**/*
         - .gitlab-ci.yml
+
+smoke-test:
+  stage: smoke
+  image: alpine:3.20
+  <<: *backend-changes-rule
   script:
     - echo "Smoke test passed"
     - 'echo "Pipeline: $CI_PIPELINE_ID, Commit: $CI_COMMIT_SHORT_SHA"'
@@ -37,11 +42,7 @@ smoke-test:
 gradle-build:
   stage: build
   image: eclipse-temurin:21-jdk
-  rules:
-    - changes:
-        - backend/**/*
-        - .gitlab-ci.yml
-  <<: *gradle-cache
+  <<: [*backend-changes-rule, *gradle-cache]
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
@@ -53,11 +54,7 @@ gradle-build:
 unit-test:
   stage: test
   image: eclipse-temurin:21-jdk
-  rules:
-    - changes:
-        - backend/**/*
-        - .gitlab-ci.yml
-  <<: *gradle-cache
+  <<: [*backend-changes-rule, *gradle-cache]
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
@@ -77,17 +74,12 @@ unit-test:
 checkstyle:
   stage: quality
   image: eclipse-temurin:21-jdk
-  rules:
-    - changes:
-        - backend/**/*
-        - .gitlab-ci.yml
-  <<: *gradle-cache
+  <<: [*backend-changes-rule, *gradle-cache]
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
   script:
     - ./gradlew checkstyleMain --no-daemon
-    - echo "=========================================="
     - echo "Checkstyle violation summary:"
     - 'find . -name "main.xml" -path "*/checkstyle/*" -exec sh -c "echo {}: $(grep -c \"<error\" {}) errors" \;'
   artifacts:
@@ -96,3 +88,38 @@ checkstyle:
     expire_in: 1 week
     paths:
       - "backend/*/build/reports/checkstyle/"
+
+# Phase 7: Docker 이미지 빌드 + GHCR push
+# 컨벤션 준수 브랜치에서만 실행 (main, develop, Feat/Fix/Hotfix/Chore, BE/Feat/...)
+package:
+  stage: package
+  image: eclipse-temurin:21-jdk
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "develop"
+    # 패턴 1: 포지션 prefix 없음 (예: Feat/S14P31B101-108_CISetup)
+    - if: $CI_COMMIT_REF_NAME =~ /^(Feat|Fix|Hotfix|Chore)\//
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+    # 패턴 2: BE 포지션 prefix (예: BE/Feat/#2/...)
+    - if: $CI_COMMIT_REF_NAME =~ /^BE\/(Feat|Fix|Hotfix|Chore)\//
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
+  parallel:
+    matrix:
+      - MODULE:
+          - butterfly-api
+          - butterfly-worker
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+    - 'test -n "$GHCR_USERNAME" || (echo "ERROR: GHCR_USERNAME not set"; exit 1)'
+    - 'test -n "$GHCR_TOKEN" || (echo "ERROR: GHCR_TOKEN not set"; exit 1)'
+    - 'test -n "$GHCR_NAMESPACE" || (echo "ERROR: GHCR_NAMESPACE not set"; exit 1)'
+  script:
+    - echo "Building image for module $MODULE"
+    - 'echo "Target: ${GHCR_NAMESPACE}/${MODULE}:${CI_COMMIT_SHORT_SHA}"'
+    - ./gradlew :${MODULE}:jib --no-daemon
