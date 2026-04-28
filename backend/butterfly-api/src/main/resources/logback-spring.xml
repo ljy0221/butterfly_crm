@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  butterfly-api 로그 구성.
+
+  - 로컬/dev: 사람이 읽기 좋은 콘솔 패턴 (requestId, projectId, memberId 포함)
+  - prod: stdout JSON 구조화 로그 (ELK/Loki 수집 전제)
+-->
+<configuration>
+
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="butterfly-api"/>
+
+    <!-- 콘솔 패턴: 로컬/dev 가독성 -->
+    <property name="CONSOLE_PATTERN"
+              value="%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} [req=%X{requestId:-} proj=%X{projectId:-} mem=%X{memberId:-}] - %msg%n"/>
+
+    <!-- JSON 패턴: 운영 환경, ELK/Loki 수집 전제 -->
+    <appender name="JSON_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"app":"${appName}"}</customFields>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>projectId</includeMdcKeyName>
+            <includeMdcKeyName>memberId</includeMdcKeyName>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="JSON_STDOUT"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <logger name="com.b101.butterfly" level="DEBUG"/>
+    </springProfile>
+
+</configuration>
