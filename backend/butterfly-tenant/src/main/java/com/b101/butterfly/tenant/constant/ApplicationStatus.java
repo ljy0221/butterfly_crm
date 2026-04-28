@@ -1,4 +1,4 @@
-package com.b101.butterfly.auth.constant;
+package com.b101.butterfly.tenant.constant;
 
 public enum ApplicationStatus {
     PENDING,

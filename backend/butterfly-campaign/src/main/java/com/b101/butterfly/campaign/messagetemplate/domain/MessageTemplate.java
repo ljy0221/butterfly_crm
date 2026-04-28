@@ -1,7 +1,7 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
 import com.b101.butterfly.auth.entity.Member;
-import com.b101.butterfly.auth.entity.Project;
+import com.b101.butterfly.tenant.entity.Project;
 import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.messagetemplate.domain.converter.RequiredVariablesConverter;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;

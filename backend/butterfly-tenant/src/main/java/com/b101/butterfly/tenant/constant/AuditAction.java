@@ -1,12 +1,5 @@
-package com.b101.butterfly.auth.constant;
+package com.b101.butterfly.tenant.constant;
 
-/**
- * audit_logs.action 컬럼에 저장되는 상수값.
- * DB Enum 미사용 — 도메인 추가 시 마이그레이션 불필요.
- *
- * <p>역할 1(Auth) 발생 액션만 정의. 역할 4(Campaign)의 CAMPAIGN_* 액션은
- * butterfly-campaign 모듈에서 이 클래스를 참조하거나 별도 상수로 정의.
- */
 public final class AuditAction {
 
     // ── API 키 ─────────────────────────────────────────────
@@ -21,6 +14,10 @@ public final class AuditAction {
     // ── 멤버 ───────────────────────────────────────────────
     public static final String MEMBER_ROLE_CHANGED = "MEMBER_ROLE_CHANGED";
     public static final String MEMBER_REMOVED      = "MEMBER_REMOVED";
+
+    // ── 신청서 ─────────────────────────────────────────────
+    public static final String APPLICATION_APPROVED = "APPLICATION_APPROVED";
+    public static final String APPLICATION_REJECTED = "APPLICATION_REJECTED";
 
     private AuditAction() {}
 }
