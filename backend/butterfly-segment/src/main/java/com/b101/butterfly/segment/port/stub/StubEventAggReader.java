@@ -1,16 +1,15 @@
 package com.b101.butterfly.segment.port.stub;
 
 import com.b101.butterfly.segment.port.EventAggReader;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
 /**
- * customer 모듈 미합류 시 자동 등록되는 stub. EVENT 조건은 Phase 6 합류 전까지 미지원.
+ * customer 모듈 미합류 시 stub. EVENT 조건은 Phase 6 합류 전까지 미지원.
+ *
+ * <p>{@link com.b101.butterfly.segment.config.StubPortConfig}가 {@code @ConditionalOnMissingBean}으로
+ * 등록한다.
  */
-@Component
-@ConditionalOnMissingBean(EventAggReader.class)
 public class StubEventAggReader implements EventAggReader {
 
     @Override
