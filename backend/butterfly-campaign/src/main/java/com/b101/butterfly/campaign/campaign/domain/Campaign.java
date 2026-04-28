@@ -269,7 +269,6 @@ public class Campaign extends SoftDeletedDomain {
             Member member,
             String campaignName,
             String campaignDescription,
-            String recurringCron,
             RepeatType repeatType,
             String repeatDayOfWeek,
             Integer repeatDayOfMonth,
@@ -278,7 +277,9 @@ public class Campaign extends SoftDeletedDomain {
             LocalDateTime nextRunAt
     ) {
         validateCommon(project, messageTemplate, member, campaignName, campaignDescription);
-        validateRecurring(recurringCron, repeatType, recurringCount, nextRunAt);
+        validateRecurring(repeatType, recurringCount, nextRunAt);
+        String recurringCron = RecurringCronGenerator.toCron(
+                repeatType, repeatDayOfWeek, repeatDayOfMonth, repeatTime);
         return new Campaign(
                 project,
                 messageTemplate,
@@ -308,7 +309,6 @@ public class Campaign extends SoftDeletedDomain {
             String campaignName,
             String campaignDescription,
             Long segmentId,
-            String recurringCron,
             RepeatType repeatType,
             String repeatDayOfWeek,
             Integer repeatDayOfMonth,
@@ -318,7 +318,9 @@ public class Campaign extends SoftDeletedDomain {
     ) {
         validateCommon(project, messageTemplate, member, campaignName, campaignDescription);
         validateSegment(segmentId);
-        validateRecurring(recurringCron, repeatType, recurringCount, nextRunAt);
+        validateRecurring(repeatType, recurringCount, nextRunAt);
+        String recurringCron = RecurringCronGenerator.toCron(
+                repeatType, repeatDayOfWeek, repeatDayOfMonth, repeatTime);
         return new Campaign(
                 project,
                 messageTemplate,
@@ -419,14 +421,10 @@ public class Campaign extends SoftDeletedDomain {
     }
 
     private static void validateRecurring(
-            String recurringCron,
             RepeatType repeatType,
             Integer recurringCount,
             LocalDateTime nextRunAt
     ) {
-        if (recurringCron == null || recurringCron.isBlank()) {
-            throw new BusinessException(CampaignErrorCode.RECURRING_CRON_REQUIRED);
-        }
         if (repeatType == null) {
             throw new BusinessException(CampaignErrorCode.REPEAT_TYPE_REQUIRED);
         }
