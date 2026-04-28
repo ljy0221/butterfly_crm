@@ -21,10 +21,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException e) {
         ErrorCode ec = e.getErrorCode();
-        log.warn("BusinessException: code={} message={}", ec.code(), e.getMessage());
+        log.warn("BusinessException: code={} message={}", ec.getCode(), e.getMessage());
         return ResponseEntity
-                .status(ec.httpStatus())
-                .body(ApiResponse.fail(new ErrorResponse(ec.code(), ec.message())));
+                .status(ec.getHttpStatus())
+                .body(ApiResponse.fail(new ErrorResponse(ec.getCode(), ec.getMessage())));
     }
 
     @ExceptionHandler(Exception.class)
@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
         log.error("Unhandled exception", e);
         ErrorCode ec = CommonErrorCode.INTERNAL_ERROR;
         return ResponseEntity
-                .status(ec.httpStatus())
-                .body(ApiResponse.fail(new ErrorResponse(ec.code(), ec.message())));
+                .status(ec.getHttpStatus())
+                .body(ApiResponse.fail(new ErrorResponse(ec.getCode(), ec.getMessage())));
     }
 }

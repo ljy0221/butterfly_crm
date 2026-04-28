@@ -12,9 +12,9 @@ import org.springframework.http.HttpStatus;
  */
 public interface ErrorCode {
 
-    String code();
+    String getCode();
 
-    String message();
+    String getMessage();
 
-    HttpStatus httpStatus();
+    HttpStatus getHttpStatus();
 }

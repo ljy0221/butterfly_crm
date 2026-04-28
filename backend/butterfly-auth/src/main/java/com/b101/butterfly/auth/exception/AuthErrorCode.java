@@ -51,7 +51,7 @@ public enum AuthErrorCode implements ErrorCode {
     private final String errorCode;
     private final String errorMessage;
 
-    @Override public String code()          { return errorCode;    }
-    @Override public String message()       { return errorMessage; }
-    @Override public HttpStatus httpStatus() { return httpStatus;  }
+    @Override public String getCode()          { return errorCode;    }
+    @Override public String getMessage()       { return errorMessage; }
+    @Override public HttpStatus getHttpStatus() { return httpStatus;  }
 }

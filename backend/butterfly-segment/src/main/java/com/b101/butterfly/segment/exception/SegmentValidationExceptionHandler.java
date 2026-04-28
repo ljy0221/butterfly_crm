@@ -32,7 +32,8 @@ public class SegmentValidationExceptionHandler {
                         ? SegmentErrorCode.SEGMENT_400_INVALID_CONDITION_TREE
                         : CommonErrorCode.INVALID_REQUEST;
 
-        return ResponseEntity.status(errorCode.httpStatus())
-                .body(ApiResponse.fail(new ErrorResponse(errorCode.code(), errorCode.message())));
+        return ResponseEntity.status(errorCode.getHttpStatus())
+                .body(ApiResponse.fail(
+                        new ErrorResponse(errorCode.getCode(), errorCode.getMessage())));
     }
 }

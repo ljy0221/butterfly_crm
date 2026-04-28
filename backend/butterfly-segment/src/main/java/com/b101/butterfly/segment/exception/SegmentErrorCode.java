@@ -1,11 +1,13 @@
 package com.b101.butterfly.segment.exception;
 
 import com.b101.butterfly.global.error.ErrorCode;
+import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 /**
  * 세그먼트 도메인 에러 코드. {@code backend/docs/api/03-segment.md §7} 단일 진실 소스.
  */
+@Getter
 public enum SegmentErrorCode implements ErrorCode {
 
     SEGMENT_400_NAME_LENGTH(
@@ -53,20 +55,5 @@ public enum SegmentErrorCode implements ErrorCode {
         this.code = code;
         this.message = message;
         this.httpStatus = httpStatus;
-    }
-
-    @Override
-    public String code() {
-        return code;
-    }
-
-    @Override
-    public String message() {
-        return message;
-    }
-
-    @Override
-    public HttpStatus httpStatus() {
-        return httpStatus;
     }
 }

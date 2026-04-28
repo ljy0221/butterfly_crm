@@ -25,17 +25,17 @@ public enum CommonErrorCode implements ErrorCode {
     }
 
     @Override
-    public String code() {
+    public String getCode() {
         return code;
     }
 
     @Override
-    public String message() {
+    public String getMessage() {
         return message;
     }
 
     @Override
-    public HttpStatus httpStatus() {
+    public HttpStatus getHttpStatus() {
         return httpStatus;
     }
 }
