@@ -83,6 +83,10 @@ public class Member extends BaseEntity {
         this.projectId = projectId;
     }
 
+    public void updatePhone(String phone) {
+        this.phone = phone;
+    }
+
     public void softDelete() {
         this.isDeleted = true;
         this.deletedAt = LocalDateTime.now();
