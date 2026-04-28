@@ -11,6 +11,7 @@ import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.segment.entity.Segment;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -57,8 +58,9 @@ public class Campaign extends SoftDeletedDomain {
     private MessageTemplate messageTemplate;
 
     // TODO: Segment 모듈 추가되면 외래키 참조로 변경
-    @Column(name = "segment_id")
-    private Long segmentId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "segment_id")
+    private Segment segment;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "member_id", nullable = false)
@@ -122,7 +124,7 @@ public class Campaign extends SoftDeletedDomain {
     private Campaign(
             Project project,
             MessageTemplate messageTemplate,
-            Long segmentId,
+            Segment segment,
             Member member,
             String campaignName,
             String campaignDescription,
@@ -141,7 +143,7 @@ public class Campaign extends SoftDeletedDomain {
         this.project = project;
         this.messageTemplate = messageTemplate;
         // TODO: 세그먼트 추가 시 변경
-        this.segmentId = segmentId;
+        this.segment = segment;
         this.member = member;
         this.campaignName = campaignName;
         this.campaignDescription = campaignDescription;
@@ -191,14 +193,14 @@ public class Campaign extends SoftDeletedDomain {
             Member member,
             String campaignName,
             String campaignDescription,
-            Long segmentId
+            Segment segment
     ) {
         validateCommon(project, messageTemplate, member, campaignName, campaignDescription);
-        validateSegment(segmentId);
+        validateSegment(segment);
         return new Campaign(
                 project,
                 messageTemplate,
-                segmentId,
+                segment,
                 member,
                 campaignName,
                 campaignDescription,
@@ -239,16 +241,16 @@ public class Campaign extends SoftDeletedDomain {
             Member member,
             String campaignName,
             String campaignDescription,
-            Long segmentId,
+            Segment segment,
             LocalDateTime nextRunAt
     ) {
         validateCommon(project, messageTemplate, member, campaignName, campaignDescription);
-        validateSegment(segmentId);
+        validateSegment(segment);
         validateScheduledAt(nextRunAt);
         return new Campaign(
                 project,
                 messageTemplate,
-                segmentId,
+                segment,
                 member,
                 campaignName,
                 campaignDescription,
@@ -308,7 +310,7 @@ public class Campaign extends SoftDeletedDomain {
             Member member,
             String campaignName,
             String campaignDescription,
-            Long segmentId,
+            Segment segment,
             RepeatType repeatType,
             String repeatDayOfWeek,
             Integer repeatDayOfMonth,
@@ -317,14 +319,14 @@ public class Campaign extends SoftDeletedDomain {
             LocalDateTime nextRunAt
     ) {
         validateCommon(project, messageTemplate, member, campaignName, campaignDescription);
-        validateSegment(segmentId);
+        validateSegment(segment);
         validateRecurring(repeatType, recurringCount, nextRunAt);
         String recurringCron = RecurringCronGenerator.toCron(
                 repeatType, repeatDayOfWeek, repeatDayOfMonth, repeatTime);
         return new Campaign(
                 project,
                 messageTemplate,
-                segmentId,
+                segment,
                 member,
                 campaignName,
                 campaignDescription,
@@ -367,12 +369,12 @@ public class Campaign extends SoftDeletedDomain {
             Member member,
             String campaignName,
             String campaignDescription,
-            Long segmentId
+            Segment segment
     ) {
         validateCommon(project, messageTemplate, member, campaignName, campaignDescription);
-        validateSegment(segmentId);
+        validateSegment(segment);
         return new Campaign(
-                project, messageTemplate, segmentId, member,
+                project, messageTemplate, segment, member,
                 campaignName, campaignDescription,
                 CampaignType.AUTOMATION, null,
                 messageTemplate.getChannel(), CampaignStatus.DRAFT,
@@ -405,8 +407,8 @@ public class Campaign extends SoftDeletedDomain {
     }
 
     // TODO segment 모듈 추가 시 파라미터 변경
-    private static void validateSegment(Long segmentId) {
-        if (segmentId == null) {
+    private static void validateSegment(Segment segment) {
+        if (segment == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_SEGMENT_REQUIRED);
         }
     }
