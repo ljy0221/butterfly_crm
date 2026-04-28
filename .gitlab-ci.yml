@@ -1,4 +1,11 @@
-# Butterfly CI/CD - Phase 7: Docker images via Jib
+# Butterfly CI/CD - Phase 11: build time optimization
+# Changes from Phase 7:
+#   - prefix: shared (cache shared across branches)
+#   - interruptible: true (auto-cancel old pipelines)
+#   - Gradle parallel build
+
+default:
+  interruptible: true
 
 stages:
   - smoke
@@ -9,7 +16,7 @@ stages:
 
 variables:
   BACKEND_DIR: backend
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain"
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
 .gradle-cache: &gradle-cache
@@ -18,23 +25,19 @@ variables:
       files:
         - backend/build.gradle
         - backend/settings.gradle
-      prefix: "$CI_COMMIT_REF_SLUG"
+      prefix: "shared"
     paths:
       - .gradle/caches/
       - .gradle/wrapper/
     policy: pull-push
 
-# 검증 stage들의 공통 rule (backend 변경 + 어떤 브랜치든)
-.backend-changes-rule: &backend-changes-rule
+smoke-test:
+  stage: smoke
+  image: alpine:3.20
   rules:
     - changes:
         - backend/**/*
         - .gitlab-ci.yml
-
-smoke-test:
-  stage: smoke
-  image: alpine:3.20
-  <<: *backend-changes-rule
   script:
     - echo "Smoke test passed"
     - 'echo "Pipeline: $CI_PIPELINE_ID, Commit: $CI_COMMIT_SHORT_SHA"'
@@ -42,7 +45,11 @@ smoke-test:
 gradle-build:
   stage: build
   image: eclipse-temurin:21-jdk
-  <<: [*backend-changes-rule, *gradle-cache]
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
@@ -54,7 +61,11 @@ gradle-build:
 unit-test:
   stage: test
   image: eclipse-temurin:21-jdk
-  <<: [*backend-changes-rule, *gradle-cache]
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
@@ -74,7 +85,11 @@ unit-test:
 checkstyle:
   stage: quality
   image: eclipse-temurin:21-jdk
-  <<: [*backend-changes-rule, *gradle-cache]
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
@@ -89,20 +104,16 @@ checkstyle:
     paths:
       - "backend/*/build/reports/checkstyle/"
 
-# Phase 7: Docker 이미지 빌드 + GHCR push
-# 컨벤션 준수 브랜치에서만 실행 (main, develop, Feat/Fix/Hotfix/Chore, BE/Feat/...)
 package:
   stage: package
   image: eclipse-temurin:21-jdk
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
     - if: $CI_COMMIT_REF_NAME == "develop"
-    # 패턴 1: 포지션 prefix 없음 (예: Feat/S14P31B101-108_CISetup)
     - if: $CI_COMMIT_REF_NAME =~ /^(Feat|Fix|Hotfix|Chore)\//
       changes:
         - backend/**/*
         - .gitlab-ci.yml
-    # 패턴 2: BE 포지션 prefix (예: BE/Feat/#2/...)
     - if: $CI_COMMIT_REF_NAME =~ /^BE\/(Feat|Fix|Hotfix|Chore)\//
       changes:
         - backend/**/*
