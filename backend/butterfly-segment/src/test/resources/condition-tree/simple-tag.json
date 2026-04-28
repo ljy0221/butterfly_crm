@@ -1,0 +1,11 @@
+{
+  "logic": "and",
+  "conditions": [
+    {
+      "type": "tag",
+      "key": "region",
+      "op": "eq",
+      "value": "서울"
+    }
+  ]
+}
