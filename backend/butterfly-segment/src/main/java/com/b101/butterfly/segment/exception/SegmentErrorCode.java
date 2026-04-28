@@ -39,7 +39,11 @@ public enum SegmentErrorCode implements ErrorCode {
     SEGMENT_409_BUILD_IN_PROGRESS(
             "SEGMENT_409_BUILD_IN_PROGRESS",
             "세그먼트 빌드가 진행 중입니다.",
-            HttpStatus.CONFLICT);
+            HttpStatus.CONFLICT),
+    SEGMENT_501_EVENT_NOT_READY(
+            "SEGMENT_501_EVENT_NOT_READY",
+            "EVENT 조건은 customer 모듈 합류 전까지 미리보기에 사용할 수 없습니다.",
+            HttpStatus.NOT_IMPLEMENTED);
 
     private final String code;
     private final String message;
