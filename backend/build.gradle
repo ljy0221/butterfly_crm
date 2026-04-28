@@ -9,6 +9,7 @@ subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
     apply plugin: 'checkstyle'
+    apply plugin: 'com.google.cloud.tools.jib'
 
     group = 'com.b101.butterfly'
     version = '0.0.1-SNAPSHOT'
@@ -63,12 +64,9 @@ subprojects {
         }
     }
 
-    // ===== Jib (Spring Boot 모듈에만 자동 적용) =====
+    // ===== Jib (설정은 Spring Boot 모듈에만) =====
     afterEvaluate {
         if (plugins.hasPlugin('org.springframework.boot')) {
-            apply plugin: 'com.google.cloud.tools.jib'
-
-            // 환경변수에서 registry 정보 가져오기 (CI 환경)
             def registryNamespace = System.getenv('GHCR_NAMESPACE') ?: "ghcr.io/local"
             def registryUsername = System.getenv('GHCR_USERNAME') ?: ""
             def registryToken = System.getenv('GHCR_TOKEN') ?: ""
