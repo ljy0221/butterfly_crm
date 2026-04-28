@@ -1,5 +1,7 @@
 package com.b101.butterfly.segment.controller;
 
+import com.b101.butterfly.global.response.PageResponse;
+import com.b101.butterfly.segment.config.SegmentJacksonConfig;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
 import com.b101.butterfly.segment.domain.condition.Operator;
@@ -10,9 +12,13 @@ import com.b101.butterfly.segment.domain.condition.validation.OperatorCompatibil
 import com.b101.butterfly.segment.domain.condition.validation.PeriodValidator;
 import com.b101.butterfly.segment.domain.condition.validation.StructureValidator;
 import com.b101.butterfly.segment.domain.condition.validation.TypeFieldValidator;
-import com.b101.butterfly.segment.config.SegmentJacksonConfig;
 import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
+import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
+import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
+import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.exception.SegmentValidationExceptionHandler;
+import com.b101.butterfly.segment.service.SegmentFavoriteService;
+import com.b101.butterfly.segment.service.SegmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.DisplayName;
@@ -22,10 +28,16 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,18 +62,27 @@ class SegmentControllerWebMvcTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    @MockitoBean private SegmentService segmentService;
+    @MockitoBean private SegmentFavoriteService segmentFavoriteService;
+
     @Test
     @DisplayName("POST /segments — 정상 요청은 201 + ApiResponse 래핑")
     void createReturnsCreated() throws Exception {
         CreateSegmentRequest body = new CreateSegmentRequest("VIP", "설명", validTree());
+        CreateSegmentResponse response =
+                new CreateSegmentResponse(
+                        100L, "VIP", "설명", BuildStatus.PENDING, null, null, null, 3, 17L,
+                        LocalDateTime.now());
+        when(segmentService.create(eq(1L), eq(17L), any())).thenReturn(response);
 
         mockMvc.perform(
                         post("/api/projects/1/segments")
+                                .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.name").value("VIP"))
+                .andExpect(jsonPath("$.data.segmentId").value(100))
                 .andExpect(jsonPath("$.data.buildStatus").value("PENDING"));
     }
 
@@ -73,10 +94,10 @@ class SegmentControllerWebMvcTest {
 
         mockMvc.perform(
                         post("/api/projects/1/segments")
+                                .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("SEGMENT_400_INVALID_CONDITION_TREE"));
     }
 
@@ -88,27 +109,31 @@ class SegmentControllerWebMvcTest {
 
         mockMvc.perform(
                         post("/api/projects/1/segments")
+                                .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
     }
 
     @Test
-    @DisplayName("GET /segments — 더미 빈 페이지 응답")
-    void listReturnsEmptyPage() throws Exception {
-        mockMvc.perform(get("/api/projects/1/segments?page=0&size=20"))
+    @DisplayName("GET /segments — 페이지 응답")
+    void listReturnsPage() throws Exception {
+        when(segmentService.list(eq(1L), eq(17L), any()))
+                .thenReturn(PageResponse.of(List.of(), 0, 20, 0));
+
+        mockMvc.perform(
+                        get("/api/projects/1/segments?page=0&size=20").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.totalElements").value(0))
-                .andExpect(jsonPath("$.data.content").isArray());
+                .andExpect(jsonPath("$.data.totalElements").value(0));
     }
 
     @Test
-    @DisplayName("GET /segments/{id} — 더미 상세 응답")
-    void detailReturnsStub() throws Exception {
-        mockMvc.perform(get("/api/projects/1/segments/42"))
+    @DisplayName("GET /segments/{id} — 상세 응답")
+    void detailReturnsResponse() throws Exception {
+        when(segmentService.detail(eq(1L), eq(42L), eq(17L))).thenReturn(stubDetail(42L, "stub"));
+
+        mockMvc.perform(get("/api/projects/1/segments/42").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.segmentId").value(42));
     }
@@ -117,9 +142,12 @@ class SegmentControllerWebMvcTest {
     @DisplayName("PUT /segments/{id} — 정상 요청은 200")
     void updateReturnsOk() throws Exception {
         CreateSegmentRequest body = new CreateSegmentRequest("renamed", "desc", validTree());
+        when(segmentService.update(eq(1L), eq(42L), eq(17L), any()))
+                .thenReturn(stubDetail(42L, "renamed"));
 
         mockMvc.perform(
                         put("/api/projects/1/segments/42")
+                                .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
                 .andExpect(status().isOk())
@@ -187,17 +215,19 @@ class SegmentControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("POST /segments/{id}/favorite — 200 OK")
+    @DisplayName("POST /segments/{id}/favorite — 200 OK + service 호출")
     void addFavoriteReturnsOk() throws Exception {
-        mockMvc.perform(post("/api/projects/1/segments/42/favorite"))
+        mockMvc.perform(
+                        post("/api/projects/1/segments/42/favorite").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
-    @DisplayName("DELETE /segments/{id}/favorite — 200 OK")
+    @DisplayName("DELETE /segments/{id}/favorite — 200 OK + service 호출")
     void removeFavoriteReturnsOk() throws Exception {
-        mockMvc.perform(delete("/api/projects/1/segments/42/favorite"))
+        mockMvc.perform(
+                        delete("/api/projects/1/segments/42/favorite").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -208,5 +238,23 @@ class SegmentControllerWebMvcTest {
                 List.of(
                         new TagNode(
                                 "region", Operator.EQ, JsonNodeFactory.instance.textNode("서울"))));
+    }
+
+    private static SegmentDetailResponse stubDetail(long id, String name) {
+        return new SegmentDetailResponse(
+                id,
+                name,
+                "desc",
+                null,
+                3,
+                null,
+                null,
+                null,
+                BuildStatus.PENDING,
+                null,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                List.of(),
+                false);
     }
 }

@@ -14,7 +14,10 @@ import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
+import com.b101.butterfly.segment.service.SegmentFavoriteService;
+import com.b101.butterfly.segment.service.SegmentService;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -34,62 +38,44 @@ import java.util.List;
 /**
  * 세그먼트 API. 03-segment.md §1~2 12개 엔드포인트.
  *
- * <p>Phase 3 단계 — 라우팅/DTO/응답 shape만 고정. 실제 비즈니스 로직은 Phase 4에서 채움.
+ * <p>Phase 4 — CRUD/즐겨찾기는 서비스 호출. Preview/Users/Rebuild/Campaigns/Favorites는 Phase 5~8.
+ *
+ * <p>{@code X-Member-Id} 헤더는 auth 모듈 합류 전 임시 인증. 추후 {@code @AuthenticationPrincipal}로 교체.
  */
 @RestController
 @RequestMapping("/api/projects/{projectId}/segments")
+@RequiredArgsConstructor
 public class SegmentController {
+
+    private final SegmentService segmentService;
+    private final SegmentFavoriteService segmentFavoriteService;
 
     @PostMapping
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ResponseEntity<ApiResponse<CreateSegmentResponse>> create(
-            @PathVariable Long projectId, @Valid @RequestBody CreateSegmentRequest request) {
-        // TODO Phase 4 — SegmentService.create 호출
-        CreateSegmentResponse stub =
-                new CreateSegmentResponse(
-                        0L,
-                        request.name(),
-                        request.description(),
-                        BuildStatus.PENDING,
-                        null,
-                        null,
-                        null,
-                        3,
-                        0L,
-                        LocalDateTime.now());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(stub));
+            @PathVariable Long projectId,
+            @RequestHeader("X-Member-Id") Long memberId,
+            @Valid @RequestBody CreateSegmentRequest request) {
+        CreateSegmentResponse response = segmentService.create(projectId, memberId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
     @GetMapping
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<PageResponse<SegmentSummaryResponse>> list(
-            @PathVariable Long projectId, Pageable pageable) {
-        // TODO Phase 4 — SegmentService.list 호출
-        return ApiResponse.ok(
-                PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
+            @PathVariable Long projectId,
+            @RequestHeader("X-Member-Id") Long memberId,
+            Pageable pageable) {
+        return ApiResponse.ok(segmentService.list(projectId, memberId, pageable));
     }
 
     @GetMapping("/{segmentId}")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<SegmentDetailResponse> detail(
-            @PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 4 — SegmentService.detail 호출
-        return ApiResponse.ok(
-                new SegmentDetailResponse(
-                        segmentId,
-                        "(stub)",
-                        null,
-                        null,
-                        3,
-                        null,
-                        null,
-                        null,
-                        BuildStatus.PENDING,
-                        null,
-                        LocalDateTime.now(),
-                        LocalDateTime.now(),
-                        List.of(),
-                        false));
+            @PathVariable Long projectId,
+            @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        return ApiResponse.ok(segmentService.detail(projectId, segmentId, memberId));
     }
 
     @PutMapping("/{segmentId}")
@@ -97,30 +83,15 @@ public class SegmentController {
     public ApiResponse<SegmentDetailResponse> update(
             @PathVariable Long projectId,
             @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId,
             @Valid @RequestBody UpdateSegmentRequest request) {
-        // TODO Phase 4 — SegmentService.update 호출 + LinkedCampaignChecker 검증
-        return ApiResponse.ok(
-                new SegmentDetailResponse(
-                        segmentId,
-                        request.name(),
-                        request.description(),
-                        request.conditionTree(),
-                        3,
-                        null,
-                        null,
-                        null,
-                        BuildStatus.PENDING,
-                        null,
-                        LocalDateTime.now(),
-                        LocalDateTime.now(),
-                        List.of(),
-                        false));
+        return ApiResponse.ok(segmentService.update(projectId, segmentId, memberId, request));
     }
 
     @DeleteMapping("/{segmentId}")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ApiResponse<Void> delete(@PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 4 — SegmentService.delete (soft) + LinkedCampaignChecker 검증
+        segmentService.delete(projectId, segmentId);
         return ApiResponse.ok();
     }
 
@@ -148,7 +119,8 @@ public class SegmentController {
     public ResponseEntity<ApiResponse<RebuildResponse>> rebuild(
             @PathVariable Long projectId, @PathVariable Long segmentId) {
         // TODO Phase 6 — buildStatus CAS + 큐 publish
-        RebuildResponse stub = new RebuildResponse(segmentId, BuildStatus.BUILDING, LocalDateTime.now());
+        RebuildResponse stub =
+                new RebuildResponse(segmentId, BuildStatus.BUILDING, LocalDateTime.now());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok(stub));
     }
 
@@ -156,7 +128,7 @@ public class SegmentController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<LinkedCampaignsResponse> linkedCampaigns(
             @PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 7 — LinkedCampaignChecker.listLinkedCampaigns
+        // TODO Phase 7 — LinkedCampaignChecker.listLinkedCampaigns 변환
         return ApiResponse.ok(
                 new LinkedCampaignsResponse(List.of(), List.of(), List.of(), List.of(), 0));
     }
@@ -171,16 +143,20 @@ public class SegmentController {
     @PostMapping("/{segmentId}/favorite")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<Void> addFavorite(
-            @PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 4 — SegmentFavoriteService.addFavorite (멱등)
+            @PathVariable Long projectId,
+            @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        segmentFavoriteService.addFavorite(projectId, segmentId, memberId);
         return ApiResponse.ok();
     }
 
     @DeleteMapping("/{segmentId}/favorite")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<Void> removeFavorite(
-            @PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 4 — SegmentFavoriteService.removeFavorite (멱등)
+            @PathVariable Long projectId,
+            @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        segmentFavoriteService.removeFavorite(projectId, segmentId, memberId);
         return ApiResponse.ok();
     }
 }
