@@ -9,13 +9,15 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "applications")
@@ -61,7 +63,7 @@ public class Application extends BaseEntity {
 
     @Builder
     public Application(String applicantName, String email, String phone,
-            LocalDate birthDate, String businessName, String businessNo) {
+                       LocalDate birthDate, String businessName, String businessNo) {
         this.applicantName = applicantName;
         this.email = email;
         this.phone = phone;
