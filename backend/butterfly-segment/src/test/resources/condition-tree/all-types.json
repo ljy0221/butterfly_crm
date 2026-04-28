@@ -1,0 +1,32 @@
+{
+  "logic": "and",
+  "conditions": [
+    {
+      "type": "event",
+      "category": "page_view",
+      "filters": [
+        { "key": "path", "op": "contains", "value": "/product" }
+      ],
+      "period": { "type": "relative", "days": 7 },
+      "minCount": 5
+    },
+    {
+      "type": "tag",
+      "key": "region",
+      "op": "in",
+      "value": ["서울", "경기"]
+    },
+    {
+      "type": "user",
+      "key": "birthYear",
+      "op": "lt",
+      "value": 2000
+    },
+    {
+      "type": "device",
+      "key": "platform",
+      "op": "eq",
+      "value": "ANDROID"
+    }
+  ]
+}

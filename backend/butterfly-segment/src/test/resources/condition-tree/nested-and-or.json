@@ -1,0 +1,18 @@
+{
+  "logic": "or",
+  "conditions": [
+    {
+      "logic": "and",
+      "conditions": [
+        { "type": "tag", "key": "region", "op": "eq", "value": "서울" },
+        { "type": "tag", "key": "grade", "op": "in", "value": ["VIP", "VVIP"] }
+      ]
+    },
+    {
+      "type": "user",
+      "key": "isNew",
+      "op": "eq",
+      "value": true
+    }
+  ]
+}
