@@ -8,4 +8,10 @@ public record EventNode(
         Period period,
         Integer minCount
 ) implements ConditionNode {
+
+    public EventNode {
+        if (minCount == null) {
+            minCount = 1;
+        }
+    }
 }
