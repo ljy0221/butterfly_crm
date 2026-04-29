@@ -18,7 +18,7 @@
 -- 12. 회사/유저/세그먼트/이벤트 카테고리/스키마 등 UNIQUE 제약 추가
 -- 13. FK 전면 추가, 핵심 인덱스 일괄 추가
 -- 14. notification_logs 끝의 익명 Field 컬럼 제거
--- 15. events.event_uuid 추가 (멱등 키, ADR-0007 / docs/decisions/0001)
+-- 15. events.event_uuid 추가 (멱등 키, ADR-0010 / docs/decisions/0001)
 -- =============================================================================
 
 
@@ -135,7 +135,7 @@ CREATE TABLE `devices` (
 
 CREATE TABLE `events` (
     `event_id`       BIGINT       NOT NULL AUTO_INCREMENT  COMMENT '이벤트 고유 ID (PK)',
-    `event_uuid`     VARCHAR(36)  NOT NULL                 COMMENT '멱등 키 (API 서버 부여 UUID, ADR-0007/decisions/0001)',
+    `event_uuid`     VARCHAR(36)  NOT NULL                 COMMENT '멱등 키 (API 서버 부여 UUID, ADR-0010/decisions/0001)',
     `project_id`     BIGINT       NOT NULL                 COMMENT '프로젝트 ID',
     `user_id`        BIGINT       NOT NULL                 COMMENT '유저 ID',
     `category_id`    BIGINT       NOT NULL                 COMMENT '이벤트 카테고리 ID',
