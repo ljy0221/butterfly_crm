@@ -58,3 +58,4 @@ consulted: ...
 | [ADR-0004](0004-audit-log-architecture.md) | accepted | 감사 로그 아키텍처 (테이블·서비스·조회 API) | 2026-04-21 |
 | [ADR-0005](0005-auth-filter-placement.md) | accepted | 인증/인가 필터 배치 및 `@PreAuthorize` 통일 | 2026-04-21 |
 | [ADR-0006](0006-segment-condition-spec-v2.md) | accepted | 세그먼트 조건 트리 스펙 v2 — 요구명세 개정 반영 | 2026-04-27 |
+| [ADR-0007](0007-event-collection-flow.md) | accepted | 이벤트 수집 흐름 및 customer 모듈 producer/consumer 통합 | 2026-04-28 |

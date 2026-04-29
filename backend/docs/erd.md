@@ -18,6 +18,7 @@
 -- 12. 회사/유저/세그먼트/이벤트 카테고리/스키마 등 UNIQUE 제약 추가
 -- 13. FK 전면 추가, 핵심 인덱스 일괄 추가
 -- 14. notification_logs 끝의 익명 Field 컬럼 제거
+-- 15. events.event_uuid 추가 (멱등 키, ADR-0007 / docs/decisions/0001)
 -- =============================================================================
 
 
@@ -133,15 +134,17 @@ CREATE TABLE `devices` (
 );
 
 CREATE TABLE `events` (
-    `event_id`       BIGINT      NOT NULL AUTO_INCREMENT  COMMENT '이벤트 고유 ID',
-    `project_id`     BIGINT      NOT NULL                 COMMENT '프로젝트 ID',
-    `user_id`        BIGINT      NOT NULL                 COMMENT '유저 ID',
-    `category_id`    BIGINT      NOT NULL                 COMMENT '이벤트 카테고리 ID',
-    `device_id`      BIGINT      NOT NULL                 COMMENT '기기 ID',
-    `occurred_at`    DATETIME(3) NOT NULL                 COMMENT '이벤트 발생 시각 (ms 단위)',
-    `schema_version` INT         NOT NULL DEFAULT 1       COMMENT '수집 당시 스키마 버전',
-    `event_data`     JSON        NULL                     COMMENT '이벤트 부가 데이터',
-    `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'DB 수집 시각'
+    `event_id`       BIGINT       NOT NULL AUTO_INCREMENT  COMMENT '이벤트 고유 ID (PK)',
+    `event_uuid`     VARCHAR(36)  NOT NULL                 COMMENT '멱등 키 (API 서버 부여 UUID, ADR-0007/decisions/0001)',
+    `project_id`     BIGINT       NOT NULL                 COMMENT '프로젝트 ID',
+    `user_id`        BIGINT       NOT NULL                 COMMENT '유저 ID',
+    `category_id`    BIGINT       NOT NULL                 COMMENT '이벤트 카테고리 ID',
+    `device_id`      BIGINT       NOT NULL                 COMMENT '기기 ID',
+    `occurred_at`    DATETIME(3)  NOT NULL                 COMMENT '이벤트 발생 시각 (ms 단위)',
+    `schema_version` INT          NOT NULL DEFAULT 1       COMMENT '수집 당시 스키마 버전',
+    `event_data`     JSON         NULL                     COMMENT '이벤트 부가 데이터',
+    `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'DB 수집 시각',
+    `updated_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '수정 시각 (BaseEntity 컨벤션, 실질 immutable)'
 );
 
 CREATE TABLE `event_categories` (
@@ -150,7 +153,8 @@ CREATE TABLE `event_categories` (
     `name`        VARCHAR(100) NOT NULL                 COMMENT '이벤트명 (예: purchase, login)',
     `type`        ENUM('DEFAULT', 'CUSTOM') NOT NULL DEFAULT 'CUSTOM' COMMENT '기본/커스텀 구분',
     `description` VARCHAR(500) NULL                     COMMENT '설명',
-    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시'
+    `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성 일시',
+    `updated_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '수정 시각'
 );
 
 CREATE TABLE `event_schemas` (
@@ -532,6 +536,7 @@ ALTER TABLE `projects`        ADD CONSTRAINT `UK_PROJECTS_COMPANY_AUTH_NO` UNIQU
 -- 고객 / 이벤트
 ALTER TABLE `users`             ADD CONSTRAINT `UK_USERS_PROJECT_EXTID` UNIQUE (`project_id`,`external_id`);
 ALTER TABLE `event_categories`  ADD CONSTRAINT `UK_EVENT_CATEGORIES_PROJECT_NAME` UNIQUE (`project_id`,`name`);
+ALTER TABLE `events`             ADD CONSTRAINT `UK_EVENTS_EVENT_UUID`             UNIQUE (`event_uuid`);
 ALTER TABLE `event_schemas`     ADD CONSTRAINT `UK_EVENT_SCHEMAS_PROJECT_CAT_VER` UNIQUE (`project_id`,`category_id`,`version`);
 ALTER TABLE `tag_definitions`   ADD CONSTRAINT `UK_TAG_DEFINITIONS_PROJECT_KEY`   UNIQUE (`project_id`,`tag_key`);
 ALTER TABLE `user_tags`         ADD CONSTRAINT `UK_USER_TAGS_PROJECT_USER_KEY`    UNIQUE (`project_id`,`user_id`,`tag_key`);
