@@ -22,9 +22,11 @@ public class MessageTemplateController {
     // TODO 아이디 역할 검증 추가
     @PostMapping
     public ResponseEntity<MessageTemplateCreateResponse> createMessageTemplate(
+            Long memberId,
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
-        Long messageTemplateId = messageTemplateService.createMessageTemplate(request.toCommand());
+        Long messageTemplateId =
+                messageTemplateService.createMessageTemplate(memberId, request.toCommand());
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(new MessageTemplateCreateResponse(messageTemplateId));

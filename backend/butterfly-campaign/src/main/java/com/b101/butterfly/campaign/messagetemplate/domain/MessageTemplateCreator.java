@@ -1,6 +1,5 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
@@ -17,22 +16,23 @@ public class MessageTemplateCreator {
     private final MemberExistencePort memberExistencePort;
 
     public MessageTemplate registerMessageTemplate(
-            Long projectId,
-            Long memberId,
-            String messageTemplateName,
-            Channel channel,
-            String messageTemplateBody
+            MessageTemplate messageTemplate
     ) {
-        if (!projectExistencePort.existsProject(projectId)) {
+        if (!projectExistencePort.existsProject(messageTemplate.getProjectId())) {
             throw new BusinessException(MessageTemplateErrorCode.PROJECT_NOT_FOUND);
         }
-        if (!memberExistencePort.existsMember(memberId)) {
+        if (!memberExistencePort.existsMember(messageTemplate.getMemberId())) {
             throw new BusinessException(MessageTemplateErrorCode.MEMBER_NOT_FOUND);
         }
 
-        MessageTemplate messageTemplate = MessageTemplate.create(
-                projectId, memberId, messageTemplateName, channel, messageTemplateBody);
+        MessageTemplate newMessageTemplate = MessageTemplate.create(
+                messageTemplate.getProjectId(),
+                messageTemplate.getMemberId(),
+                messageTemplate.getMessageTemplateName(),
+                messageTemplate.getChannel(),
+                messageTemplate.getMessageTemplateBody()
+        );
 
-        return messageTemplateRepository.save(messageTemplate);
+        return messageTemplateRepository.save(newMessageTemplate);
     }
 }

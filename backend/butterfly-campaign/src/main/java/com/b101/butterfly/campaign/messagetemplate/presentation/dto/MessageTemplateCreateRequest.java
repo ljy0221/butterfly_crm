@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 
 public record MessageTemplateCreateRequest(
         Long projectId,
-        Long memberId,
         @NotBlank
         String messageTemplateName,
         String channel,
@@ -15,7 +14,6 @@ public record MessageTemplateCreateRequest(
     public MessageTemplateCreateCommand toCommand() {
         return new MessageTemplateCreateCommand(
                 projectId,
-                memberId,
                 messageTemplateName,
                 channel,
                 messageTemplateBody
