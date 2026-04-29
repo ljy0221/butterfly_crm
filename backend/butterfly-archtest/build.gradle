@@ -1,0 +1,27 @@
+jar { enabled = false }
+
+dependencies {
+    testImplementation project(':butterfly-common')
+    testImplementation project(':butterfly-auth')
+    testImplementation project(':butterfly-tenant')
+    testImplementation project(':butterfly-customer')
+    testImplementation project(':butterfly-segment')
+    testImplementation project(':butterfly-campaign')
+    testImplementation project(':butterfly-delivery')
+    testImplementation project(':butterfly-analytics')
+
+    testImplementation 'com.tngtech.archunit:archunit-junit5:1.3.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'archunit.freeze.store.default.path',
+            file('src/test/resources/archunit_store').absolutePath
+    systemProperty 'archunit.freeze.store.default.allowStoreCreation',
+            System.getenv('ARCHUNIT_ALLOW_STORE_CREATION') ?: 'true'
+    systemProperty 'archunit.freeze.store.default.allowStoreUpdate',
+            System.getenv('ARCHUNIT_ALLOW_STORE_UPDATE') ?: 'true'
+    systemProperty 'archunit.freeze.refreeze', 'false'
+}
