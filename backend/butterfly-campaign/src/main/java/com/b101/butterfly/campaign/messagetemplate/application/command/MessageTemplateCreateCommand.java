@@ -5,12 +5,13 @@ import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 
 public record MessageTemplateCreateCommand(
         Long projectId,
+        Long memberId,
         String messageTemplateName,
         String channel,
         String messageTemplateBody
 ) {
 
-    public MessageTemplate toMessageTemplate(Long memberId) {
+    public MessageTemplate toMessageTemplate() {
         return MessageTemplate.create(
                 projectId,
                 memberId,

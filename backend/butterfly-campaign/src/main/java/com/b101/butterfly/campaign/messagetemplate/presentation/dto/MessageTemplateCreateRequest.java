@@ -11,9 +11,10 @@ public record MessageTemplateCreateRequest(
         String messageTemplateBody
 ) {
 
-    public MessageTemplateCreateCommand toCommand() {
+    public MessageTemplateCreateCommand toCommand(Long memberId) {
         return new MessageTemplateCreateCommand(
                 projectId,
+                memberId,
                 messageTemplateName,
                 channel,
                 messageTemplateBody

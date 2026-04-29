@@ -15,7 +15,7 @@ public class MessageTemplateCreator {
     private final ProjectExistencePort projectExistencePort;
     private final MemberExistencePort memberExistencePort;
 
-    public MessageTemplate registerMessageTemplate(
+    public Long registerMessageTemplate(
             MessageTemplate messageTemplate
     ) {
         if (!projectExistencePort.existsProject(messageTemplate.getProjectId())) {
@@ -33,6 +33,6 @@ public class MessageTemplateCreator {
                 messageTemplate.getMessageTemplateBody()
         );
 
-        return messageTemplateRepository.save(newMessageTemplate);
+        return messageTemplateRepository.save(newMessageTemplate).getMessageTemplateId();
     }
 }
