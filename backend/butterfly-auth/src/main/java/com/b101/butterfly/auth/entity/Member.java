@@ -2,7 +2,14 @@ package com.b101.butterfly.auth.entity;
 
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.global.entity.BaseEntity;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -74,6 +81,10 @@ public class Member extends BaseEntity {
 
     public void assignProject(Long projectId) {
         this.projectId = projectId;
+    }
+
+    public void updatePhone(String phone) {
+        this.phone = phone;
     }
 
     public void softDelete() {

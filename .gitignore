@@ -1,5 +1,6 @@
 HELP.md
 .gradle
+.gradle-codex/
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
@@ -41,3 +42,7 @@ backend/docs/기능명세서_모듈별.md
 backend/docs/기능요구사항정의서.md
 /CRM CAMP Design System
 backend/docs/private/
+# Backup files
+*.bak
+*.swp
+*~

@@ -1,0 +1,15 @@
+{
+  "logic": "and",
+  "conditions": [
+    {
+      "type": "event",
+      "category": "purchase",
+      "filters": [
+        { "key": "color", "op": "eq", "value": "검정" },
+        { "key": "size", "op": "eq", "value": "260" }
+      ],
+      "period": { "type": "relative", "days": 30 },
+      "minCount": 3
+    }
+  ]
+}

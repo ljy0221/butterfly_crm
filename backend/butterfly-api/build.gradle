@@ -8,6 +8,7 @@ jar { enabled = false }
 dependencies {
     implementation project(':butterfly-common')
     implementation project(':butterfly-auth')
+    implementation project(':butterfly-tenant')
     implementation project(':butterfly-customer')
     implementation project(':butterfly-segment')
     implementation project(':butterfly-campaign')
