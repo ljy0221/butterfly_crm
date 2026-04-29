@@ -53,7 +53,6 @@ public class Campaign extends SoftDeletedDomain {
     @JoinColumn(name = "message_template_id", nullable = false)
     private MessageTemplate messageTemplate;
 
-    // TODO: Long 모듈 추가되면 외래키 참조로 변경
     @Column(name = "segment_id")
     private Long segmentId;
 
@@ -114,7 +113,6 @@ public class Campaign extends SoftDeletedDomain {
     @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<CampaignExecution> executions;
 
-    // TODO 세그먼트 추가 시 매개변수 타입 변경
     private Campaign(
             Long projectId,
             MessageTemplate messageTemplate,
@@ -136,7 +134,6 @@ public class Campaign extends SoftDeletedDomain {
     ) {
         this.projectId = projectId;
         this.messageTemplate = messageTemplate;
-        // TODO: 세그먼트 추가 시 변경
         this.segmentId = segmentId;
         this.memberId = memberId;
         this.campaignName = campaignName;
@@ -400,7 +397,6 @@ public class Campaign extends SoftDeletedDomain {
         }
     }
 
-    // TODO segmentId 모듈 추가 시 파라미터 변경
     private static void validateLong(Long segmentId) {
         if (segmentId == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_SEGMENT_REQUIRED);
