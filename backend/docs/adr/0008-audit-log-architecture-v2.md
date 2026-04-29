@@ -1,10 +1,14 @@
 ---
-status: accepted
+status: superseded
+superseded-by: ADR-0009
 date: 2026-04-28
 decision-makers: 역할 1 (인증/테넌트/프로젝트/권한), 역할 6 (분석/감사 모듈)
 consulted: 전 도메인 (감사 액션 제공자), DBA
 supersedes: ADR-0004
 ---
+
+> **Note (2026-04-29)**: 본 ADR은 [ADR-0009](0009-audit-log-relocation-to-reporting.md)에 의해 superseded됨.
+> 스키마(컬럼 구성, append-only 트리거, IP/UA 기록)는 그대로 유지되나, **소유 모듈이 `butterfly-tenant`에서 `butterfly-reporting`으로 이전**되고 발행 경로가 도메인 이벤트로 바뀐다. 자세한 내용은 ADR-0009 참조.
 
 # ADR-0008: 감사 로그 v2 — append-only 3중 방어 + IP/UA 기록
 
