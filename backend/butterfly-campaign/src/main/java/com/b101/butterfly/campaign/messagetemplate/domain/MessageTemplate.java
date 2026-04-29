@@ -35,10 +35,10 @@ public class MessageTemplate extends SoftDeletedDomain {
     private Long messageTemplateId;
 
     @Column(name = "project_id", nullable = false)
-    private Long project;
+    private Long projectId;
 
     @Column(name = "member_id", nullable = false)
-    private Long member;
+    private Long memberId;
 
     @Column(name = "message_template_name", nullable = false)
     private String messageTemplateName;
@@ -55,15 +55,15 @@ public class MessageTemplate extends SoftDeletedDomain {
     private List<String> requiredVariables;
 
     private MessageTemplate(
-            Long project,
-            Long member,
+            Long projectId,
+            Long memberId,
             String messageTemplateName,
             Channel channel,
             String messageTemplateBody,
             List<String> requiredVariables
     ) {
-        this.project = project;
-        this.member = member;
+        this.projectId = projectId;
+        this.memberId = memberId;
         this.messageTemplateName = messageTemplateName;
         this.channel = channel;
         this.messageTemplateBody = messageTemplateBody;
@@ -71,29 +71,29 @@ public class MessageTemplate extends SoftDeletedDomain {
     }
 
     public static MessageTemplate create(
-            Long project,
-            Long member,
+            Long projectId,
+            Long memberId,
             String messageTemplateName,
             Channel channel,
             String messageTemplateBody
     ) {
-        validate(project, member, messageTemplateName, channel, messageTemplateBody);
+        validate(projectId, memberId, messageTemplateName, channel, messageTemplateBody);
         return new MessageTemplate(
-                project, member, messageTemplateName, channel, messageTemplateBody,
+                projectId, memberId, messageTemplateName, channel, messageTemplateBody,
                 MessageTemplateVariableExtractor.extract(messageTemplateBody));
     }
 
     private static void validate(
-            Long project,
-            Long member,
+            Long projectId,
+            Long memberId,
             String messageTemplateName,
             Channel channel,
             String messageTemplateBody
     ) {
-        if (project == null) {
+        if (projectId == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_PROJECT_REQUIRED);
         }
-        if (member == null) {
+        if (memberId == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_MEMBER_REQUIRED);
         }
         if (channel == null) {
