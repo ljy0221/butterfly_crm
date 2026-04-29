@@ -7,16 +7,13 @@ import com.b101.butterfly.auth.service.EmailService;
 import com.b101.butterfly.auth.service.RedisService;
 import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.tenant.constant.ApplicationStatus;
-import com.b101.butterfly.tenant.constant.AuditAction;
 import com.b101.butterfly.tenant.dto.request.ApplicationCreateRequest;
 import com.b101.butterfly.tenant.dto.request.ApplicationRejectRequest;
 import com.b101.butterfly.tenant.dto.response.ApplicationResponse;
 import com.b101.butterfly.tenant.entity.Application;
-import com.b101.butterfly.tenant.entity.AuditLog;
 import com.b101.butterfly.tenant.entity.Project;
 import com.b101.butterfly.tenant.exception.TenantErrorCode;
 import com.b101.butterfly.tenant.repository.ApplicationRepository;
-import com.b101.butterfly.tenant.repository.AuditLogRepository;
 import com.b101.butterfly.tenant.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,7 +35,6 @@ public class ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final MemberRepository memberRepository;
     private final ProjectRepository projectRepository;
-    private final AuditLogRepository auditLogRepository;
     private final RedisService redisService;
     private final EmailService emailService;
 
@@ -83,7 +79,6 @@ public class ApplicationService {
 
         application.approve(adminMemberId);
 
-        // OWNER Member 생성 (비밀번호 미설정 상태)
         Member owner = Member.builder()
                 .email(application.getEmail())
                 .name(application.getApplicantName())
@@ -93,7 +88,6 @@ public class ApplicationService {
                 .build();
         memberRepository.save(owner);
 
-        // Project 생성
         String companyAuthNo = UUID.randomUUID().toString().replace("-", "").substring(0, 20);
         Project project = Project.builder()
                 .name(application.getBusinessName())
@@ -103,17 +97,11 @@ public class ApplicationService {
                 .build();
         projectRepository.save(project);
 
-        // OWNER에 프로젝트 연결
         owner.assignProject(project.getId());
 
-        auditLogRepository.save(AuditLog.builder()
-                .memberId(adminMemberId)
-                .action(AuditAction.APPLICATION_APPROVED)
-                .targetType("Application")
-                .targetId(applicationId)
-                .build());
+        // TODO(P7): AuditRecordedEvent 발행으로 전환 — reporting 모듈이 AuditLog 저장 담당 (ADR-0009)
+        // eventPublisher.publishEvent(new AuditRecordedEvent(adminMemberId, "Application", applicationId, AuditAction.APPLICATION_APPROVED));
 
-        // Owner 비밀번호 설정 링크 발송 (24시간 유효)
         String linkToken = UUID.randomUUID().toString();
         redisService.set("auth:owner:link:" + linkToken, String.valueOf(owner.getId()), OWNER_LINK_TTL);
         emailService.sendOwnerInvite(owner.getEmail(), linkToken, companyAuthNo);
@@ -129,12 +117,8 @@ public class ApplicationService {
 
         application.reject(adminMemberId, request.rejectReason());
 
-        auditLogRepository.save(AuditLog.builder()
-                .memberId(adminMemberId)
-                .action(AuditAction.APPLICATION_REJECTED)
-                .targetType("Application")
-                .targetId(applicationId)
-                .build());
+        // TODO(P7): AuditRecordedEvent 발행으로 전환 — reporting 모듈이 AuditLog 저장 담당 (ADR-0009)
+        // eventPublisher.publishEvent(new AuditRecordedEvent(adminMemberId, "Application", applicationId, AuditAction.APPLICATION_REJECTED));
     }
 
     private Application findApplication(Long applicationId) {
