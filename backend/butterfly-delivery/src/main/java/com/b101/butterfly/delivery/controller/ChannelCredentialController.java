@@ -1,0 +1,43 @@
+package com.b101.butterfly.delivery.controller;
+
+import com.b101.butterfly.delivery.dto.request.ChannelCredentialRequest;
+import com.b101.butterfly.delivery.dto.request.DeliveryCommand;
+import com.b101.butterfly.delivery.service.credential.ChannelCredentialService;
+import com.b101.butterfly.global.response.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/projects/{projectId}/credentials")
+@RequiredArgsConstructor
+public class ChannelCredentialController {
+
+    private final ChannelCredentialService channelCredentialService;
+
+    @PutMapping("/{channel}")
+    public ApiResponse<Void> saveCredential(
+            @PathVariable Long projectId,
+            @PathVariable DeliveryCommand.Channel channel,
+            @RequestBody ChannelCredentialRequest request) {
+
+        channelCredentialService.saveCredential(projectId, channel, request.credentialData());
+        return ApiResponse.ok();
+    }
+
+    @GetMapping("/{channel}")
+    public ApiResponse<String> getCredential(
+            @PathVariable Long projectId,
+            @PathVariable DeliveryCommand.Channel channel) {
+
+        return ApiResponse.ok(channelCredentialService.getCredentialData(projectId, channel));
+    }
+
+    @DeleteMapping("/{channel}")
+    public ApiResponse<Void> deleteCredential(
+            @PathVariable Long projectId,
+            @PathVariable DeliveryCommand.Channel channel) {
+
+        channelCredentialService.deleteCredential(projectId, channel);
+        return ApiResponse.ok();
+    }
+}
