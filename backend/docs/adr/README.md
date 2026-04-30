@@ -50,10 +50,10 @@ consulted: ...
 
 ## 색인
 
-| # | Status | Title | Date |
-|---|--------|-------|------|
-| [ADR-0001](0001-segment-condition-tree-json.md) | superseded by ADR-0006 | 세그먼트 조건 트리를 JSON 컬럼으로 저장 | 2026-04-21 |
-| [ADR-0002](0002-campaign-definition-execution-split.md) | accepted | 캠페인 정의와 실행 회차 분리 | 2026-04-21 |
+| #                                                       | Status                 | Title                                   | Date       |
+|---------------------------------------------------------|------------------------|-----------------------------------------|------------|
+| [ADR-0001](0001-segment-condition-tree-json.md)         | superseded by ADR-0006 | 세그먼트 조건 트리를 JSON 컬럼으로 저장                | 2026-04-21 |
+| [ADR-0002](0002-campaign-definition-execution-split.md) | accepted               | 캠페인 정의와 실행 회차 분리                        | 2026-04-21 |
 | [ADR-0003](0003-analytics-aggregation-tables.md) | superseded by ADR-0007 | 분석용 일자별 집계 테이블 도입 (Blocker 1) | 2026-04-21 |
 | [ADR-0004](0004-audit-log-architecture.md) | superseded by ADR-0008 | 감사 로그 아키텍처 (테이블·서비스·조회 API) | 2026-04-21 |
 | [ADR-0005](0005-auth-filter-placement.md) | accepted | 인증/인가 필터 배치 및 `@PreAuthorize` 통일 | 2026-04-21 |
@@ -62,3 +62,5 @@ consulted: ...
 | [ADR-0008](0008-audit-log-architecture-v2.md) | superseded by ADR-0009 | 감사 로그 v2 — append-only 3중 방어 + IP/UA 기록 | 2026-04-28 |
 | [ADR-0009](0009-audit-log-relocation-to-reporting.md) | accepted | 감사 로그 소유 모듈 이전 — tenant → reporting | 2026-04-29 |
 | [ADR-0010](0010-storage-strategy-and-denormalization.md) | accepted | 저장 전략·반정규화 기준 — 도메인 횡단 가이드 | 2026-04-29 |
+| [ADR-0011](0011-event-collection-flow.md) | accepted | 이벤트 수집 흐름 및 customer 모듈 producer/consumer 통합 | 2026-04-28 |
+| [ADR-0012](0012-events-anonymous-and-external-id.md) | proposed | 익명 사용자 이벤트 처리 + devices external 식별자 — ERD 갱신 | 2026-04-30 |
