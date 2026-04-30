@@ -139,9 +139,10 @@ public class SegmentController {
 
     @GetMapping("/favorites")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
-    public ApiResponse<FavoritesResponse> favorites(@PathVariable Long projectId) {
-        // TODO Phase 8-2 — favorites + recentlyUsed
-        return ApiResponse.ok(new FavoritesResponse(List.of(), List.of()));
+    public ApiResponse<FavoritesResponse> favorites(
+            @PathVariable Long projectId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        return ApiResponse.ok(segmentFavoriteService.list(projectId, memberId));
     }
 
     @PostMapping("/{segmentId}/favorite")

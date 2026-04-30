@@ -14,6 +14,7 @@ import com.b101.butterfly.segment.domain.condition.validation.StructureValidator
 import com.b101.butterfly.segment.domain.condition.validation.TypeFieldValidator;
 import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
+import com.b101.butterfly.segment.dto.response.FavoritesResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.exception.SegmentValidationExceptionHandler;
@@ -214,12 +215,26 @@ class SegmentControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("GET /segments/favorites — 더미 빈 분리 응답")
-    void favoritesReturnsEmpty() throws Exception {
-        mockMvc.perform(get("/api/v1/projects/1/segments/favorites"))
+    @DisplayName("GET /segments/favorites — service 반환을 그대로 응답")
+    void favoritesReturnsServiceResult() throws Exception {
+        when(segmentFavoriteService.list(eq(1L), eq(17L)))
+                .thenReturn(
+                        new FavoritesResponse(
+                                List.of(
+                                        new FavoritesResponse.FavoriteItem(
+                                                1024L,
+                                                "검정 구두 260 구매 유저",
+                                                1820,
+                                                LocalDateTime.of(2026, 4, 26, 9, 0))),
+                                List.of()));
+
+        mockMvc.perform(get("/api/v1/projects/1/segments/favorites").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.favorites").isArray())
-                .andExpect(jsonPath("$.data.recentlyUsed").isArray());
+                .andExpect(jsonPath("$.data.favorites[0].segmentId").value(1024L))
+                .andExpect(jsonPath("$.data.favorites[0].name").value("검정 구두 260 구매 유저"))
+                .andExpect(jsonPath("$.data.favorites[0].estimatedCount").value(1820))
+                .andExpect(jsonPath("$.data.recentlyUsed").isArray())
+                .andExpect(jsonPath("$.data.recentlyUsed").isEmpty());
     }
 
     @Test
