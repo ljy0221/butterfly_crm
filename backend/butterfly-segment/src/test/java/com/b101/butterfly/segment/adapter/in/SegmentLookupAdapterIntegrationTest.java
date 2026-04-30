@@ -8,7 +8,7 @@ import com.b101.butterfly.segment.domain.condition.Operator;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.repository.SegmentRepository;
-import com.b101.butterfly.segment.support.AbstractMySqlContainerTest;
+import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
