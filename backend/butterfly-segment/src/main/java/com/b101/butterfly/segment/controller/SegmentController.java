@@ -113,7 +113,7 @@ public class SegmentController {
             @PathVariable Long projectId,
             @PathVariable Long segmentId,
             Pageable pageable) {
-        // TODO Phase 8-1 — SegmentMember 페이지 + customer.users JOIN
+        // TODO Phase 8-1 — SegmentMember 페이지 + event.users JOIN
         return ApiResponse.ok(
                 PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
     }
