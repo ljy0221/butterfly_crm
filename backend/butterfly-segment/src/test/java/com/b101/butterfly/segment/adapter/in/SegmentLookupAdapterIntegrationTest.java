@@ -1,5 +1,7 @@
-package com.b101.butterfly.segment.api;
+package com.b101.butterfly.segment.adapter.in;
 
+import com.b101.butterfly.segment.api.SegmentLookupPort;
+import com.b101.butterfly.segment.api.SegmentSnapshot;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
 import com.b101.butterfly.segment.domain.condition.Operator;
@@ -23,8 +25,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(SegmentLookupPortImpl.class)
-class SegmentLookupPortImplIntegrationTest extends AbstractMySqlContainerTest {
+@Import(SegmentLookupAdapter.class)
+class SegmentLookupAdapterIntegrationTest extends AbstractMySqlContainerTest {
 
     @Autowired private SegmentLookupPort segmentLookupPort;
     @Autowired private SegmentRepository segmentRepository;
