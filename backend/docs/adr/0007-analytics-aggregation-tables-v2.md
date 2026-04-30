@@ -63,7 +63,7 @@ EAV(Entity-Attribute-Value) 형태로 모든 집계를 단일 테이블에
 
 **선택: Option B (5종 집계 테이블)**.
 
-DDL 단일 진실의 원천은 [`backend/butterfly-analytics/db/schema_analytics_audit.sql`](../../butterfly-analytics/db/schema_analytics_audit.sql) v2.0이며, 본 ADR은 그 결정 근거를 기록한다.
+DDL 단일 진실의 원천은 [`backend/butterfly-reporting/db/schema_analytics_audit.sql`](../../butterfly-reporting/db/schema_analytics_audit.sql) v2.0이며, 본 ADR은 그 결정 근거를 기록한다.
 
 ### 테이블 5종 요약
 
@@ -149,9 +149,9 @@ ADR-0003의 `clickRate = clicked / delivered` 와 달라진 핵심: **클릭의 
 
 ## More Information
 
-- 단일 진실의 원천: [`backend/butterfly-analytics/docs/SCHEMA_DESIGN.md`](../../butterfly-analytics/docs/SCHEMA_DESIGN.md)
-- DDL: [`backend/butterfly-analytics/db/schema_analytics_audit.sql`](../../butterfly-analytics/db/schema_analytics_audit.sql)
-- API 명세: [`backend/butterfly-analytics/docs/butterfly_api_spec_v2.md`](../../butterfly-analytics/docs/butterfly_api_spec_v2.md)
+- 단일 진실의 원천: [`backend/butterfly-reporting/docs/SCHEMA_DESIGN.md`](../../butterfly-reporting/docs/SCHEMA_DESIGN.md)
+- DDL: [`backend/butterfly-reporting/db/schema_analytics_audit.sql`](../../butterfly-reporting/db/schema_analytics_audit.sql)
+- API 명세: [`backend/butterfly-reporting/docs/butterfly_api_spec_v2.md`](../../butterfly-reporting/docs/butterfly_api_spec_v2.md)
 - 관련 ADR: [ADR-0002](0002-campaign-definition-execution-split.md), [ADR-0008](0008-audit-log-architecture-v2.md)
 - 슈퍼시드: [ADR-0003](0003-analytics-aggregation-tables.md)
 - 관련 Jira: `S14P31B101-121` (DDL 적용), `S14P31B101-124` (집계 배치 구현), `S14P31B101-76` (KPI 정의서)

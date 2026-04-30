@@ -21,8 +21,9 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
  * 잘못 인식됨). port adapter처럼 다른 모듈을 위해 자기 모듈 안에서 어댑터를 두는 패턴은
  * 정상이므로 매처가 그것을 잡으면 안 된다.
  *
- * <p><b>P3(모듈 개명) 후 갱신 사항</b>: customer→event, delivery→notification,
- * analytics→reporting으로 패키지명도 함께 바뀐다.
+ * <p><b>모듈 명명 컨벤션</b>: P3 모듈 개명 후 도메인 모듈 7종은 다음과 같다 —
+ * common, auth, tenant, event, segment, campaign, notification, reporting.
+ * customer/delivery/analytics는 더 이상 사용하지 않는다.
  */
 @AnalyzeClasses(
         packages = "com.b101.butterfly",
@@ -47,11 +48,11 @@ class ModularBoundaryTest {
                             .as("캠페인 모듈은 다른 도메인의 repository·entity를 직접 import할 수 없다")
             );
 
-    /** analytics(→reporting)는 campaign 내부 구현(domain·repository)에 직접 의존하지 못한다. */
+    /** reporting은 campaign 내부 구현(domain·repository)에 직접 의존하지 못한다. */
     @ArchTest
     static final ArchRule reportingShouldNotDependOnCampaignInternals =
             FreezingArchRule.freeze(
-                    noClasses().that().resideInAPackage("com.b101.butterfly.analytics..")
+                    noClasses().that().resideInAPackage("com.b101.butterfly.reporting..")
                             .should().dependOnClassesThat()
                             .resideInAnyPackage(
                                     "com.b101.butterfly.campaign.campaign.domain..",
@@ -62,11 +63,11 @@ class ModularBoundaryTest {
                             .as("리포팅 모듈은 캠페인 내부 도메인/리포지토리를 직접 import할 수 없다")
             );
 
-    /** delivery(→notification)도 다른 도메인의 entity/repository에 직접 의존하지 못한다. */
+    /** notification 모듈도 다른 도메인의 entity/repository에 직접 의존하지 못한다. */
     @ArchTest
-    static final ArchRule deliveryShouldNotDependOnInternalsOfOtherDomains =
+    static final ArchRule notificationShouldNotDependOnInternalsOfOtherDomains =
             FreezingArchRule.freeze(
-                    noClasses().that().resideInAPackage("com.b101.butterfly.delivery..")
+                    noClasses().that().resideInAPackage("com.b101.butterfly.notification..")
                             .should().dependOnClassesThat()
                             .resideInAnyPackage(
                                     "com.b101.butterfly.segment.repository..",
@@ -76,7 +77,7 @@ class ModularBoundaryTest {
                                     "com.b101.butterfly.tenant.repository..",
                                     "com.b101.butterfly.tenant.entity.."
                             )
-                            .as("발송 모듈은 다른 도메인의 repository·entity를 직접 import할 수 없다")
+                            .as("notification 모듈은 다른 도메인의 repository·entity를 직접 import할 수 없다")
             );
 
     /** 도메인 슬라이스 사이에 순환 의존이 없어야 한다. */

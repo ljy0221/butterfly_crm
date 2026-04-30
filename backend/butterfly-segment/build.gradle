@@ -3,7 +3,7 @@ jar { enabled = true }
 dependencies {
     implementation project(':butterfly-common')
     implementation project(':butterfly-auth')
-    implementation project(':butterfly-customer')
+    implementation project(':butterfly-event')
 
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
