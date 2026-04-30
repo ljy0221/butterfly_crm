@@ -1,4 +1,4 @@
-package com.b101.butterfly.auth.adapter.in.campaign;
+package com.b101.butterfly.auth.adapter.in;
 
 import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;

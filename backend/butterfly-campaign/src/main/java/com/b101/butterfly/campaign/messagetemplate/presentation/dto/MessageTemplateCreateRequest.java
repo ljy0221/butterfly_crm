@@ -1,14 +1,15 @@
 package com.b101.butterfly.campaign.messagetemplate.presentation.dto;
 
 import com.b101.butterfly.campaign.messagetemplate.application.command.MessageTemplateCreateCommand;
-import jakarta.validation.constraints.NotBlank;
 
 public record MessageTemplateCreateRequest(
         Long projectId,
-        @NotBlank
         String messageTemplateName,
+        String messageTemplateDescription,
         String channel,
-        String messageTemplateBody
+        String messageTemplateTitle,
+        String messageTemplateBody,
+        String messageTemplateImageUrl
 ) {
 
     public MessageTemplateCreateCommand toCommand(Long memberId) {
@@ -16,8 +17,11 @@ public record MessageTemplateCreateRequest(
                 projectId,
                 memberId,
                 messageTemplateName,
+                messageTemplateDescription,
                 channel,
-                messageTemplateBody
+                messageTemplateTitle,
+                messageTemplateBody,
+                messageTemplateImageUrl
         );
     }
 }

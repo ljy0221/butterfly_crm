@@ -187,7 +187,7 @@ public class Campaign extends SoftDeletedDomain {
             Long segmentId
     ) {
         validateCommon(projectId, messageTemplate, memberId, campaignName, campaignDescription);
-        validateLong(segmentId);
+        validateSegment(segmentId);
         return new Campaign(
                 projectId,
                 messageTemplate,
@@ -236,7 +236,7 @@ public class Campaign extends SoftDeletedDomain {
             LocalDateTime nextRunAt
     ) {
         validateCommon(projectId, messageTemplate, memberId, campaignName, campaignDescription);
-        validateLong(segmentId);
+        validateSegment(segmentId);
         validateScheduledAt(nextRunAt);
         return new Campaign(
                 projectId,
@@ -310,7 +310,7 @@ public class Campaign extends SoftDeletedDomain {
             LocalDateTime nextRunAt
     ) {
         validateCommon(projectId, messageTemplate, memberId, campaignName, campaignDescription);
-        validateLong(segmentId);
+        validateSegment(segmentId);
         validateRecurring(repeatType, recurringCount, nextRunAt);
         String recurringCron = RecurringCronGenerator.toCron(
                 repeatType, repeatDayOfWeek, repeatDayOfMonth, repeatTime);
@@ -363,7 +363,7 @@ public class Campaign extends SoftDeletedDomain {
             Long segmentId
     ) {
         validateCommon(projectId, messageTemplate, memberId, campaignName, campaignDescription);
-        validateLong(segmentId);
+        validateSegment(segmentId);
         return new Campaign(
                 projectId, messageTemplate, segmentId, memberId,
                 campaignName, campaignDescription,
@@ -397,7 +397,7 @@ public class Campaign extends SoftDeletedDomain {
         }
     }
 
-    private static void validateLong(Long segmentId) {
+    private static void validateSegment(Long segmentId) {
         if (segmentId == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_SEGMENT_REQUIRED);
         }

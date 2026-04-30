@@ -43,30 +43,45 @@ public class MessageTemplate extends SoftDeletedDomain {
     @Column(name = "message_template_name", nullable = false)
     private String messageTemplateName;
 
+    @Column(name = "message_template_description", nullable = false)
+    private String messageTemplateDescription;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "channel", nullable = false)
     private Channel channel;
 
+    @Column(name = "message_template_title", nullable = false)
+    private String messageTemplateTitle;
+
     @Column(name = "message_template_body", nullable = false, columnDefinition = "TEXT")
     private String messageTemplateBody;
+
+    @Column(name = "message_template_image_url")
+    private String messageTemplateImageUrl;
 
     @Convert(converter = RequiredVariablesConverter.class)
     @Column(name = "required_variables", columnDefinition = "JSON")
     private List<String> requiredVariables;
 
-    private MessageTemplate(
+    public MessageTemplate(
             Long projectId,
             Long memberId,
             String messageTemplateName,
+            String messageTemplateDescription,
             Channel channel,
+            String messageTemplateTitle,
             String messageTemplateBody,
+            String messageTemplateImageUrl,
             List<String> requiredVariables
     ) {
         this.projectId = projectId;
         this.memberId = memberId;
         this.messageTemplateName = messageTemplateName;
+        this.messageTemplateDescription = messageTemplateDescription;
         this.channel = channel;
+        this.messageTemplateTitle = messageTemplateTitle;
         this.messageTemplateBody = messageTemplateBody;
+        this.messageTemplateImageUrl = messageTemplateImageUrl;
         this.requiredVariables = requiredVariables;
     }
 
@@ -74,13 +89,36 @@ public class MessageTemplate extends SoftDeletedDomain {
             Long projectId,
             Long memberId,
             String messageTemplateName,
+            String messageTemplateDescription,
             Channel channel,
-            String messageTemplateBody
+            String messageTemplateTitle,
+            String messageTemplateBody,
+            String messageTemplateImageUrl
     ) {
         validate(projectId, memberId, messageTemplateName, channel, messageTemplateBody);
+        validateTemplateDescAndTitle(messageTemplateDescription, messageTemplateTitle);
         return new MessageTemplate(
-                projectId, memberId, messageTemplateName, channel, messageTemplateBody,
+                projectId,
+                memberId,
+                messageTemplateName,
+                messageTemplateDescription,
+                channel,
+                messageTemplateTitle,
+                messageTemplateBody,
+                messageTemplateImageUrl,
                 MessageTemplateVariableExtractor.extract(messageTemplateBody));
+    }
+
+    private static void validateTemplateDescAndTitle(
+            String messageTemplateDescription,
+            String messageTemplateTitle
+    ) {
+        if (messageTemplateDescription == null || messageTemplateDescription.isBlank()) {
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_DESCRIPTION_REQUIRED);
+        }
+        if (messageTemplateTitle == null || messageTemplateTitle.isBlank()) {
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_TITLE_REQUIRED);
+        }
     }
 
     private static void validate(

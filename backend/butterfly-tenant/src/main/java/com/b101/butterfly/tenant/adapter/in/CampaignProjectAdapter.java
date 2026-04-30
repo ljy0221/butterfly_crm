@@ -1,4 +1,4 @@
-package com.b101.butterfly.tenant.adapter.in.campaign;
+package com.b101.butterfly.tenant.adapter.in;
 
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
 import com.b101.butterfly.tenant.repository.ProjectRepository;

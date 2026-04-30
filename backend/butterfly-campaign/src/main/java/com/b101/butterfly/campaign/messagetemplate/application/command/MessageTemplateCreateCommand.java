@@ -7,8 +7,11 @@ public record MessageTemplateCreateCommand(
         Long projectId,
         Long memberId,
         String messageTemplateName,
+        String messageTemplateDescription,
         String channel,
-        String messageTemplateBody
+        String messageTemplateTitle,
+        String messageTemplateBody,
+        String messageTemplateImageUrl
 ) {
 
     public MessageTemplate toMessageTemplate() {
@@ -16,8 +19,11 @@ public record MessageTemplateCreateCommand(
                 projectId,
                 memberId,
                 messageTemplateName,
+                messageTemplateDescription,
                 Channel.valueOf(channel),
-                messageTemplateBody
+                messageTemplateTitle,
+                messageTemplateBody,
+                messageTemplateImageUrl
         );
     }
 }
