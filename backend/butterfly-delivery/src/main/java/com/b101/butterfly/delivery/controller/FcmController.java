@@ -1,0 +1,32 @@
+package com.b101.butterfly.delivery.controller;
+
+import com.b101.butterfly.delivery.dto.request.FcmSendRequest;
+import com.b101.butterfly.delivery.dto.response.FcmSendResponse;
+import com.b101.butterfly.delivery.service.fcm.FcmAppManager;
+import com.b101.butterfly.delivery.service.fcm.FcmService;
+import com.b101.butterfly.global.response.ApiResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/projects/{projectId}/fcm")
+@RequiredArgsConstructor
+public class FcmController {
+
+    private final FcmService fcmService;
+    private final FcmAppManager fcmAppManager;
+
+    @PostMapping("/send")
+    public ApiResponse<FcmSendResponse> send(
+            @PathVariable Long projectId,
+            @RequestBody FcmSendRequest request) {
+
+        return ApiResponse.ok(fcmService.sendAll(projectId, request));
+    }
+
+    @DeleteMapping("/credentials/cache")
+    public ApiResponse<Void> invalidateCache(@PathVariable Long projectId) {
+        fcmAppManager.invalidate(projectId);
+        return ApiResponse.ok();
+    }
+}
