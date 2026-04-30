@@ -10,12 +10,18 @@
 
 | # | Method | URL | 설명 | 인증 | 비고 |
 |---|--------|-----|------|------|------|
-| 18 | POST | `/sdk/v1/users/identify` | 유저 식별/생성 | API Key | 로그인 시 호출 |
-| 19 | POST | `/sdk/v1/devices` | 디바이스 등록/토큰 갱신 | API Key | FCM 토큰 등록 |
-| 20 | POST | `/sdk/v1/events` | 이벤트 수집 (단건) | API Key | 큐 적재 후 즉시 응답 |
-| 21 | POST | `/sdk/v1/events/batch` | 이벤트 수집 (배치) | API Key | 큐 적재 후 즉시 응답 |
+| 18 | POST | `/api/v1/users/identify` | 유저 식별/생성 | API Key | 로그인 시 호출 |
+| 19 | POST | `/api/v1/devices` | 디바이스 등록/토큰 갱신 | API Key | FCM 토큰 등록 |
+| 20 | POST | `/api/v1/events` | 이벤트 수집 (단건) | API Key | 서버가 `event_uuid` 부여 후 Kafka `events.collected` 발행, 즉시 응답 |
+| 21 | POST | `/api/v1/events/batch` | 이벤트 수집 (배치) | API Key | 각 이벤트에 `event_uuid` 부여 후 `events.collected`로 발행, 즉시 응답 |
 
-### POST /sdk/v1/users/identify
+> 이벤트 수집 흐름 전체 결정(흐름 A: API → Kafka → worker → DB)과 토픽 명명 근거는 [ADR-0011](../adr/0011-event-collection-flow.md) 참조.
+>
+> **멱등 키 처리**: API 서버가 수신 즉시 `UUID.randomUUID()`로 `event_uuid`를 부여하고 payload에 포함시켜 Kafka에 publish. Consumer는 `events.event_uuid` UNIQUE 인덱스로 중복 메시지를 차단함. 이로써 Kafka at-least-once 시 발생하는 consumer 측 중복(offset commit 실패, rebalancing, 재처리)이 모두 자동 차단됨. 단, 클라이언트 SDK 네트워크 timeout 재시도로 인한 중복은 막지 못함 (별도 ADR로 처리 예정).
+>
+> **Kafka partition key**: `(projectId, userId)` 조합으로 설정 — 같은 유저 이벤트는 단일 consumer에서 순차 처리되어 `event_daily_agg` row-level lock contention 회피.
+
+### POST /api/v1/users/identify
 
 ```json
 // Request
@@ -31,7 +37,7 @@
 }
 ```
 
-### POST /sdk/v1/devices
+### POST /api/v1/devices
 
 ```json
 // Request
@@ -52,22 +58,44 @@
 }
 ```
 
-### POST /sdk/v1/events
+### POST /api/v1/events
 
 ```json
 // Request
 {
   "userId": 1001,
   "deviceId": 42,
-  "eventName": "purchase_complete",
-  "eventData": "{\"amount\": 35000, \"item\": \"운동화\"}"
+  "eventCategory": "purchase_complete",
+  "occurredAt": "2026-04-24T14:32:10.123",
+  "eventData": {
+    "amount": 35000,
+    "item": "운동화"
+  }
 }
 
-// Response (즉시 응답, 실제 처리는 워커)
+// Response (즉시 응답, 실제 DB 적재는 워커)
 {
-  "accepted": true
+  "eventId": "evt_01HXYZ...",
+  "acceptedAt": "2026-04-24T14:32:10.456",
+  "schemaVersion": 1
 }
 ```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| userId | Long | ✅ | 유저 PK (현재 ERD 기준 BIGINT NOT NULL) |
+| deviceId | Long | ✅ | 디바이스 PK |
+| eventCategory | String | ✅ | 카테고리 이름. 서버가 `event_categories.name`으로 lookup → 없으면 404 `CATEGORY_NOT_FOUND` |
+| occurredAt | ISO 8601 | ✅ | 이벤트 발생 시각 |
+| eventData | Object | — | 카테고리별 스키마에 따른 부가 데이터 (JSON object) |
+
+**에러 응답**
+
+| HTTP | code | 상황 |
+|---|---|---|
+| 400 | VALIDATION_FAILED | 필수 필드 누락, 포맷 오류 |
+| 404 | CATEGORY_NOT_FOUND | 등록되지 않은 `eventCategory` |
+| 500 | INTERNAL_ERROR | Kafka publish 실패 등 서버 오류 |
 
 ---
 
