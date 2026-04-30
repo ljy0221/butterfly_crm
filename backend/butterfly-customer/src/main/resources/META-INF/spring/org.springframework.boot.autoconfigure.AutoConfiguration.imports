@@ -1,0 +1,3 @@
+com.b101.butterfly.customer.config.CustomerJpaAutoConfig
+com.b101.butterfly.customer.config.CustomerKafkaProducerConfig
+com.b101.butterfly.customer.config.CustomerKafkaConsumerConfig
