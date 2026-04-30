@@ -45,9 +45,6 @@ public class Project extends BaseEntity {
     @Column(name = "public_api_key", length = 100)
     private String publicApiKey;
 
-    @Column(name = "fcm_credentials", columnDefinition = "TEXT")
-    private String fcmCredentials;
-
     @Column(name = "daily_limit")
     private Integer dailyLimit;
 
@@ -72,10 +69,6 @@ public class Project extends BaseEntity {
 
     public void issueApiKey(String publicApiKey) {
         this.publicApiKey = publicApiKey;
-    }
-
-    public void updateFcmCredentials(String encryptedJson) {
-        this.fcmCredentials = encryptedJson;
     }
 
     public void updateDailyLimit(Integer dailyLimit) {

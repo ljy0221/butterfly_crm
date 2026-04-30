@@ -17,9 +17,9 @@
 
 ## API 경로
 
-- `/api/projects/{projectId}/segments/**` — 세그먼트 관리 (JWT 인증)
+- `/api/v1/projects/{projectId}/segments/**` — 세그먼트 관리 (JWT 인증)
 
 ## 의존 관계
 
-- `butterfly-common`, `butterfly-auth`, `butterfly-customer`에 의존
+- `butterfly-common`, `butterfly-auth`, `butterfly-event`에 의존
 - Spring Data JPA, Spring Data Redis, MySQL

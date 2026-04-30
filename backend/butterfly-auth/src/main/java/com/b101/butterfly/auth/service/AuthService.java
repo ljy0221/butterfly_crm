@@ -36,7 +36,8 @@ public class AuthService {
         if (!emailVerificationService.isVerified(request.email())) {
             throw new BusinessException(AuthErrorCode.EMAIL_NOT_VERIFIED);
         }
-        if (memberRepository.existsByEmail(request.email())) {
+        // 네이티브 쿼리로 탈퇴 계정 포함 체크 — DB unique 제약 위반 방지
+        if (memberRepository.countByEmailIncludingDeleted(request.email()) > 0) {
             throw new BusinessException(AuthErrorCode.DUPLICATE_EMAIL);
         }
         Long projectId = companyAuthPort.findProjectIdByCompanyAuthNo(request.companyAuthNo())

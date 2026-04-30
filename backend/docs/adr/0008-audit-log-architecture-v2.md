@@ -33,7 +33,7 @@ supersedes: ADR-0004
 
 ## Decision Outcome
 
-DDL 단일 진실의 원천은 [`backend/butterfly-analytics/db/schema_analytics_audit.sql`](../../butterfly-analytics/db/schema_analytics_audit.sql) v2.0이며, 본 ADR은 그 결정 근거를 기록한다.
+DDL 단일 진실의 원천은 [`backend/butterfly-reporting/db/schema_analytics_audit.sql`](../../butterfly-reporting/db/schema_analytics_audit.sql) v2.0이며, 본 ADR은 그 결정 근거를 기록한다.
 
 ### 테이블 스키마 (v2)
 
@@ -208,9 +208,9 @@ ADR-0004의 3종 인덱스에서 2종 추가:
 
 ## More Information
 
-- 단일 진실의 원천: [`backend/butterfly-analytics/docs/SCHEMA_DESIGN.md`](../../butterfly-analytics/docs/SCHEMA_DESIGN.md)
-- DDL: [`backend/butterfly-analytics/db/schema_analytics_audit.sql`](../../butterfly-analytics/db/schema_analytics_audit.sql)
-- API 명세: [`backend/butterfly-analytics/docs/butterfly_api_spec_v2.md`](../../butterfly-analytics/docs/butterfly_api_spec_v2.md) (#20, #21)
+- 단일 진실의 원천: [`backend/butterfly-reporting/docs/SCHEMA_DESIGN.md`](../../butterfly-reporting/docs/SCHEMA_DESIGN.md)
+- DDL: [`backend/butterfly-reporting/db/schema_analytics_audit.sql`](../../butterfly-reporting/db/schema_analytics_audit.sql)
+- API 명세: [`backend/butterfly-reporting/docs/butterfly_api_spec_v2.md`](../../butterfly-reporting/docs/butterfly_api_spec_v2.md) (#20, #21)
 - 관련 ADR: [ADR-0005](0005-auth-filter-placement.md), [ADR-0007](0007-analytics-aggregation-tables-v2.md)
 - 슈퍼시드: [ADR-0004](0004-audit-log-architecture.md)
 - 관련 Jira: `S14P31B101-125` (트리거 + 권한 분리), `S14P31B101-35` (감사 로그 조회/CSV)
