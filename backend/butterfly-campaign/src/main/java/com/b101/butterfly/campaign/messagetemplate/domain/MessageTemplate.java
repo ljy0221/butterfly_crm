@@ -63,7 +63,7 @@ public class MessageTemplate extends SoftDeletedDomain {
     @Column(name = "required_variables", columnDefinition = "JSON")
     private List<String> requiredVariables;
 
-    public MessageTemplate(
+    private MessageTemplate(
             Long projectId,
             Long memberId,
             String messageTemplateName,

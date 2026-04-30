@@ -4,6 +4,7 @@ import com.b101.butterfly.campaign.messagetemplate.application.result.MessageTem
 import java.time.LocalDateTime;
 
 public record MessageTemplatesResponse(
+        Long messageTemplateId,
         String messageTemplateName,
         String messageTitle,
         String channel,
@@ -14,6 +15,7 @@ public record MessageTemplatesResponse(
     public static MessageTemplatesResponse from(
             MessageTemplateListResult messageTemplateListResult) {
         return new MessageTemplatesResponse(
+                messageTemplateListResult.messageTemplateId(),
                 messageTemplateListResult.messageTemplateName(),
                 messageTemplateListResult.messageTitle(),
                 messageTemplateListResult.channel(),

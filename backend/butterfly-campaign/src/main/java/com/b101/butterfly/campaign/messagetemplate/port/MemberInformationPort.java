@@ -6,4 +6,6 @@ import java.util.Map;
 public interface MemberInformationPort {
 
     Map<Long, String> getMemberNames(List<Long> memberIds);
+
+    String getMemberName(Long memberId);
 }

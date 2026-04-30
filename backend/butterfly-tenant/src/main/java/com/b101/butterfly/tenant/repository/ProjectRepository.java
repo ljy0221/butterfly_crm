@@ -13,4 +13,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     Optional<Project> findByCompanyAuthNo(String companyAuthNo);
 
     Optional<Project> findByPublicApiKey(String publicApiKey);
+
+    String findNameById(Long projectId);
 }

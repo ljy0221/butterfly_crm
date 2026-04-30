@@ -23,4 +23,9 @@ public class CampaignMemberInfoAdapter implements MemberInformationPort {
                         Member::getName
                 ));
     }
+
+    @Override
+    public String getMemberName(Long memberId) {
+        return memberRepository.findNameById(memberId);
+    }
 }

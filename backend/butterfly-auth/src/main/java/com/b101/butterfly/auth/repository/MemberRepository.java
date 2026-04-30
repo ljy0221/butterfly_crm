@@ -19,4 +19,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     // 소프트딜리트된 멤버 포함 조회 (탈퇴 재가입 중복 체크용)
     @Query("SELECT m FROM Member m WHERE m.email = :email")
     Optional<Member> findByEmailIncludingDeleted(String email);
+
+    String findNameById(Long id);
 }
