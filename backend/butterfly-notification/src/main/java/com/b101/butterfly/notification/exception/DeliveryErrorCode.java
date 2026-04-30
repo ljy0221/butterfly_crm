@@ -22,7 +22,8 @@ public enum DeliveryErrorCode implements ErrorCode {
     FCM_TOKEN_MISSING("DELIVERY_015", "Push token이 누락되었습니다.", HttpStatus.BAD_REQUEST),
     EMAIL_ADDRESS_MISSING("DELIVERY_016", "이메일 주���가 누락되었습니다.", HttpStatus.BAD_REQUEST),
     SMS_PHONE_MISSING("DELIVERY_017", "전화번호가 누락되었습���다.", HttpStatus.BAD_REQUEST),
-    WEBHOOK_URL_MISSING("DELIVERY_018", "Webhook URL이 누락되었습니다.", HttpStatus.BAD_REQUEST);
+    WEBHOOK_URL_MISSING("DELIVERY_018", "Webhook URL이 누락되었습니다.", HttpStatus.BAD_REQUEST),
+    CREDENTIAL_NOT_FOUND("DELIVERY_019", "채널 인증정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

@@ -1,11 +1,13 @@
 package com.b101.butterfly.notification.service.email;
 
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
-import com.b101.butterfly.notification.dto.response.DeliveryResult;
+import com.b101.butterfly.notification.dto.response.TargetOutcome;
 import com.b101.butterfly.notification.service.ChannelAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -20,7 +22,9 @@ public class EmailChannelAdapter implements ChannelAdapter {
     }
 
     @Override
-    public DeliveryResult send(DeliveryCommand command, DeliveryCommand.DeliveryTarget target) {
-        return emailService.sendOne(command.message(), target);
+    public List<TargetOutcome> sendBatch(DeliveryCommand command, List<DeliveryCommand.DeliveryTarget> targets) {
+        return targets.stream()
+                .map(target -> new TargetOutcome(target, emailService.sendOne(command.message(), target)))
+                .toList();
     }
 }

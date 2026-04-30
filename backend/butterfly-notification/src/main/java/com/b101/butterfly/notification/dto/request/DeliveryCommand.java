@@ -3,17 +3,22 @@ package com.b101.butterfly.notification.dto.request;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 
 /**
  * 발송 요청 커맨드.
- * 캠페인 팀 또는 MQ 리스너에서 생성하여 DeliveryService.deliver()에 전달.
+ * Kafka 메시지: userIds만 채우고 credential/targets는 null → DeliveryService가 자체 조회.
+ * 테스트 컨트롤러: credential/targets를 직접 채워서 기존 동작 유지.
  */
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public record DeliveryCommand(
         Long projectId,
         Long campaignId,
         Channel channel,
         MessagePayload message,
+        List<Long> userIds,
         ChannelCredential credential,
         List<DeliveryTarget> targets
 ) {

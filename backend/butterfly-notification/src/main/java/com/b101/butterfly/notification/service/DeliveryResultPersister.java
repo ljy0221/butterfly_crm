@@ -2,6 +2,7 @@ package com.b101.butterfly.notification.service;
 
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.dto.response.DeliveryResult;
+import com.b101.butterfly.notification.dto.response.TargetOutcome;
 import com.b101.butterfly.notification.entity.CampaignStats;
 import com.b101.butterfly.notification.entity.NotificationLog;
 import com.b101.butterfly.notification.entity.NotificationStatus;
@@ -32,7 +33,7 @@ class DeliveryResultPersister {
     public void persist(DeliveryCommand command, List<TargetOutcome> outcomes) {
         CampaignStats stats = campaignStatsRepository.findById(command.campaignId())
                 .orElseGet(() -> campaignStatsRepository.save(
-                        new CampaignStats(command.campaignId(), command.targets().size())
+                        new CampaignStats(command.campaignId(), outcomes.size())
                 ));
 
         List<NotificationLog> logEntries = new ArrayList<>();
@@ -88,5 +89,4 @@ class DeliveryResultPersister {
         };
     }
 
-    record TargetOutcome(DeliveryCommand.DeliveryTarget target, DeliveryResult result) {}
 }
