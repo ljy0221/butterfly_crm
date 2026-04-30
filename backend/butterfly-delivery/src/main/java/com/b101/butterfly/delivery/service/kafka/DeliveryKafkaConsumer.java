@@ -20,8 +20,9 @@ public class DeliveryKafkaConsumer {
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void consume(DeliveryCommand command) {
-        log.info("Kafka 발송 요청 수신: projectId={}, campaignId={}, channel={}, targets={}",
+        log.info("Kafka 발송 요청 수신: projectId={}, campaignId={}, channel={}, userIds={}, targets={}",
                 command.projectId(), command.campaignId(), command.channel(),
+                command.userIds() != null ? command.userIds().size() : 0,
                 command.targets() != null ? command.targets().size() : 0);
 
         try {

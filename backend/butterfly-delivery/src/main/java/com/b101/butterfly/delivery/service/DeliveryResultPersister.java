@@ -32,7 +32,7 @@ class DeliveryResultPersister {
     public void persist(DeliveryCommand command, List<TargetOutcome> outcomes) {
         CampaignStats stats = campaignStatsRepository.findById(command.campaignId())
                 .orElseGet(() -> campaignStatsRepository.save(
-                        new CampaignStats(command.campaignId(), command.targets().size())
+                        new CampaignStats(command.campaignId(), outcomes.size())
                 ));
 
         List<NotificationLog> logEntries = new ArrayList<>();
