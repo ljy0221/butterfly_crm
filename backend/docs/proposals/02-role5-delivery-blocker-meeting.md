@@ -257,7 +257,7 @@ void flushEvents() {
 
 ### 추가 합의 사항 (역할 5 회의에서 확정)
 - [x] **Redis 인스턴스** — **프로젝트 공유 Redis** (이미 존재) ✅
-  - butterfly-analytics, butterfly-segment 등 이미 사용 중
+  - butterfly-reporting, butterfly-segment 등 이미 사용 중
   - 별도 인스턴스 신설 불필요
 - [x] **메모리 제한** — **최대 100,000 이벤트** (MVP 충분) ✅
   - 약 10MB 메모리
@@ -423,7 +423,7 @@ if (Math.abs(System.currentTimeMillis() - callbackTime) > 5 * 60 * 1000) {
 ```
 
 ### 구현 위치
-- **butterfly-delivery** — NotificationCallbackController + CallbackSignatureValidator
+- **butterfly-notification** — NotificationCallbackController + CallbackSignatureValidator
 - **butterfly-auth** — SharedSecret 발급/조회 로직 (고객 앱 생성 시)
 - **butterfly-worker** — Kafka/RabbitMQ 소비자에서 이미 받은 콜백 재처리 없음 보장
 

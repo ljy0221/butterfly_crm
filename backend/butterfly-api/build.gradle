@@ -9,11 +9,11 @@ dependencies {
     implementation project(':butterfly-common')
     implementation project(':butterfly-auth')
     implementation project(':butterfly-tenant')
-    implementation project(':butterfly-customer')
+    implementation project(':butterfly-event')
     implementation project(':butterfly-segment')
     implementation project(':butterfly-campaign')
-    implementation project(':butterfly-delivery')
-    implementation project(':butterfly-analytics')
+    implementation project(':butterfly-notification')
+    implementation project(':butterfly-reporting')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
