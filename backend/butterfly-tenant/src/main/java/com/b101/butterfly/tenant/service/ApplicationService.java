@@ -6,7 +6,9 @@ import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.auth.service.EmailService;
 import com.b101.butterfly.auth.service.RedisService;
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.global.event.AuditRecordedEvent;
 import com.b101.butterfly.tenant.constant.ApplicationStatus;
+import com.b101.butterfly.tenant.constant.AuditAction;
 import com.b101.butterfly.tenant.dto.request.ApplicationCreateRequest;
 import com.b101.butterfly.tenant.dto.request.ApplicationRejectRequest;
 import com.b101.butterfly.tenant.dto.response.ApplicationResponse;
@@ -16,12 +18,14 @@ import com.b101.butterfly.tenant.exception.TenantErrorCode;
 import com.b101.butterfly.tenant.repository.ApplicationRepository;
 import com.b101.butterfly.tenant.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -37,6 +41,7 @@ public class ApplicationService {
     private final ProjectRepository projectRepository;
     private final RedisService redisService;
     private final EmailService emailService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public Long submit(ApplicationCreateRequest request) {
@@ -99,8 +104,16 @@ public class ApplicationService {
 
         owner.assignProject(project.getId());
 
-        // TODO(P7): AuditRecordedEvent 발행으로 전환 — reporting 모듈이 AuditLog 저장 담당 (ADR-0009)
-        // eventPublisher.publishEvent(new AuditRecordedEvent(adminMemberId, "Application", applicationId, AuditAction.APPLICATION_APPROVED));
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                null,
+                adminMemberId,
+                AuditAction.APPLICATION_APPROVED,
+                "Application",
+                applicationId,
+                null,
+                null,
+                Map.of()
+        ));
 
         String linkToken = UUID.randomUUID().toString();
         redisService.set("auth:owner:link:" + linkToken, String.valueOf(owner.getId()), OWNER_LINK_TTL);
@@ -117,8 +130,16 @@ public class ApplicationService {
 
         application.reject(adminMemberId, request.rejectReason());
 
-        // TODO(P7): AuditRecordedEvent 발행으로 전환 — reporting 모듈이 AuditLog 저장 담당 (ADR-0009)
-        // eventPublisher.publishEvent(new AuditRecordedEvent(adminMemberId, "Application", applicationId, AuditAction.APPLICATION_REJECTED));
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                null,
+                adminMemberId,
+                AuditAction.APPLICATION_REJECTED,
+                "Application",
+                applicationId,
+                null,
+                null,
+                Map.of("rejectReason", request.rejectReason())
+        ));
     }
 
     private Application findApplication(Long applicationId) {

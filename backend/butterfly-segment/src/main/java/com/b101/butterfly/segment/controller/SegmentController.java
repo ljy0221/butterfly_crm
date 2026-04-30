@@ -44,7 +44,7 @@ import java.util.List;
  * <p>{@code X-Member-Id} 헤더는 auth 모듈 합류 전 임시 인증. 추후 {@code @AuthenticationPrincipal}로 교체.
  */
 @RestController
-@RequestMapping("/api/projects/{projectId}/segments")
+@RequestMapping("/api/v1/projects/{projectId}/segments")
 @RequiredArgsConstructor
 public class SegmentController {
 
@@ -92,8 +92,11 @@ public class SegmentController {
 
     @DeleteMapping("/{segmentId}")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
-    public ApiResponse<Void> delete(@PathVariable Long projectId, @PathVariable Long segmentId) {
-        segmentService.delete(projectId, segmentId);
+    public ApiResponse<Void> delete(
+            @PathVariable Long projectId,
+            @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        segmentService.delete(projectId, segmentId, memberId);
         return ApiResponse.ok();
     }
 
