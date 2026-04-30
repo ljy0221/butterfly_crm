@@ -4,7 +4,6 @@ import com.b101.butterfly.campaign.messagetemplate.application.MessageTemplateSe
 import com.b101.butterfly.campaign.messagetemplate.presentation.dto.MessageTemplateCreateRequest;
 import com.b101.butterfly.campaign.messagetemplate.presentation.dto.MessageTemplateCreateResponse;
 import jakarta.validation.Valid;
-import java.nio.file.attribute.UserPrincipal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,14 +19,14 @@ public class MessageTemplateController {
 
     private final MessageTemplateService messageTemplateService;
 
-    // TODO 아이디 역할 검증 추가
+    // TODO memberId 추출 역할 검증 추가
     @PostMapping
     public ResponseEntity<MessageTemplateCreateResponse> createMessageTemplate(
-            UserPrincipal userPrincipal,
+            Long memberId,
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
         Long messageTemplateId = messageTemplateService.createMessageTemplate(
-                request.toCommand(userPrincipal.getMemberId));
+                request.toCommand(memberId));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(new MessageTemplateCreateResponse(messageTemplateId));
