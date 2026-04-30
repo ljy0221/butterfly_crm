@@ -92,8 +92,11 @@ public class SegmentController {
 
     @DeleteMapping("/{segmentId}")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
-    public ApiResponse<Void> delete(@PathVariable Long projectId, @PathVariable Long segmentId) {
-        segmentService.delete(projectId, segmentId);
+    public ApiResponse<Void> delete(
+            @PathVariable Long projectId,
+            @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        segmentService.delete(projectId, segmentId, memberId);
         return ApiResponse.ok();
     }
 

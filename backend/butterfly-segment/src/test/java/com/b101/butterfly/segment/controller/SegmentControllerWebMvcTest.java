@@ -159,7 +159,7 @@ class SegmentControllerWebMvcTest {
     @Test
     @DisplayName("DELETE /segments/{id} — 200 + ApiResponse.ok()")
     void deleteReturnsOk() throws Exception {
-        mockMvc.perform(delete("/api/v1/projects/1/segments/42"))
+        mockMvc.perform(delete("/api/v1/projects/1/segments/42").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
