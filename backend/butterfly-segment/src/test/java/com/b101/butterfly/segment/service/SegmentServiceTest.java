@@ -1,7 +1,9 @@
 package com.b101.butterfly.segment.service;
 
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.global.event.AuditRecordedEvent;
 import com.b101.butterfly.global.response.PageResponse;
+import com.b101.butterfly.segment.constant.AuditAction;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
 import com.b101.butterfly.segment.domain.condition.Operator;
@@ -18,20 +20,24 @@ import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
+import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -50,18 +57,29 @@ class SegmentServiceTest {
     @Mock private SegmentFavoriteRepository segmentFavoriteRepository;
     @Mock private ConditionTreeValidator conditionTreeValidator;
     @Mock private LinkedCampaignChecker linkedCampaignChecker;
+    @Mock private ConditionTreeHasher conditionTreeHasher;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private SegmentService segmentService;
 
     private static final Long PROJECT_ID = 1L;
     private static final Long MEMBER_ID = 17L;
+    private static final String STUB_HASH =
+            "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
+
+    @BeforeEach
+    void hasherStub() {
+        // 모든 케이스에서 같은 hash를 반환 — 본 단위 테스트는 audit 발행 여부·핵심 필드 검증이 목적이고
+        // hash 동일성에 의존하는 케이스(no-op update)는 별도로 다룬다.
+        lenient().when(conditionTreeHasher.hash(anyLong(), any())).thenReturn(STUB_HASH);
+    }
 
     @Nested
     @DisplayName("create()")
     class CreateTests {
 
         @Test
-        @DisplayName("정상 요청은 저장 후 응답을 반환한다")
+        @DisplayName("정상 요청은 저장 후 응답 반환 + SEGMENT_CREATED audit 발행")
         void happyPath() {
             CreateSegmentRequest request = new CreateSegmentRequest("VIP", "설명", validTree());
             when(segmentRepository.existsByProjectIdAndName(PROJECT_ID, "VIP")).thenReturn(false);
@@ -76,10 +94,22 @@ class SegmentServiceTest {
             assertThat(response.createdBy()).isEqualTo(MEMBER_ID);
             verify(conditionTreeValidator).validate(request.conditionTree());
             verify(segmentRepository).save(any(Segment.class));
+
+            AuditRecordedEvent event = captureAuditEvent();
+            assertThat(event.action()).isEqualTo(AuditAction.SEGMENT_CREATED);
+            assertThat(event.targetType()).isEqualTo("Segment");
+            assertThat(event.actorId()).isEqualTo(MEMBER_ID);
+            assertThat(event.projectId()).isEqualTo(PROJECT_ID);
+            assertThat(event.eventId()).isNotNull();
+            assertThat(event.occurredAt()).isNotNull();
+            assertThat(event.detail())
+                    .containsEntry("name", "VIP")
+                    .containsEntry("conditionTreeHash", STUB_HASH.substring(0, 8))
+                    .containsEntry("conditionTreeVersion", 3);
         }
 
         @Test
-        @DisplayName("이름 중복 시 SEGMENT_400_NAME_DUPLICATED")
+        @DisplayName("이름 중복 시 SEGMENT_400_NAME_DUPLICATED + audit 미발행")
         void nameDuplicated() {
             CreateSegmentRequest request = new CreateSegmentRequest("VIP", "설명", validTree());
             when(segmentRepository.existsByProjectIdAndName(PROJECT_ID, "VIP")).thenReturn(true);
@@ -92,10 +122,12 @@ class SegmentServiceTest {
                                             .isEqualTo(
                                                     SegmentErrorCode
                                                             .SEGMENT_400_NAME_DUPLICATED));
+
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
 
         @Test
-        @DisplayName("conditionTreeValidator가 던진 BusinessException은 그대로 통과한다")
+        @DisplayName("conditionTreeValidator가 던진 BusinessException은 그대로 통과 + audit 미발행")
         void conditionTreeValidationFails() {
             CreateSegmentRequest request = new CreateSegmentRequest("VIP", "설명", validTree());
             when(segmentRepository.existsByProjectIdAndName(PROJECT_ID, "VIP")).thenReturn(false);
@@ -112,6 +144,8 @@ class SegmentServiceTest {
                                             .isEqualTo(
                                                     SegmentErrorCode
                                                             .SEGMENT_400_EMPTY_CONDITIONS));
+
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
     }
 
@@ -189,7 +223,7 @@ class SegmentServiceTest {
         }
 
         @Test
-        @DisplayName("이름·트리 변경 후 상세 응답 반환")
+        @DisplayName("이름·설명 변경 후 상세 응답 반환 + SEGMENT_UPDATED audit 발행 (before/after)")
         void happyPath() {
             Segment seg = sampleSegment(42L, "old");
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
@@ -205,10 +239,26 @@ class SegmentServiceTest {
             assertThat(response.name()).isEqualTo("renamed");
             assertThat(response.buildStatus()).isEqualTo(BuildStatus.PENDING);
             verify(conditionTreeValidator).validate(request.conditionTree());
+
+            AuditRecordedEvent event = captureAuditEvent();
+            assertThat(event.action()).isEqualTo(AuditAction.SEGMENT_UPDATED);
+            assertThat(event.targetType()).isEqualTo("Segment");
+            assertThat(event.targetId()).isEqualTo(42L);
+            assertThat(event.actorId()).isEqualTo(MEMBER_ID);
+            assertThat(event.projectId()).isEqualTo(PROJECT_ID);
+            // hasher가 같은 hash 반환하므로 conditionTreeChanged=false. name/description은 바뀜
+            assertThat(event.detail()).containsEntry("conditionTreeChanged", false);
+            assertThat(event.detail()).containsKeys("before", "after");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> before = (Map<String, Object>) event.detail().get("before");
+            @SuppressWarnings("unchecked")
+            Map<String, Object> after = (Map<String, Object>) event.detail().get("after");
+            assertThat(before).containsEntry("name", "old").containsEntry("description", "desc");
+            assertThat(after).containsEntry("name", "renamed").containsEntry("description", "new desc");
         }
 
         @Test
-        @DisplayName("진행 중 캠페인 연결 시 SEGMENT_409_LINKED_ACTIVE_CAMPAIGN")
+        @DisplayName("진행 중 캠페인 연결 시 SEGMENT_409 + audit 미발행")
         void linkedActiveCampaign() {
             Segment seg = sampleSegment(42L, "old");
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
@@ -226,10 +276,12 @@ class SegmentServiceTest {
                                             .isEqualTo(
                                                     SegmentErrorCode
                                                             .SEGMENT_409_LINKED_ACTIVE_CAMPAIGN));
+
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
 
         @Test
-        @DisplayName("다른 세그먼트와 이름 중복 시 SEGMENT_400_NAME_DUPLICATED (자기 자신 제외)")
+        @DisplayName("이름 중복 시 SEGMENT_400_NAME_DUPLICATED + audit 미발행")
         void nameDuplicated() {
             Segment seg = sampleSegment(42L, "old");
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
@@ -249,10 +301,12 @@ class SegmentServiceTest {
                                             .isEqualTo(
                                                     SegmentErrorCode
                                                             .SEGMENT_400_NAME_DUPLICATED));
+
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
 
         @Test
-        @DisplayName("이름이 같으면 중복 체크를 스킵하고 통과한다")
+        @DisplayName("이름이 같으면 중복 체크를 스킵하고 통과한다 (description 변경분만 audit)")
         void sameNameSkipsDuplicateCheck() {
             Segment seg = sampleSegment(42L, "same");
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
@@ -263,8 +317,23 @@ class SegmentServiceTest {
 
             segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
 
-            verify(segmentRepository, org.mockito.Mockito.never())
+            verify(segmentRepository, never())
                     .existsByProjectIdAndName(anyLong(), eq("same"));
+            // description 변경됨 → audit 발행
+            verify(eventPublisher).publishEvent(any(AuditRecordedEvent.class));
+        }
+
+        @Test
+        @DisplayName("no-op 변경(이름·설명·트리 모두 동일)은 audit 발행 X")
+        void noOpUpdateSkipsAudit() {
+            Segment seg = sampleSegment(42L, "same");
+            when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
+            when(linkedCampaignChecker.hasActiveOrSending(42L)).thenReturn(false);
+
+            UpdateSegmentRequest request = new UpdateSegmentRequest("same", "desc", validTree());
+            segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
+
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
     }
 
@@ -273,25 +342,32 @@ class SegmentServiceTest {
     class DeleteTests {
 
         @Test
-        @DisplayName("soft delete 정상")
+        @DisplayName("soft delete 정상 + SEGMENT_DELETED audit 발행")
         void happyPath() {
             Segment seg = sampleSegment(42L, "old");
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
             when(linkedCampaignChecker.hasActiveOrSending(42L)).thenReturn(false);
 
-            segmentService.delete(PROJECT_ID, 42L);
+            segmentService.delete(PROJECT_ID, 42L, MEMBER_ID);
 
             assertThat(seg.isDeleted()).isTrue();
+            AuditRecordedEvent event = captureAuditEvent();
+            assertThat(event.action()).isEqualTo(AuditAction.SEGMENT_DELETED);
+            assertThat(event.targetType()).isEqualTo("Segment");
+            assertThat(event.targetId()).isEqualTo(42L);
+            assertThat(event.actorId()).isEqualTo(MEMBER_ID);
+            assertThat(event.projectId()).isEqualTo(PROJECT_ID);
+            assertThat(event.detail()).containsEntry("name", "old");
         }
 
         @Test
-        @DisplayName("진행 중 캠페인 연결 시 거절")
+        @DisplayName("진행 중 캠페인 연결 시 거절 + audit 미발행")
         void linkedActiveCampaign() {
             Segment seg = sampleSegment(42L, "old");
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
             when(linkedCampaignChecker.hasActiveOrSending(42L)).thenReturn(true);
 
-            assertThatThrownBy(() -> segmentService.delete(PROJECT_ID, 42L))
+            assertThatThrownBy(() -> segmentService.delete(PROJECT_ID, 42L, MEMBER_ID))
                     .isInstanceOfSatisfying(
                             BusinessException.class,
                             e ->
@@ -299,20 +375,28 @@ class SegmentServiceTest {
                                             .isEqualTo(
                                                     SegmentErrorCode
                                                             .SEGMENT_409_LINKED_ACTIVE_CAMPAIGN));
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
 
         @Test
-        @DisplayName("미존재 세그먼트 삭제 시 SEGMENT_404_NOT_FOUND")
+        @DisplayName("미존재 세그먼트 삭제 시 SEGMENT_404_NOT_FOUND + audit 미발행")
         void notFound() {
             when(segmentRepository.findById(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> segmentService.delete(PROJECT_ID, 99L))
+            assertThatThrownBy(() -> segmentService.delete(PROJECT_ID, 99L, MEMBER_ID))
                     .isInstanceOfSatisfying(
                             BusinessException.class,
                             e ->
                                     assertThat(e.getErrorCode())
                                             .isEqualTo(SegmentErrorCode.SEGMENT_404_NOT_FOUND));
+            verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
         }
+    }
+
+    private AuditRecordedEvent captureAuditEvent() {
+        ArgumentCaptor<AuditRecordedEvent> captor = ArgumentCaptor.forClass(AuditRecordedEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        return captor.getValue();
     }
 
     private static GroupNode validTree() {
