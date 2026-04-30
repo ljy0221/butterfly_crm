@@ -44,7 +44,7 @@ public enum SegmentErrorCode implements ErrorCode {
             HttpStatus.CONFLICT),
     SEGMENT_501_EVENT_NOT_READY(
             "SEGMENT_501_EVENT_NOT_READY",
-            "EVENT 조건은 customer 모듈 합류 전까지 미리보기에 사용할 수 없습니다.",
+            "EVENT 조건은 event 모듈 합류 전까지 미리보기에 사용할 수 없습니다.",
             HttpStatus.NOT_IMPLEMENTED);
 
     private final String code;

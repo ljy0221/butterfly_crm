@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 /**
  * TAG/USER/DEVICE 조건 트리를 named parameter SQL로 변환한다.
  *
- * <p>EVENT 노드를 만나면 {@link EventConditionNotReadyException}을 던져 customer 모듈 합류(Phase 6)
+ * <p>EVENT 노드를 만나면 {@link EventConditionNotReadyException}을 던져 event 모듈 합류(Phase 6)
  * 전까지의 미지원을 PreviewService에 알린다.
  *
  * <p>USER/DEVICE의 {@code key}는 SQL identifier로 들어가므로 화이트리스트로 강제한다 — 임의 컬럼 노출 차단.
