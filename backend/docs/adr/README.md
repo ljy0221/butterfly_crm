@@ -62,3 +62,5 @@ consulted: ...
 | [ADR-0008](0008-audit-log-architecture-v2.md) | superseded by ADR-0009 | 감사 로그 v2 — append-only 3중 방어 + IP/UA 기록 | 2026-04-28 |
 | [ADR-0009](0009-audit-log-relocation-to-reporting.md) | accepted | 감사 로그 소유 모듈 이전 — tenant → reporting | 2026-04-29 |
 | [ADR-0010](0010-storage-strategy-and-denormalization.md) | accepted | 저장 전략·반정규화 기준 — 도메인 횡단 가이드 | 2026-04-29 |
+| [ADR-0011](0011-event-collection-flow.md) | accepted | 이벤트 수집 흐름 및 customer 모듈 producer/consumer 통합 | 2026-04-28 |
+| [ADR-0012](0012-events-anonymous-and-external-id.md) | proposed | 익명 사용자 이벤트 처리 + devices external 식별자 — ERD 갱신 | 2026-04-30 |

@@ -16,7 +16,7 @@ public class EventProducer {
 
   private final KafkaTemplate<String, EventPayload> kafkaTemplate;
 
-  // ADR-0010: publish 성공 = 수락. broker ack까지 동기 대기 후 응답.
+  // ADR-0011: publish 성공 = 수락. broker ack까지 동기 대기 후 응답.
   public void send(EventPayload payload) {
     String partitionKey = payload.projectId() + ":" + payload.userId();
     try {

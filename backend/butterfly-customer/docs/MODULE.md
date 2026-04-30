@@ -15,7 +15,7 @@
 - **유저 프로필 관리**: 유저 목록 조회, 상세 조회, 태그 관리
 - **유저 이벤트 조회**: 특정 유저의 이벤트 이력 조회
 
-> 이벤트 수집 흐름과 producer/consumer 통합 결정의 근거는 [ADR-0010](../../docs/adr/0010-event-collection-flow.md) 참조.
+> 이벤트 수집 흐름과 producer/consumer 통합 결정의 근거는 [ADR-0011](../../docs/adr/0011-event-collection-flow.md) 참조.
 
 ## 담당 테이블
 
