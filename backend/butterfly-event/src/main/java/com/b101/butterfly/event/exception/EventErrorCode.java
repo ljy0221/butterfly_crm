@@ -7,7 +7,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum CustomerErrorCode implements ErrorCode {
+public enum EventErrorCode implements ErrorCode {
 
     CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND,             "CATEGORY_NOT_FOUND",
             "등록되지 않은 이벤트 카테고리입니다."),

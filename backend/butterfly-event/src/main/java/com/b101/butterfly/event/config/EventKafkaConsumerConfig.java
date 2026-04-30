@@ -11,7 +11,7 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 
-/** butterfly-worker 프로세스에서만 활성화되는 customer 도메인의 Kafka consumer 설정. */
+/** butterfly-worker 프로세스에서만 활성화되는 event 도메인의 Kafka consumer 설정. */
 @AutoConfiguration
 @Profile("worker")
 @EnableKafka

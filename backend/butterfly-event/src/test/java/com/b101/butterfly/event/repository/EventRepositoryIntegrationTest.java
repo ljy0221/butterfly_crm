@@ -1,0 +1,93 @@
+package com.b101.butterfly.event.repository;
+
+import com.b101.butterfly.event.entity.Event;
+import com.b101.butterfly.event.support.AbstractMySqlContainerTest;
+import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+class EventRepositoryIntegrationTest extends AbstractMySqlContainerTest {
+
+    @Autowired private EventRepository repository;
+    @Autowired private EntityManager entityManager;
+
+    private static final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 4, 30, 12, 0);
+
+    private int insert(String uuid) {
+        return repository.insertIfNotExists(
+                uuid, 100L, 7L, 1L, 42L,
+                OCCURRED_AT, 1, "{\"k\":\"v\"}"
+        );
+    }
+
+    @Test
+    @DisplayName("insertIfNotExists — 신규 event_uuid는 1을 반환하고 events 테이블에 1행 적재")
+    void insertNewReturnsOne() {
+        int inserted = insert("uuid-new");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(inserted).isEqualTo(1);
+
+        List<Event> all = repository.findAll();
+        assertThat(all).hasSize(1);
+        Event e = all.get(0);
+        assertThat(e.getEventUuid()).isEqualTo("uuid-new");
+        assertThat(e.getProjectId()).isEqualTo(100L);
+        assertThat(e.getUserId()).isEqualTo(7L);
+        assertThat(e.getCategoryId()).isEqualTo(1L);
+        assertThat(e.getDeviceId()).isEqualTo(42L);
+        assertThat(e.getOccurredAt()).isEqualTo(OCCURRED_AT);
+        assertThat(e.getSchemaVersion()).isEqualTo(1);
+        assertThat(e.getEventData()).contains("\"k\"").contains("\"v\"");
+    }
+
+    @Test
+    @DisplayName("insertIfNotExists — 같은 event_uuid 재insert 시 0 반환, 행 수 그대로 (멱등 보장)")
+    void insertDuplicateReturnsZero() {
+        int first = insert("uuid-dup");
+        int second = insert("uuid-dup");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(first).isEqualTo(1);
+        assertThat(second).isEqualTo(0);
+        assertThat(repository.findAll()).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("insertIfNotExists — eventData=null 허용 (옵셔널 페이로드)")
+    void insertAllowsNullEventData() {
+        int inserted = repository.insertIfNotExists(
+                "uuid-null-data", 100L, 7L, 1L, 42L,
+                OCCURRED_AT, 1, null
+        );
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(inserted).isEqualTo(1);
+        Event e = repository.findAll().get(0);
+        assertThat(e.getEventData()).isNull();
+    }
+
+    @Test
+    @DisplayName("insertIfNotExists — 다른 event_uuid는 별개 행으로 적재")
+    void insertDifferentUuidsCreatesSeparateRows() {
+        insert("uuid-1");
+        insert("uuid-2");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(repository.findAll()).hasSize(2);
+    }
+}

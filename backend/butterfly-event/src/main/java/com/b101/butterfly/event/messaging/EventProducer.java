@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class EventProducer {
 
-  public static final String TOPIC = "customer.events.collected";
+  public static final String TOPIC = "events.collected";
 
   private final KafkaTemplate<String, EventPayload> kafkaTemplate;
 
