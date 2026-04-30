@@ -15,8 +15,14 @@ import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.sli
  * <p>기존 위반은 {@link FreezingArchRule#freeze}로 baseline에 등록되어 빌드를 깨지 않고,
  * 신규 위반만 차단한다. baseline은 {@code src/test/resources/archunit_store/}에 저장된다.
  *
- * <p>패키지명 주의: P3(모듈 개명)이 머지되면 {@code customer→event},
- * {@code delivery→notification}, {@code analytics→reporting}으로 갱신할 것.
+ * <p><b>패키지 매처 컨벤션</b>: 모든 모듈 식별은 {@code com.b101.butterfly.<module>..}
+ * 모듈 prefix 형식으로 표기한다. {@code ..<module>..} 형식은 패키지 어디에든 모듈명이 들어가면
+ * 매칭되어 false positive를 만든다 (예: {@code auth.adapter.in.campaign}이 campaign 코드로
+ * 잘못 인식됨). port adapter처럼 다른 모듈을 위해 자기 모듈 안에서 어댑터를 두는 패턴은
+ * 정상이므로 매처가 그것을 잡으면 안 된다.
+ *
+ * <p><b>P3(모듈 개명) 후 갱신 사항</b>: customer→event, delivery→notification,
+ * analytics→reporting으로 패키지명도 함께 바뀐다.
  */
 @AnalyzeClasses(
         packages = "com.b101.butterfly",
@@ -28,15 +34,15 @@ class ModularBoundaryTest {
     @ArchTest
     static final ArchRule campaignShouldNotDependOnInternalsOfOtherDomains =
             FreezingArchRule.freeze(
-                    noClasses().that().resideInAPackage("..campaign..")
+                    noClasses().that().resideInAPackage("com.b101.butterfly.campaign..")
                             .should().dependOnClassesThat()
                             .resideInAnyPackage(
-                                    "..segment.repository..",
-                                    "..segment.entity..",
-                                    "..tenant.repository..",
-                                    "..tenant.entity..",
-                                    "..auth.repository..",
-                                    "..auth.entity.."
+                                    "com.b101.butterfly.segment.repository..",
+                                    "com.b101.butterfly.segment.entity..",
+                                    "com.b101.butterfly.tenant.repository..",
+                                    "com.b101.butterfly.tenant.entity..",
+                                    "com.b101.butterfly.auth.repository..",
+                                    "com.b101.butterfly.auth.entity.."
                             )
                             .as("캠페인 모듈은 다른 도메인의 repository·entity를 직접 import할 수 없다")
             );
@@ -45,38 +51,32 @@ class ModularBoundaryTest {
     @ArchTest
     static final ArchRule reportingShouldNotDependOnCampaignInternals =
             FreezingArchRule.freeze(
-                    noClasses().that().resideInAPackage("..analytics..")
+                    noClasses().that().resideInAPackage("com.b101.butterfly.analytics..")
                             .should().dependOnClassesThat()
                             .resideInAnyPackage(
-                                    "..campaign..campaign.domain..",
-                                    "..campaign..campaign.repository..",
-                                    "..campaign..messagetemplate.domain..",
-                                    "..campaign..messagetemplate.repository.."
+                                    "com.b101.butterfly.campaign.campaign.domain..",
+                                    "com.b101.butterfly.campaign.campaign.repository..",
+                                    "com.b101.butterfly.campaign.messagetemplate.domain..",
+                                    "com.b101.butterfly.campaign.messagetemplate.repository.."
                             )
                             .as("리포팅 모듈은 캠페인 내부 도메인/리포지토리를 직접 import할 수 없다")
             );
 
-    /**
-     * delivery(→notification)도 다른 도메인의 entity/repository에 직접 의존하지 못한다.
-     *
-     * <p>현재 delivery 모듈은 빈 골격이라 매칭 클래스가 0개이므로 {@code allowEmptyShould(true)}.
-     * 코드가 채워지면 자동으로 검사 활성화.
-     */
+    /** delivery(→notification)도 다른 도메인의 entity/repository에 직접 의존하지 못한다. */
     @ArchTest
     static final ArchRule deliveryShouldNotDependOnInternalsOfOtherDomains =
             FreezingArchRule.freeze(
-                    noClasses().that().resideInAPackage("..delivery..")
+                    noClasses().that().resideInAPackage("com.b101.butterfly.delivery..")
                             .should().dependOnClassesThat()
                             .resideInAnyPackage(
-                                    "..segment.repository..",
-                                    "..segment.entity..",
-                                    "..campaign..campaign.repository..",
-                                    "..campaign..messagetemplate.repository..",
-                                    "..tenant.repository..",
-                                    "..tenant.entity.."
+                                    "com.b101.butterfly.segment.repository..",
+                                    "com.b101.butterfly.segment.entity..",
+                                    "com.b101.butterfly.campaign.campaign.repository..",
+                                    "com.b101.butterfly.campaign.messagetemplate.repository..",
+                                    "com.b101.butterfly.tenant.repository..",
+                                    "com.b101.butterfly.tenant.entity.."
                             )
                             .as("발송 모듈은 다른 도메인의 repository·entity를 직접 import할 수 없다")
-                            .allowEmptyShould(true)
             );
 
     /** 도메인 슬라이스 사이에 순환 의존이 없어야 한다. */
