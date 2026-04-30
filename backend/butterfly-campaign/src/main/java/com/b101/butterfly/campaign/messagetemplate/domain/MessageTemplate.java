@@ -1,7 +1,5 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
-import com.b101.butterfly.auth.entity.Member;
-import com.b101.butterfly.tenant.entity.Project;
 import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.messagetemplate.domain.converter.RequiredVariablesConverter;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
@@ -12,12 +10,9 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.List;
 import lombok.AccessLevel;
@@ -39,13 +34,11 @@ public class MessageTemplate extends SoftDeletedDomain {
     @Column(name = "message_template_id")
     private Long messageTemplateId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    private Project project;
+    @Column(name = "project_id", nullable = false)
+    private Long projectId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "member_id", nullable = false)
-    private Member member;
+    @Column(name = "member_id", nullable = false)
+    private Long memberId;
 
     @Column(name = "message_template_name", nullable = false)
     private String messageTemplateName;
@@ -62,15 +55,15 @@ public class MessageTemplate extends SoftDeletedDomain {
     private List<String> requiredVariables;
 
     private MessageTemplate(
-            Project project,
-            Member member,
+            Long projectId,
+            Long memberId,
             String messageTemplateName,
             Channel channel,
             String messageTemplateBody,
             List<String> requiredVariables
     ) {
-        this.project = project;
-        this.member = member;
+        this.projectId = projectId;
+        this.memberId = memberId;
         this.messageTemplateName = messageTemplateName;
         this.channel = channel;
         this.messageTemplateBody = messageTemplateBody;
@@ -78,29 +71,29 @@ public class MessageTemplate extends SoftDeletedDomain {
     }
 
     public static MessageTemplate create(
-            Project project,
-            Member member,
+            Long projectId,
+            Long memberId,
             String messageTemplateName,
             Channel channel,
             String messageTemplateBody
     ) {
-        validate(project, member, messageTemplateName, channel, messageTemplateBody);
+        validate(projectId, memberId, messageTemplateName, channel, messageTemplateBody);
         return new MessageTemplate(
-                project, member, messageTemplateName, channel, messageTemplateBody,
+                projectId, memberId, messageTemplateName, channel, messageTemplateBody,
                 MessageTemplateVariableExtractor.extract(messageTemplateBody));
     }
 
     private static void validate(
-            Project project,
-            Member member,
+            Long projectId,
+            Long memberId,
             String messageTemplateName,
             Channel channel,
             String messageTemplateBody
     ) {
-        if (project == null) {
+        if (projectId == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_PROJECT_REQUIRED);
         }
-        if (member == null) {
+        if (memberId == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_MEMBER_REQUIRED);
         }
         if (channel == null) {
@@ -128,4 +121,5 @@ public class MessageTemplate extends SoftDeletedDomain {
         }
         this.messageTemplateName = messageTemplateName;
     }
+
 }
