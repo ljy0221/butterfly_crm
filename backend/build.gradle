@@ -77,6 +77,10 @@ subprojects {
             jib {
                 from {
                     image = 'eclipse-temurin:21-jre'
+                    auth {
+                        username = System.getenv("DOCKER_USERNAME") ?: ""
+                        password = System.getenv("DOCKER_PASSWORD") ?: ""
+                    }
                     platforms {
                         platform {
                             architecture = 'amd64'

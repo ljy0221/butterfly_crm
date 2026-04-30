@@ -22,7 +22,6 @@ variables:
     key:
       files:
         - backend/build.gradle
-        - backend/settings.gradle
         - backend/gradle.properties
       prefix: "shared"
     paths:
