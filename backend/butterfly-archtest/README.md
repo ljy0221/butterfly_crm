@@ -31,17 +31,31 @@ ArchUnit 기반 모듈 경계 검증 모듈.
 3. 매칭 클래스가 0개일 가능성이 있으면 `.allowEmptyShould(true)` 추가
 4. `./gradlew :butterfly-archtest:test` 실행 → baseline 자동 등록
 
-## baseline 갱신 (위반 1건 fix 후)
+## baseline 갱신
 
-기본적으로 baseline은 위반이 줄어들면 자동으로 store에서 제거된다 (`allowStoreUpdate=true`). 별도 명령 불필요.
+`allowStoreUpdate` 기본값이 `false`이므로, 위반이 줄어들거나 늘어나도 baseline은 자동 갱신되지 않는다 (의도적 안전장치 — 신규 위반이 자동 흡수되어 ArchUnit 의미가 약해지는 사고를 막기 위함).
 
-전체 baseline을 재생성하고 싶을 때:
+baseline을 갱신할 때는 의도를 명시적으로 표현한다.
+
+### 1) 위반이 줄어든 경우 — 줄어든 위반을 baseline에서 제거
+
+```bash
+ARCHUNIT_ALLOW_STORE_UPDATE=true ./gradlew :butterfly-archtest:test
+```
+
+이러면 baseline에 등록된 위반 중 더 이상 코드에 존재하지 않는 항목이 baseline에서 사라진다. PR diff에 `archunit_store/<UUID>` 라인 감소로 진척이 보이게 된다.
+
+### 2) 전체 baseline 재생성
+
+매처 자체가 바뀌어 기존 baseline이 의미를 잃었거나, 처음부터 다시 잡고 싶을 때:
 
 ```bash
 ARCHUNIT_REFREEZE=true ./gradlew :butterfly-archtest:test
 ```
 
-(또는 `archunit.freeze.refreeze=true` 시스템 프로퍼티 직접 전달)
+### 주의
+
+신규 위반은 어떤 옵션으로도 자동 흡수되지 않게 두는 것이 좋다 — `ARCHUNIT_ALLOW_STORE_UPDATE=true`는 "줄어든 위반 정리"용이지, "새 위반 흡수"용이 아니다. 새 위반이 정당하다고 판단되어 일시 baseline에 넣어야 한다면 `ARCHUNIT_REFREEZE=true`를 PR 코멘트에 명시하고 사유와 함께 commit한다.
 
 ## baseline 파일 구조
 
