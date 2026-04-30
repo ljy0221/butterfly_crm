@@ -41,4 +41,4 @@ docker-compose-local.yml
 # application-local.yaml
 application-local.yml
 #md
-docs/*.md
+docs/**/*.md

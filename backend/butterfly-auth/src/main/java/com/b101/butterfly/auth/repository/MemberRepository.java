@@ -1,13 +1,14 @@
 package com.b101.butterfly.auth.repository;
 
 import com.b101.butterfly.auth.entity.Member;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
-import java.util.List;
-import java.util.Optional;
-
 public interface MemberRepository extends JpaRepository<Member, Long> {
+
+    boolean existsById(Long id);
 
     Optional<Member> findByEmail(String email);
 

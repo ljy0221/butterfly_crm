@@ -1,11 +1,12 @@
 package com.b101.butterfly.tenant.repository;
 
 import com.b101.butterfly.tenant.entity.Project;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import java.util.Optional;
-
 public interface ProjectRepository extends JpaRepository<Project, Long> {
+
+    boolean existsById(Long id);
 
     boolean existsByBusinessNo(String businessNo);
 
