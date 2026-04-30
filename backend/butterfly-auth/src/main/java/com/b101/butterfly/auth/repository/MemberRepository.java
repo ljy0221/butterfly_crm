@@ -1,14 +1,14 @@
 package com.b101.butterfly.auth.repository;
 
 import com.b101.butterfly.auth.entity.Member;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+import java.util.Optional;
 
 public interface MemberRepository extends JpaRepository<Member, Long> {
-
-    boolean existsById(Long id);
 
     Optional<Member> findByEmail(String email);
 
@@ -16,7 +16,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     List<Member> findAllByProjectId(Long projectId);
 
-    // 소프트딜리트된 멤버 포함 조회 (탈퇴 재가입 중복 체크용)
-    @Query("SELECT m FROM Member m WHERE m.email = :email")
-    Optional<Member> findByEmailIncludingDeleted(String email);
+    // 네이티브 쿼리로 @SQLRestriction 우회 — 탈퇴 계정 포함 이메일 중복 체크용
+    @Query(value = "SELECT COUNT(*) FROM members WHERE email = :email", nativeQuery = true)
+    int countByEmailIncludingDeleted(@Param("email") String email);
 }
