@@ -21,7 +21,9 @@ test {
             file('src/test/resources/archunit_store').absolutePath
     systemProperty 'archunit.freeze.store.default.allowStoreCreation',
             System.getenv('ARCHUNIT_ALLOW_STORE_CREATION') ?: 'true'
+    // 기본 false: 자동 갱신을 막아 신규 위반이 baseline에 흡수되지 않도록 한다.
+    // baseline 갱신은 의도적으로 ARCHUNIT_REFREEZE=true (또는 ARCHUNIT_ALLOW_STORE_UPDATE=true)로 명시.
     systemProperty 'archunit.freeze.store.default.allowStoreUpdate',
-            System.getenv('ARCHUNIT_ALLOW_STORE_UPDATE') ?: 'true'
+            System.getenv('ARCHUNIT_ALLOW_STORE_UPDATE') ?: 'false'
     systemProperty 'archunit.freeze.refreeze', 'false'
 }
