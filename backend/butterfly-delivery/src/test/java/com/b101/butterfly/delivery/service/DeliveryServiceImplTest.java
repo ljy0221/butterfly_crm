@@ -1,0 +1,131 @@
+package com.b101.butterfly.delivery.service;
+
+import com.b101.butterfly.delivery.dto.request.DeliveryCommand;
+import com.b101.butterfly.delivery.dto.request.DeliveryCommand.Channel;
+import com.b101.butterfly.delivery.dto.request.DeliveryCommand.DeliveryTarget;
+import com.b101.butterfly.delivery.dto.request.DeliveryCommand.FcmCredential;
+import com.b101.butterfly.delivery.dto.request.DeliveryCommand.MessagePayload;
+import com.b101.butterfly.delivery.dto.response.DeliveryResult;
+import com.b101.butterfly.delivery.dto.response.TargetOutcome;
+import com.b101.butterfly.delivery.exception.DeliveryErrorCode;
+import com.b101.butterfly.delivery.port.UserContactInfo;
+import com.b101.butterfly.delivery.port.UserContactPort;
+import com.b101.butterfly.delivery.service.credential.ChannelCredentialService;
+import com.b101.butterfly.global.error.BusinessException;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class DeliveryServiceImplTest {
+
+    @Mock private ChannelAdapterRegistry channelAdapterRegistry;
+    @Mock private DeliveryResultPersister deliveryResultPersister;
+    @Mock private ChannelCredentialService channelCredentialService;
+    @Mock private UserContactPort userContactPort;
+
+    @InjectMocks private DeliveryServiceImpl deliveryService;
+
+    private static final Long PROJECT_ID = 1L;
+    private static final Long CAMPAIGN_ID = 100L;
+    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null, null);
+
+    @Test
+    @DisplayName("credential과 targets가 직접 전달되면 DB 조회 없이 바로 발송한다")
+    void directCredentialAndTargets_skipsDbLookup() {
+        FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
+        DeliveryTarget target = new DeliveryTarget(1L, 10L, "token-abc", null, null);
+        DeliveryCommand command = new DeliveryCommand(
+                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, null, credential, List.of(target));
+
+        ChannelAdapter mockAdapter = stubAdapter();
+        when(channelAdapterRegistry.getAdapter(Channel.PUSH)).thenReturn(mockAdapter);
+
+        deliveryService.deliver(command);
+
+        verify(channelCredentialService, never()).getCredential(any(), any());
+        verify(userContactPort, never()).getContactsByUserIds(any(), any(), any());
+        verify(deliveryResultPersister).persist(any(), any());
+    }
+
+    @Test
+    @DisplayName("credential과 targets가 null이면 DB에서 조회한다")
+    void nullCredentialAndTargets_fetchesFromDb() {
+        DeliveryCommand command = new DeliveryCommand(
+                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, List.of(1L, 2L), null, null);
+
+        FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
+        when(channelCredentialService.getCredential(PROJECT_ID, Channel.PUSH)).thenReturn(credential);
+        when(userContactPort.getContactsByUserIds(PROJECT_ID, List.of(1L, 2L), Channel.PUSH))
+                .thenReturn(List.of(
+                        new UserContactInfo(1L, 10L, "token-1", null, null),
+                        new UserContactInfo(2L, 20L, "token-2", null, null)));
+
+        ChannelAdapter mockAdapter = stubAdapter();
+        when(channelAdapterRegistry.getAdapter(Channel.PUSH)).thenReturn(mockAdapter);
+
+        deliveryService.deliver(command);
+
+        verify(channelCredentialService).getCredential(PROJECT_ID, Channel.PUSH);
+        verify(userContactPort).getContactsByUserIds(PROJECT_ID, List.of(1L, 2L), Channel.PUSH);
+        verify(deliveryResultPersister).persist(any(), any());
+    }
+
+    @Test
+    @DisplayName("targets가 비어 있으면 EMPTY_TARGETS 예외를 던진다")
+    void emptyTargets_throwsException() {
+        FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
+        DeliveryCommand command = new DeliveryCommand(
+                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, null, credential, List.of());
+
+        assertThatThrownBy(() -> deliveryService.deliver(command))
+                .isInstanceOfSatisfying(BusinessException.class, e ->
+                        assertThat(e.getErrorCode()).isEqualTo(DeliveryErrorCode.EMPTY_TARGETS));
+    }
+
+    @Test
+    @DisplayName("발송 성공 후 persist가 호출된다")
+    void afterSend_persistIsCalled() {
+        FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
+        DeliveryTarget target1 = new DeliveryTarget(1L, 10L, "token-1", null, null);
+        DeliveryTarget target2 = new DeliveryTarget(2L, 20L, "token-2", null, null);
+        DeliveryCommand command = new DeliveryCommand(
+                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, null, credential, List.of(target1, target2));
+
+        ChannelAdapter mockAdapter = stubAdapter();
+        when(channelAdapterRegistry.getAdapter(Channel.PUSH)).thenReturn(mockAdapter);
+
+        deliveryService.deliver(command);
+
+        verify(deliveryResultPersister).persist(any(DeliveryCommand.class), any());
+    }
+
+    private static ChannelAdapter stubAdapter() {
+        return new ChannelAdapter() {
+            @Override
+            public Channel supportedChannel() {
+                return Channel.PUSH;
+            }
+
+            @Override
+            public List<TargetOutcome> sendBatch(DeliveryCommand command, List<DeliveryTarget> targets) {
+                return targets.stream()
+                        .map(t -> new TargetOutcome(t, DeliveryResult.success()))
+                        .toList();
+            }
+        };
+    }
+
+}

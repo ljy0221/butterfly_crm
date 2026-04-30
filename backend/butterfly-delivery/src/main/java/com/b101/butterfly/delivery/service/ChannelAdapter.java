@@ -1,7 +1,9 @@
 package com.b101.butterfly.delivery.service;
 
 import com.b101.butterfly.delivery.dto.request.DeliveryCommand;
-import com.b101.butterfly.delivery.dto.response.DeliveryResult;
+import com.b101.butterfly.delivery.dto.response.TargetOutcome;
+
+import java.util.List;
 
 /**
  * 채널별 발송 전략 인터페이스.
@@ -15,5 +17,5 @@ public interface ChannelAdapter {
 
     DeliveryCommand.Channel supportedChannel();
 
-    DeliveryResult send(DeliveryCommand command, DeliveryCommand.DeliveryTarget target);
+    List<TargetOutcome> sendBatch(DeliveryCommand command, List<DeliveryCommand.DeliveryTarget> targets);
 }

@@ -2,6 +2,7 @@ package com.b101.butterfly.delivery.service;
 
 import com.b101.butterfly.delivery.dto.request.DeliveryCommand;
 import com.b101.butterfly.delivery.dto.response.DeliveryResult;
+import com.b101.butterfly.delivery.dto.response.TargetOutcome;
 import com.b101.butterfly.delivery.entity.CampaignStats;
 import com.b101.butterfly.delivery.entity.NotificationLog;
 import com.b101.butterfly.delivery.entity.NotificationStatus;
@@ -88,5 +89,4 @@ class DeliveryResultPersister {
         };
     }
 
-    record TargetOutcome(DeliveryCommand.DeliveryTarget target, DeliveryResult result) {}
 }

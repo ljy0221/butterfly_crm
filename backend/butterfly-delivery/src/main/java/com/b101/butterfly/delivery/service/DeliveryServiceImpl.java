@@ -3,7 +3,7 @@ package com.b101.butterfly.delivery.service;
 import com.b101.butterfly.delivery.dto.request.DeliveryCommand;
 import com.b101.butterfly.delivery.dto.request.DeliveryCommand.ChannelCredential;
 import com.b101.butterfly.delivery.dto.request.DeliveryCommand.DeliveryTarget;
-import com.b101.butterfly.delivery.dto.response.DeliveryResult;
+import com.b101.butterfly.delivery.dto.response.TargetOutcome;
 import com.b101.butterfly.delivery.exception.DeliveryErrorCode;
 import com.b101.butterfly.delivery.port.UserContactPort;
 import com.b101.butterfly.delivery.service.credential.ChannelCredentialService;
@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -60,11 +59,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         ChannelAdapter adapter = channelAdapterRegistry.getAdapter(command.channel());
 
         // Phase 1: 발송 — 트랜잭션 밖에서 HTTP 호출
-        List<DeliveryResultPersister.TargetOutcome> outcomes = new ArrayList<>();
-        for (DeliveryTarget target : targets) {
-            DeliveryResult result = adapter.send(resolved, target);
-            outcomes.add(new DeliveryResultPersister.TargetOutcome(target, result));
-        }
+        List<TargetOutcome> outcomes = adapter.sendBatch(resolved, targets);
 
         // Phase 2: 결과 저장 — 별도 빈의 @Transactional 메서드 호출
         deliveryResultPersister.persist(resolved, outcomes);

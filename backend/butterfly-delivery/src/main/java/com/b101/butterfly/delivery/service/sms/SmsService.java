@@ -2,6 +2,7 @@ package com.b101.butterfly.delivery.service.sms;
 
 import com.b101.butterfly.delivery.dto.request.DeliveryCommand;
 import com.b101.butterfly.delivery.dto.response.DeliveryResult;
+import com.b101.butterfly.delivery.dto.response.TargetOutcome;
 import com.b101.butterfly.delivery.exception.DeliveryErrorCode;
 import com.b101.butterfly.delivery.util.HmacUtils;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,8 @@ import org.springframework.web.client.RestClient;
 
 import java.nio.charset.Charset;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,6 +28,66 @@ public class SmsService {
     private static final Charset EUC_KR = Charset.forName("EUC-KR");
 
     private final RestClient deliveryRestClient;
+
+    public List<TargetOutcome> sendBatch(DeliveryCommand.SmsCredential credential,
+                                         DeliveryCommand.MessagePayload message,
+                                         List<DeliveryCommand.DeliveryTarget> targets) {
+        List<TargetOutcome> outcomes = new ArrayList<>();
+
+        // 번호 없는 대상은 즉시 실패 처리, 유효한 대상만 모아서 배치 발송
+        List<DeliveryCommand.DeliveryTarget> validTargets = new ArrayList<>();
+        for (DeliveryCommand.DeliveryTarget target : targets) {
+            if (target.phoneNumber() == null || target.phoneNumber().isBlank()) {
+                outcomes.add(new TargetOutcome(target, DeliveryResult.permanentFailure(
+                        DeliveryErrorCode.SMS_PHONE_MISSING.getCode(),
+                        DeliveryErrorCode.SMS_PHONE_MISSING.getMessage())));
+            } else {
+                validTargets.add(target);
+            }
+        }
+
+        if (validTargets.isEmpty()) {
+            return outcomes;
+        }
+
+        String text = buildMessageText(message);
+        String type = determineMessageType(text);
+
+        Object[] messageMaps = validTargets.stream()
+                .map(target -> Map.of(
+                        "to", target.phoneNumber(),
+                        "from", credential.senderNumber(),
+                        "text", text,
+                        "type", type
+                ))
+                .toArray();
+
+        Map<String, Object> body = Map.of("messages", messageMaps);
+        String authHeader = buildAuthHeader(credential.apiKey(), credential.apiSecret());
+
+        try {
+            deliveryRestClient.post()
+                    .uri(COOLSMS_API_URL)
+                    .header("Authorization", authHeader)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toBodilessEntity();
+
+            log.info("SMS 배치 발송 성공: count={}", validTargets.size());
+            for (DeliveryCommand.DeliveryTarget target : validTargets) {
+                outcomes.add(new TargetOutcome(target, DeliveryResult.success()));
+            }
+        } catch (Exception e) {
+            log.warn("SMS 배치 발송 실패: count={}, error={}", validTargets.size(), e.getMessage(), e);
+            DeliveryResult error = mapSmsError(e);
+            for (DeliveryCommand.DeliveryTarget target : validTargets) {
+                outcomes.add(new TargetOutcome(target, error));
+            }
+        }
+
+        return outcomes;
+    }
 
     public DeliveryResult sendOne(DeliveryCommand.SmsCredential credential,
                                   DeliveryCommand.MessagePayload message,
