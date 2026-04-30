@@ -78,7 +78,7 @@ class SegmentControllerWebMvcTest {
         when(segmentService.create(eq(1L), eq(17L), any())).thenReturn(response);
 
         mockMvc.perform(
-                        post("/api/projects/1/segments")
+                        post("/api/v1/projects/1/segments")
                                 .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
@@ -95,7 +95,7 @@ class SegmentControllerWebMvcTest {
         CreateSegmentRequest body = new CreateSegmentRequest("VIP", "설명", emptyTree);
 
         mockMvc.perform(
-                        post("/api/projects/1/segments")
+                        post("/api/v1/projects/1/segments")
                                 .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
@@ -110,7 +110,7 @@ class SegmentControllerWebMvcTest {
         CreateSegmentRequest body = new CreateSegmentRequest(longName, "설명", validTree());
 
         mockMvc.perform(
-                        post("/api/projects/1/segments")
+                        post("/api/v1/projects/1/segments")
                                 .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
@@ -125,7 +125,7 @@ class SegmentControllerWebMvcTest {
                 .thenReturn(PageResponse.of(List.of(), 0, 20, 0));
 
         mockMvc.perform(
-                        get("/api/projects/1/segments?page=0&size=20").header("X-Member-Id", 17L))
+                        get("/api/v1/projects/1/segments?page=0&size=20").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(0));
     }
@@ -135,7 +135,7 @@ class SegmentControllerWebMvcTest {
     void detailReturnsResponse() throws Exception {
         when(segmentService.detail(eq(1L), eq(42L), eq(17L))).thenReturn(stubDetail(42L, "stub"));
 
-        mockMvc.perform(get("/api/projects/1/segments/42").header("X-Member-Id", 17L))
+        mockMvc.perform(get("/api/v1/projects/1/segments/42").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.segmentId").value(42));
     }
@@ -148,7 +148,7 @@ class SegmentControllerWebMvcTest {
                 .thenReturn(stubDetail(42L, "renamed"));
 
         mockMvc.perform(
-                        put("/api/projects/1/segments/42")
+                        put("/api/v1/projects/1/segments/42")
                                 .header("X-Member-Id", 17L)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(objectMapper.writeValueAsString(body)))
@@ -159,7 +159,7 @@ class SegmentControllerWebMvcTest {
     @Test
     @DisplayName("DELETE /segments/{id} — 200 + ApiResponse.ok()")
     void deleteReturnsOk() throws Exception {
-        mockMvc.perform(delete("/api/projects/1/segments/42"))
+        mockMvc.perform(delete("/api/v1/projects/1/segments/42"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -181,7 +181,7 @@ class SegmentControllerWebMvcTest {
                         });
 
         mockMvc.perform(
-                        post("/api/projects/1/segments/preview")
+                        post("/api/v1/projects/1/segments/preview")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body))
                 .andExpect(status().isOk())
@@ -192,7 +192,7 @@ class SegmentControllerWebMvcTest {
     @Test
     @DisplayName("POST /segments/{id}/rebuild — 202 Accepted")
     void rebuildReturnsAccepted() throws Exception {
-        mockMvc.perform(post("/api/projects/1/segments/42/rebuild"))
+        mockMvc.perform(post("/api/v1/projects/1/segments/42/rebuild"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.data.buildStatus").value("BUILDING"));
     }
@@ -200,7 +200,7 @@ class SegmentControllerWebMvcTest {
     @Test
     @DisplayName("GET /segments/{id}/campaigns — 더미 빈 그룹")
     void linkedCampaignsReturnsEmptyGroups() throws Exception {
-        mockMvc.perform(get("/api/projects/1/segments/42/campaigns"))
+        mockMvc.perform(get("/api/v1/projects/1/segments/42/campaigns"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalCount").value(0));
     }
@@ -208,7 +208,7 @@ class SegmentControllerWebMvcTest {
     @Test
     @DisplayName("GET /segments/{id}/users — 더미 빈 페이지")
     void usersReturnsEmptyPage() throws Exception {
-        mockMvc.perform(get("/api/projects/1/segments/42/users?page=0&size=50"))
+        mockMvc.perform(get("/api/v1/projects/1/segments/42/users?page=0&size=50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(0));
     }
@@ -216,7 +216,7 @@ class SegmentControllerWebMvcTest {
     @Test
     @DisplayName("GET /segments/favorites — 더미 빈 분리 응답")
     void favoritesReturnsEmpty() throws Exception {
-        mockMvc.perform(get("/api/projects/1/segments/favorites"))
+        mockMvc.perform(get("/api/v1/projects/1/segments/favorites"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.favorites").isArray())
                 .andExpect(jsonPath("$.data.recentlyUsed").isArray());
@@ -226,7 +226,7 @@ class SegmentControllerWebMvcTest {
     @DisplayName("POST /segments/{id}/favorite — 200 OK + service 호출")
     void addFavoriteReturnsOk() throws Exception {
         mockMvc.perform(
-                        post("/api/projects/1/segments/42/favorite").header("X-Member-Id", 17L))
+                        post("/api/v1/projects/1/segments/42/favorite").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }
@@ -235,7 +235,7 @@ class SegmentControllerWebMvcTest {
     @DisplayName("DELETE /segments/{id}/favorite — 200 OK + service 호출")
     void removeFavoriteReturnsOk() throws Exception {
         mockMvc.perform(
-                        delete("/api/projects/1/segments/42/favorite").header("X-Member-Id", 17L))
+                        delete("/api/v1/projects/1/segments/42/favorite").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
     }

@@ -44,7 +44,7 @@ import java.util.List;
  * <p>{@code X-Member-Id} 헤더는 auth 모듈 합류 전 임시 인증. 추후 {@code @AuthenticationPrincipal}로 교체.
  */
 @RestController
-@RequestMapping("/api/projects/{projectId}/segments")
+@RequestMapping("/api/v1/projects/{projectId}/segments")
 @RequiredArgsConstructor
 public class SegmentController {
 
