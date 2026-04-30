@@ -1,12 +1,11 @@
 package com.b101.butterfly.event.repository;
 
 import com.b101.butterfly.event.entity.Event;
+import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
-import java.time.LocalDateTime;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
@@ -30,6 +29,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
       @Param("deviceId") Long deviceId,
       @Param("occurredAt") LocalDateTime occurredAt,
       @Param("schemaVersion") Integer schemaVersion,
-      @Param("eventData") String eventDatㅇ
+      @Param("eventData") String eventData
   );
 }

@@ -9,7 +9,7 @@ import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 
-/** butterfly-api 프로세스에서만 활성화되는 customer 도메인의 Kafka producer 설정. */
+/** butterfly-api 프로세스에서만 활성화되는 event 도메인의 Kafka producer 설정. */
 @AutoConfiguration
 @Profile("api")
 public class EventKafkaProducerConfig {

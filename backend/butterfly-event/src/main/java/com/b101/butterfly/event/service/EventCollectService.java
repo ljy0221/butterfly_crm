@@ -3,7 +3,7 @@ package com.b101.butterfly.event.service;
 import com.b101.butterfly.event.dto.request.EventCollectRequest;
 import com.b101.butterfly.event.dto.response.EventCollectResponse;
 import com.b101.butterfly.event.entity.EventCategory;
-import com.b101.butterfly.event.exception.CustomerErrorCode;
+import com.b101.butterfly.event.exception.EventErrorCode;
 import com.b101.butterfly.event.messaging.EventPayload;
 import com.b101.butterfly.event.messaging.EventProducer;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
@@ -29,7 +29,7 @@ public class EventCollectService {
     public EventCollectResponse collect(Long projectId, EventCollectRequest request) {
         EventCategory category = eventCategoryRepository
                 .findByProjectIdAndName(projectId, request.eventCategory())
-                .orElseThrow(() -> new BusinessException(CustomerErrorCode.CATEGORY_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(EventErrorCode.CATEGORY_NOT_FOUND));
 
         String eventUuid = UUID.randomUUID().toString();
         // TODO: event_schemas 도입 시 (categoryId, is_current=true) lookup으로 교체
@@ -52,7 +52,7 @@ public class EventCollectService {
             eventProducer.send(payload);
         } catch (RuntimeException e) {
             log.error("Event publish failed. eventUuid={}, projectId={}", eventUuid, projectId, e);
-            throw new BusinessException(CustomerErrorCode.INTERNAL_ERROR, e);
+            throw new BusinessException(EventErrorCode.INTERNAL_ERROR, e);
         }
 
         return new EventCollectResponse(eventUuid, LocalDateTime.now(), schemaVersion);

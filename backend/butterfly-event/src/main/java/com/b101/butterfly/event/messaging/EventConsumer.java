@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class EventConsumer {
 
-    private static final String GROUP_ID = "customer-event-consumer";
+    private static final String GROUP_ID = "events-consumer";
 
     private final EventRepository eventRepository;
     private final EventDailyAggRepository eventDailyAggRepository;
