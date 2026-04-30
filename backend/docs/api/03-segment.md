@@ -5,6 +5,7 @@
 > **변경 이력**
 > - 2026-04-27: ERD 개정 반영 — `segment_rules` 테이블 폐기, `condition_tree` JSON 단일 소스로 변경 (ADR-0001).
 >   빌드 상태 추적, 즐겨찾기, 캠페인 연결 조회, 모수 재계산 API 추가.
+> - 2026-04-30: API 경로에 `v1` prefix 적용 ([S14P31B101-163]). `/api/projects/...` → `/api/v1/projects/...`.
 
 ---
 
@@ -12,29 +13,29 @@
 
 | # | Method | URL | 설명 | 최소 권한 | 비고 |
 |---|--------|-----|------|----------|------|
-| 37 | POST   | `/api/projects/{projectId}/segments`                       | 세그먼트 생성              | EDITOR | `condition_tree`로 생성. 생성 직후 `build_status=PENDING` |
-| 38 | GET    | `/api/projects/{projectId}/segments`                       | 세그먼트 목록              | VIEWER | 검색/필터/정렬/페이지네이션 |
-| 39 | GET    | `/api/projects/{projectId}/segments/{segmentId}`           | 세그먼트 상세              | VIEWER | 조건 트리 + 빌드 상태 + 사용 중 캠페인 |
-| 40 | PUT    | `/api/projects/{projectId}/segments/{segmentId}`           | 세그먼트 수정              | EDITOR | 진행 중(READY/SEND) 캠페인 연결 시 거절 또는 강한 경고 |
-| 41 | DELETE | `/api/projects/{projectId}/segments/{segmentId}`           | 세그먼트 삭제 (soft)       | EDITOR | 진행 중 캠페인 연결 시 거절 |
-| 42 | POST   | `/api/projects/{projectId}/segments/preview`               | 예상 모수 미리보기         | EDITOR | 저장 없이 조건만 평가 (HLL 추정) |
-| 43 | GET    | `/api/projects/{projectId}/segments/{segmentId}/users`     | 대상 유저 목록             | VIEWER | 페이지네이션 (P1) |
-| 44 | POST   | `/api/projects/{projectId}/segments/{segmentId}/rebuild`   | 모수 재계산/멤버 재빌드     | EDITOR | 비동기, `build_status=BUILDING` 전환 |
-| 45 | GET    | `/api/projects/{projectId}/segments/{segmentId}/campaigns` | 이 세그먼트를 쓰는 캠페인 목록 | VIEWER | 캠페인 상태별 그룹화 |
+| 37 | POST   | `/api/v1/projects/{projectId}/segments`                       | 세그먼트 생성              | EDITOR | `condition_tree`로 생성. 생성 직후 `build_status=PENDING` |
+| 38 | GET    | `/api/v1/projects/{projectId}/segments`                       | 세그먼트 목록              | VIEWER | 검색/필터/정렬/페이지네이션 |
+| 39 | GET    | `/api/v1/projects/{projectId}/segments/{segmentId}`           | 세그먼트 상세              | VIEWER | 조건 트리 + 빌드 상태 + 사용 중 캠페인 |
+| 40 | PUT    | `/api/v1/projects/{projectId}/segments/{segmentId}`           | 세그먼트 수정              | EDITOR | 진행 중(READY/SEND) 캠페인 연결 시 거절 또는 강한 경고 |
+| 41 | DELETE | `/api/v1/projects/{projectId}/segments/{segmentId}`           | 세그먼트 삭제 (soft)       | EDITOR | 진행 중 캠페인 연결 시 거절 |
+| 42 | POST   | `/api/v1/projects/{projectId}/segments/preview`               | 예상 모수 미리보기         | EDITOR | 저장 없이 조건만 평가 (HLL 추정) |
+| 43 | GET    | `/api/v1/projects/{projectId}/segments/{segmentId}/users`     | 대상 유저 목록             | VIEWER | 페이지네이션 (P1) |
+| 44 | POST   | `/api/v1/projects/{projectId}/segments/{segmentId}/rebuild`   | 모수 재계산/멤버 재빌드     | EDITOR | 비동기, `build_status=BUILDING` 전환 |
+| 45 | GET    | `/api/v1/projects/{projectId}/segments/{segmentId}/campaigns` | 이 세그먼트를 쓰는 캠페인 목록 | VIEWER | 캠페인 상태별 그룹화 |
 
 ## 2. 즐겨찾기 (P1)
 
 | # | Method | URL | 설명 | 최소 권한 |
 |---|--------|-----|------|----------|
-| 46 | GET    | `/api/projects/{projectId}/segments/favorites`                  | 자주 쓰는 세그먼트 목록 | VIEWER |
-| 47 | POST   | `/api/projects/{projectId}/segments/{segmentId}/favorite`       | 즐겨찾기 등록           | VIEWER |
-| 48 | DELETE | `/api/projects/{projectId}/segments/{segmentId}/favorite`       | 즐겨찾기 해제           | VIEWER |
+| 46 | GET    | `/api/v1/projects/{projectId}/segments/favorites`                  | 자주 쓰는 세그먼트 목록 | VIEWER |
+| 47 | POST   | `/api/v1/projects/{projectId}/segments/{segmentId}/favorite`       | 즐겨찾기 등록           | VIEWER |
+| 48 | DELETE | `/api/v1/projects/{projectId}/segments/{segmentId}/favorite`       | 즐겨찾기 해제           | VIEWER |
 
 ---
 
 ## 3. 요청/응답 예시
 
-### 37. POST `/api/projects/{projectId}/segments`
+### 37. POST `/api/v1/projects/{projectId}/segments`
 
 **Request**
 ```json
@@ -94,7 +95,7 @@
 
 ---
 
-### 38. GET `/api/projects/{projectId}/segments`
+### 38. GET `/api/v1/projects/{projectId}/segments`
 
 **Query Parameters**
 
@@ -136,7 +137,7 @@
 
 ---
 
-### 39. GET `/api/projects/{projectId}/segments/{segmentId}`
+### 39. GET `/api/v1/projects/{projectId}/segments/{segmentId}`
 
 **Response 200**
 ```json
@@ -163,7 +164,7 @@
 
 ---
 
-### 40. PUT `/api/projects/{projectId}/segments/{segmentId}`
+### 40. PUT `/api/v1/projects/{projectId}/segments/{segmentId}`
 
 수정 요청 본문은 생성과 동일.
 
@@ -180,7 +181,7 @@
 
 ---
 
-### 42. POST `/api/projects/{projectId}/segments/preview`
+### 42. POST `/api/v1/projects/{projectId}/segments/preview`
 
 저장 없이 `conditionTree`만 받아서 예상 모수를 즉시 반환.
 
@@ -209,7 +210,7 @@
 
 ---
 
-### 43. GET `/api/projects/{projectId}/segments/{segmentId}/users` (P1)
+### 43. GET `/api/v1/projects/{projectId}/segments/{segmentId}/users` (P1)
 
 세그먼트 매칭 유저 목록 (`segment_members` 기반).
 
@@ -235,7 +236,7 @@
 
 ---
 
-### 44. POST `/api/projects/{projectId}/segments/{segmentId}/rebuild`
+### 44. POST `/api/v1/projects/{projectId}/segments/{segmentId}/rebuild`
 
 비동기 재빌드 트리거. `build_status`가 `BUILDING`으로 전환되고 큐에 작업이 적재됨.
 
@@ -252,7 +253,7 @@
 
 ---
 
-### 45. GET `/api/projects/{projectId}/segments/{segmentId}/campaigns`
+### 45. GET `/api/v1/projects/{projectId}/segments/{segmentId}/campaigns`
 
 이 세그먼트를 사용 중인 캠페인 목록. 수정/삭제 가능 여부 판단용.
 
@@ -269,7 +270,7 @@
 
 ---
 
-### 46. GET `/api/projects/{projectId}/segments/favorites` (P1)
+### 46. GET `/api/v1/projects/{projectId}/segments/favorites` (P1)
 
 **Response 200** — 즐겨찾기 우선, 그다음 최근 캠페인에 사용된 순
 

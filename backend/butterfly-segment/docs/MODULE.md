@@ -17,7 +17,7 @@
 
 ## API 경로
 
-- `/api/projects/{projectId}/segments/**` — 세그먼트 관리 (JWT 인증)
+- `/api/v1/projects/{projectId}/segments/**` — 세그먼트 관리 (JWT 인증)
 
 ## 의존 관계
 
