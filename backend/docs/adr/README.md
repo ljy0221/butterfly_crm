@@ -64,3 +64,4 @@ consulted: ...
 | [ADR-0010](0010-storage-strategy-and-denormalization.md) | accepted | 저장 전략·반정규화 기준 — 도메인 횡단 가이드 | 2026-04-29 |
 | [ADR-0011](0011-event-collection-flow.md) | accepted | 이벤트 수집 흐름 및 customer 모듈 producer/consumer 통합 | 2026-04-28 |
 | [ADR-0012](0012-events-anonymous-and-external-id.md) | proposed | 익명 사용자 이벤트 처리 + devices external 식별자 — ERD 갱신 | 2026-04-30 |
+| [ADR-0013](0013-flyway-migrations-and-numbering.md) | accepted | Flyway 도입 — DDL 진실의 원천 + 개발 순서 번호 컨벤션 | 2026-04-30 |
