@@ -55,6 +55,6 @@ butterfly (root)
 - 모든 엔티티는 `BaseEntity`를 상속하여 `createdAt`, `updatedAt`을 자동 관리 (`@PrePersist` / `@PreUpdate`)
 - 에러 코드는 도메인별 enum으로 분리하고 `ErrorCode` 인터페이스를 구현 (prefix로 도메인 구분: `AUTH_001`, `ANALYTICS_001`)
 - 공통 에러는 `CommonErrorCode`에 정의
-- API 경로 패턴: `/api/projects/{projectId}/...` (멀티테넌트 프로젝트 스코프)
+- API 경로 패턴: `/api/v1/projects/{projectId}/...` (멀티테넌트 프로젝트 스코프)
 - 타임존: Asia/Seoul 서버 고정
 - ADR 문서는 `docs/adr/` 디렉토리에서 관리
