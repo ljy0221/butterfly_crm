@@ -18,7 +18,11 @@ public class EventConsumer {
 
     private final EventRepository eventRepository;
 
-    @KafkaListener(topics = EventProducer.TOPIC, groupId = GROUP_ID)
+    @KafkaListener(
+            topics = EventProducer.TOPIC,
+            groupId = GROUP_ID,
+            containerFactory = "eventKafkaListenerContainerFactory"
+    )
     @Transactional
     public void consume(EventPayload payload) {
         int inserted = eventRepository.insertIfNotExists(
