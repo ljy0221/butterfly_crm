@@ -82,6 +82,40 @@ unit-test:
       - "backend/*/build/reports/tests/test/"
   allow_failure: true
 
+integration-test:
+  stage: test
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    TESTCONTAINERS_HOST_OVERRIDE: "docker"
+    TESTCONTAINERS_RYUK_DISABLED: "true"
+  <<: *gradle-cache
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+    - 'sleep 10'
+  script:
+    - ./gradlew integrationTest --no-daemon
+  artifacts:
+    name: "integration-test-reports-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 1 week
+    reports:
+      junit:
+        - "backend/*/build/test-results/integrationTest/TEST-*.xml"
+    paths:
+      - "backend/*/build/reports/tests/integrationTest/"
+  allow_failure: true
+
 checkstyle:
   stage: quality
   image: eclipse-temurin:21-jdk
