@@ -7,6 +7,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @AutoConfiguration
 @EntityScan("com.b101.butterfly.campaign")
 @EnableJpaRepositories("com.b101.butterfly.campaign")
-public class JpaConfig {
+public class CampaignJpaAutoConfig {
 
 }
