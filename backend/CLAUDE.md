@@ -18,15 +18,17 @@
 
 ```
 butterfly (root)
-├── butterfly-common     # 공통 코드 (BaseEntity, ApiResponse, ErrorCode, GlobalExceptionHandler)
-├── butterfly-auth       # 인증/인가 (JWT, Spring Security, 프로젝트 권한)
-├── butterfly-customer   # 고객 도메인 (고객 데이터 수집/관리)
-├── butterfly-segment    # 세그먼트 도메인 (조건 트리 기반 고객 분류)
-├── butterfly-campaign   # 캠페인 도메인 (캠페인 정의/실행 분리 — ADR-0002)
-├── butterfly-delivery   # 발송 도메인 (앱 푸시, 웹 푸시 등 채널별 발송)
-├── butterfly-analytics  # 분석 도메인 (대시보드, 캠페인/채널/세그먼트 통계)
-├── butterfly-api        # API 게이트웨이 (bootJar, 모든 도메인 모듈 조립)
-└── butterfly-worker     # 비동기 워커 (bootJar, 메시지 소비/발송 처리)
+├── butterfly-common        # 공통 코드 (BaseEntity, ApiResponse, ErrorCode, GlobalExceptionHandler)
+├── butterfly-auth          # 인증/인가 (JWT, Spring Security, 프로젝트 권한)
+├── butterfly-tenant        # 신청서·프로젝트 (멀티테넌트 단위)
+├── butterfly-event         # 이벤트 도메인 (이벤트 수집·종단 집계, Kafka producer/consumer)
+├── butterfly-segment       # 세그먼트 도메인 (조건 트리 기반 고객 분류)
+├── butterfly-campaign      # 캠페인 도메인 (캠페인 정의/실행 분리 — ADR-0002)
+├── butterfly-notification  # 발송 도메인 (앱 푸시, 웹 푸시 등 채널별 발송)
+├── butterfly-reporting     # 리포팅 도메인 (대시보드 + 감사 로그 read model)
+├── butterfly-archtest      # ArchUnit 모듈 경계 테스트 전용 (test-only)
+├── butterfly-api           # API 게이트웨이 (bootJar, 모든 도메인 모듈 조립)
+└── butterfly-worker        # 비동기 워커 (bootJar, 메시지 소비/발송 처리)
 ```
 
 의존 방향: `butterfly-api / butterfly-worker` → 도메인 모듈들 → `butterfly-common`
@@ -55,6 +57,6 @@ butterfly (root)
 - 모든 엔티티는 `BaseEntity`를 상속하여 `createdAt`, `updatedAt`을 자동 관리 (`@PrePersist` / `@PreUpdate`)
 - 에러 코드는 도메인별 enum으로 분리하고 `ErrorCode` 인터페이스를 구현 (prefix로 도메인 구분: `AUTH_001`, `ANALYTICS_001`)
 - 공통 에러는 `CommonErrorCode`에 정의
-- API 경로 패턴: `/api/projects/{projectId}/...` (멀티테넌트 프로젝트 스코프)
+- API 경로 패턴: `/api/v1/projects/{projectId}/...` (멀티테넌트 프로젝트 스코프)
 - 타임존: Asia/Seoul 서버 고정
 - ADR 문서는 `docs/adr/` 디렉토리에서 관리

@@ -17,9 +17,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @SuppressWarnings("null")
 public class ApplicationController {
@@ -27,7 +29,7 @@ public class ApplicationController {
     private final ApplicationService applicationService;
 
     // 서비스 신청서 제출 (공개)
-    @PostMapping("/api/applications")
+    @PostMapping("/applications")
     public ResponseEntity<ApiResponse<Long>> submit(
             @Valid @RequestBody ApplicationCreateRequest request) {
         Long applicationId = applicationService.submit(request);
@@ -36,7 +38,7 @@ public class ApplicationController {
 
     // 신청서 목록 조회 (ADMIN)
     // TODO: 인증 통합 시 @PreAuthorize("@projectPermission.isAdmin()") 추가
-    @GetMapping("/api/admin/applications")
+    @GetMapping("/admin/applications")
     public ResponseEntity<ApiResponse<Page<ApplicationResponse>>> getList(
             @RequestParam(required = false) ApplicationStatus status,
             @PageableDefault(size = 20, sort = "createdAt") Pageable pageable) {
@@ -44,14 +46,14 @@ public class ApplicationController {
     }
 
     // 신청서 상세 조회 (ADMIN)
-    @GetMapping("/api/admin/applications/{applicationId}")
+    @GetMapping("/admin/applications/{applicationId}")
     public ResponseEntity<ApiResponse<ApplicationResponse>> getDetail(
             @PathVariable Long applicationId) {
         return ResponseEntity.ok(ApiResponse.ok(applicationService.getDetail(applicationId)));
     }
 
     // 신청서 승인 (ADMIN)
-    @PostMapping("/api/admin/applications/{applicationId}/approve")
+    @PostMapping("/admin/applications/{applicationId}/approve")
     public ResponseEntity<ApiResponse<Void>> approve(
             @PathVariable Long applicationId) {
         // TODO: 인증 통합 시 SecurityContext에서 adminMemberId 추출
@@ -61,7 +63,7 @@ public class ApplicationController {
     }
 
     // 신청서 반려 (ADMIN)
-    @PostMapping("/api/admin/applications/{applicationId}/reject")
+    @PostMapping("/admin/applications/{applicationId}/reject")
     public ResponseEntity<ApiResponse<Void>> reject(
             @PathVariable Long applicationId,
             @Valid @RequestBody ApplicationRejectRequest request) {

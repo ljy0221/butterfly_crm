@@ -1,7 +1,7 @@
 package com.b101.butterfly.segment.repository;
 
 import com.b101.butterfly.segment.entity.SegmentMember;
-import com.b101.butterfly.segment.support.AbstractMySqlContainerTest;
+import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

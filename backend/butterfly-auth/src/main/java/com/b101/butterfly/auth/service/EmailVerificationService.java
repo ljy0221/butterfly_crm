@@ -1,6 +1,7 @@
 package com.b101.butterfly.auth.service;
 
 import com.b101.butterfly.auth.exception.AuthErrorCode;
+import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,8 +25,13 @@ public class EmailVerificationService {
 
     private final RedisService redisService;
     private final EmailService emailService;
+    private final MemberRepository memberRepository;
 
     public void sendCode(String email) {
+        if (memberRepository.countByEmailIncludingDeleted(email) > 0) {
+            throw new BusinessException(AuthErrorCode.DUPLICATE_EMAIL);
+        }
+
         String countKey = COUNT_KEY_PREFIX + email;
         long count = redisService.get(countKey)
                 .map(Long::parseLong)

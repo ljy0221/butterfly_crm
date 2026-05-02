@@ -135,9 +135,9 @@ auditLogService.record(AuditAction.MEMBER_ROLE_CHANGE, targetType, targetId,
 ```
 butterfly-auth (AuditLogService 인터페이스 + 기본 구현)
   ↑
-  ├── butterfly-customer
+  ├── butterfly-event
   ├── butterfly-campaign
-  └── butterfly-analytics (감사 로그 조회 API 담당)
+  └── butterfly-reporting (감사 로그 조회 API 담당)
 ```
 
 ### 조회 API — MVP 범위

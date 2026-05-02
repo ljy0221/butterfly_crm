@@ -9,15 +9,19 @@ dependencies {
     implementation project(':butterfly-common')
     implementation project(':butterfly-auth')
     implementation project(':butterfly-tenant')
-    implementation project(':butterfly-customer')
+    implementation project(':butterfly-event')
     implementation project(':butterfly-segment')
     implementation project(':butterfly-campaign')
-    implementation project(':butterfly-delivery')
-    implementation project(':butterfly-analytics')
+    implementation project(':butterfly-notification')
+    implementation project(':butterfly-reporting')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // Flyway (ADR-0013) — DB 마이그레이션. reporting 모듈만 V*.sql 보유, 다른 모듈은 ddl-auto=update 유지.
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 

@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 /**
- * 세그먼트에 편입된 유저 매핑. ERD `segment_members`. user_id FK는 customer 모듈 합류 시(Phase 6) 추가.
+ * 세그먼트에 편입된 유저 매핑. ERD `segment_members`. user_id FK는 event 모듈 합류 시(Phase 6) 추가.
  */
 @Entity
 @Table(name = "segment_members")

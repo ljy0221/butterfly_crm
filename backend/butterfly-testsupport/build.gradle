@@ -1,0 +1,10 @@
+jar { enabled = true }
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-test'
+    implementation 'org.springframework.boot:spring-boot-testcontainers'
+    implementation 'org.testcontainers:junit-jupiter'
+    implementation 'org.testcontainers:mysql'
+    implementation 'org.testcontainers:kafka'
+    implementation 'org.testcontainers:rabbitmq'
+}

@@ -220,7 +220,7 @@ campaign_executions (1) ─── (1) segment_snapshots ─── (N) segment_sn
 별도 ADR로 상세 결정 완료:
 - 집계 5종: ADR-0007
 - 감사 로그: ADR-0008 → ADR-0009 (모듈 이전)
-- 단일 진실의 원천: [`butterfly-analytics/docs/SCHEMA_DESIGN.md`](../../butterfly-analytics/docs/SCHEMA_DESIGN.md)
+- 단일 진실의 원천: [`butterfly-reporting/docs/SCHEMA_DESIGN.md`](../../butterfly-reporting/docs/SCHEMA_DESIGN.md)
 
 ---
 
@@ -319,8 +319,8 @@ PR 리뷰 시 다음 의사결정 트리를 따른다.
 ## More Information
 
 - ERD (전체 DDL 통합): [`backend/docs/erd.md`](../erd.md)
-- 분석 도메인 단일 진실 원천: [`butterfly-analytics/docs/SCHEMA_DESIGN.md`](../../butterfly-analytics/docs/SCHEMA_DESIGN.md)
-- 분석 도메인 DDL: [`butterfly-analytics/db/schema_analytics_audit.sql`](../../butterfly-analytics/db/schema_analytics_audit.sql)
+- 분석 도메인 단일 진실 원천: [`butterfly-reporting/docs/SCHEMA_DESIGN.md`](../../butterfly-reporting/docs/SCHEMA_DESIGN.md)
+- 분석 도메인 DDL: [`butterfly-reporting/db/schema_analytics_audit.sql`](../../butterfly-reporting/db/schema_analytics_audit.sql)
 - 관련 ADR
   - [ADR-0001](0001-segment-condition-tree-json.md), [ADR-0006](0006-segment-condition-spec-v2.md) — 세그먼트 JSON 저장
   - [ADR-0002](0002-campaign-definition-execution-split.md) — 캠페인 정의/실행 분리
