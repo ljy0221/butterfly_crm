@@ -94,4 +94,12 @@ public class CampaignExecution extends SoftDeletedDomain {
     void assignCampaign(Campaign campaign) {
         this.campaign = campaign;
     }
+
+    public void markAsSent() {
+        if (this.campaignExecutionStatus != CampaignExecutionStatus.READY) {
+            throw new BusinessException(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
+        }
+        this.campaignExecutionStatus = CampaignExecutionStatus.SEND;
+        this.sendStartedAt = java.time.LocalDateTime.now();
+    }
 }

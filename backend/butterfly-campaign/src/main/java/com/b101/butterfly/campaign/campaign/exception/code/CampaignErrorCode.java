@@ -58,6 +58,10 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_021",
             "존재하지 않는 캠페인입니다.",
             HttpStatus.NOT_FOUND),
+    INVALID_EXECUTION_TRANSITION(
+            "CAMPAIGN_022",
+            "허용되지 않은 발송 상태 전이입니다.",
+            HttpStatus.CONFLICT),
     ;
 
     private final String code;

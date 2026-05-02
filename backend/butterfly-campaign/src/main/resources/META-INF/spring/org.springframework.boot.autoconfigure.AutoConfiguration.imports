@@ -1,1 +1,2 @@
 com.b101.butterfly.campaign.config.CampaignJpaAutoConfig
+com.b101.butterfly.campaign.campaign.config.CampaignClockConfig

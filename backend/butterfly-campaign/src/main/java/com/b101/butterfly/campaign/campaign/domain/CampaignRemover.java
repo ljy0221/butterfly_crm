@@ -1,0 +1,40 @@
+package com.b101.butterfly.campaign.campaign.domain;
+
+import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.global.error.BusinessException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * 캠페인 삭제 책임 (DRAFT 상태에서만 soft delete).
+ *
+ * <p>{@code @SQLDelete}가 자동 soft delete 처리.
+ */
+@Service
+@RequiredArgsConstructor
+public class CampaignRemover {
+
+    private final CampaignRepository campaignRepository;
+
+    @Transactional
+    public void deleteCampaign(Long campaignId, Long projectId) {
+        Campaign campaign = campaignRepository.getByCampaignId(campaignId);
+        assertOwnedBy(campaign, projectId);
+        assertDeletable(campaign);
+        campaignRepository.delete(campaign);
+    }
+
+    private void assertOwnedBy(Campaign campaign, Long projectId) {
+        if (!campaign.isOwnedBy(projectId)) {
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_NOT_FOUND);
+        }
+    }
+
+    private void assertDeletable(Campaign campaign) {
+        if (campaign.getCampaignStatus() != CampaignStatus.DRAFT) {
+            throw new BusinessException(CampaignErrorCode.NOT_MODIFIABLE);
+        }
+    }
+}
