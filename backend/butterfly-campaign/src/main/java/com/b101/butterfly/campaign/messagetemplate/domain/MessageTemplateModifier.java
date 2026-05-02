@@ -1,7 +1,5 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
 import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
@@ -14,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MessageTemplateModifier {
 
     private final MessageTemplateRepository messageTemplateRepository;
-    private final CampaignRepository campaignRepository;
+    private final MessageTemplateUsageGuard messageTemplateUsageGuard;
 
     @Transactional
     public Long updateMessageTemplate(
@@ -30,7 +28,7 @@ public class MessageTemplateModifier {
         MessageTemplate template =
                 messageTemplateRepository.getByMessageTemplateId(messageTemplateId);
         assertOwnedBy(template, projectId);
-        assertNotInUseByActiveCampaign(messageTemplateId);
+        messageTemplateUsageGuard.assertNotInUseByActiveCampaign(messageTemplateId);
 
         template.update(
                 messageTemplateName,
@@ -47,10 +45,5 @@ public class MessageTemplateModifier {
         if (!template.isOwnedBy(projectId)) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_NOT_FOUND);
         }
-    }
-
-    private void assertNotInUseByActiveCampaign(Long messageTemplateId) {
-        campaignRepository.findAllByMessageTemplate_messageTemplateId(messageTemplateId)
-                .forEach(Campaign::validateTemplateUpdatable);
     }
 }

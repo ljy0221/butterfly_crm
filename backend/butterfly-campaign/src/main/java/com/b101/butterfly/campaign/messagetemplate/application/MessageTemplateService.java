@@ -7,6 +7,7 @@ import com.b101.butterfly.campaign.messagetemplate.application.result.MessageTem
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateCreator;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateModifier;
+import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRemover;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberInformationPort;
@@ -29,6 +30,7 @@ public class MessageTemplateService {
     private final MemberInformationPort memberInformationPort;
     private final ProjectInformationPort projectInformationPort;
     private final MessageTemplateModifier messageTemplateModifier;
+    private final MessageTemplateRemover messageTemplateRemover;
 
     @Transactional
     public Long createMessageTemplate(MessageTemplateCreateCommand command) {
@@ -78,6 +80,11 @@ public class MessageTemplateService {
                 command.messageTemplateBody(),
                 command.messageTemplateImageUrl()
         );
+    }
+
+    @Transactional
+    public void deleteMessageTemplate(Long messageTemplateId, Long projectId) {
+        messageTemplateRemover.deleteMessageTemplate(messageTemplateId, projectId);
     }
 
 }

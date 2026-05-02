@@ -9,17 +9,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
 import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateModifier;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
+import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateUsageGuard;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -33,14 +31,14 @@ class MessageTemplateModifierTest {
     private static final Long MEMBER_ID = 10L;
 
     private MessageTemplateRepository messageTemplateRepository;
-    private CampaignRepository campaignRepository;
+    private MessageTemplateUsageGuard messageTemplateUsageGuard;
     private MessageTemplateModifier modifier;
 
     @BeforeEach
     void setUp() {
         messageTemplateRepository = mock(MessageTemplateRepository.class);
-        campaignRepository = mock(CampaignRepository.class);
-        modifier = new MessageTemplateModifier(messageTemplateRepository, campaignRepository);
+        messageTemplateUsageGuard = mock(MessageTemplateUsageGuard.class);
+        modifier = new MessageTemplateModifier(messageTemplateRepository, messageTemplateUsageGuard);
     }
 
     @Nested
@@ -53,9 +51,6 @@ class MessageTemplateModifierTest {
             MessageTemplate persisted = persistedTemplate(TEMPLATE_ID, PROJECT_ID);
             given(messageTemplateRepository.getByMessageTemplateId(TEMPLATE_ID))
                     .willReturn(persisted);
-            given(campaignRepository
-                    .findAllByMessageTemplate_messageTemplateId(TEMPLATE_ID))
-                    .willReturn(List.of());
 
             Long returnedId = modifier.updateMessageTemplate(
                     TEMPLATE_ID,
@@ -74,25 +69,7 @@ class MessageTemplateModifierTest {
             assertThat(persisted.getMessageTemplateBody())
                     .isEqualTo("새 바디 {{ couponCode }}");
             assertThat(persisted.getRequiredVariables()).containsExactly("couponCode");
-        }
-
-        @Test
-        @DisplayName("ACTIVE가 아닌 캠페인이 있어도 수정은 허용된다")
-        void nonActiveCampaignsDoNotBlockUpdate() {
-            MessageTemplate persisted = persistedTemplate(TEMPLATE_ID, PROJECT_ID);
-            Campaign passiveCampaign = mock(Campaign.class);
-
-            given(messageTemplateRepository.getByMessageTemplateId(TEMPLATE_ID))
-                    .willReturn(persisted);
-            given(campaignRepository
-                    .findAllByMessageTemplate_messageTemplateId(TEMPLATE_ID))
-                    .willReturn(List.of(passiveCampaign));
-
-            Long returnedId = modifier.updateMessageTemplate(
-                    TEMPLATE_ID, PROJECT_ID, "이름", "설명",
-                    Channel.EMAIL, "제목", "바디", null);
-
-            assertThat(returnedId).isEqualTo(TEMPLATE_ID);
+            verify(messageTemplateUsageGuard).assertNotInUseByActiveCampaign(TEMPLATE_ID);
         }
     }
 
@@ -113,8 +90,7 @@ class MessageTemplateModifierTest {
                     .extracting("errorCode")
                     .isEqualTo(MessageTemplateErrorCode.TEMPLATE_NOT_FOUND);
 
-            verify(campaignRepository, never())
-                    .findAllByMessageTemplate_messageTemplateId(anyLong());
+            verify(messageTemplateUsageGuard, never()).assertNotInUseByActiveCampaign(anyLong());
         }
 
         @Test
@@ -132,23 +108,17 @@ class MessageTemplateModifierTest {
                     .extracting("errorCode")
                     .isEqualTo(MessageTemplateErrorCode.TEMPLATE_NOT_FOUND);
 
-            verify(campaignRepository, never())
-                    .findAllByMessageTemplate_messageTemplateId(anyLong());
+            verify(messageTemplateUsageGuard, never()).assertNotInUseByActiveCampaign(anyLong());
         }
 
         @Test
-        @DisplayName("ACTIVE 캠페인이 사용 중이면 CAMPAIGN_IS_ACTIVE")
+        @DisplayName("UsageGuard가 CAMPAIGN_IS_ACTIVE 던지면 그대로 전파한다")
         void activeCampaignBlocksUpdate() {
             MessageTemplate persisted = persistedTemplate(TEMPLATE_ID, PROJECT_ID);
-            Campaign activeCampaign = mock(Campaign.class);
-            doThrow(new BusinessException(CampaignErrorCode.CAMPAIGN_IS_ACTIVE))
-                    .when(activeCampaign).validateTemplateUpdatable();
-
             given(messageTemplateRepository.getByMessageTemplateId(TEMPLATE_ID))
                     .willReturn(persisted);
-            given(campaignRepository
-                    .findAllByMessageTemplate_messageTemplateId(TEMPLATE_ID))
-                    .willReturn(List.of(activeCampaign));
+            doThrow(new BusinessException(CampaignErrorCode.CAMPAIGN_IS_ACTIVE))
+                    .when(messageTemplateUsageGuard).assertNotInUseByActiveCampaign(TEMPLATE_ID);
 
             assertThatThrownBy(() -> modifier.updateMessageTemplate(
                     TEMPLATE_ID, PROJECT_ID, "이름", "설명",
