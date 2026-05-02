@@ -1,10 +1,12 @@
 package com.b101.butterfly.campaign.messagetemplate.application;
 
 import com.b101.butterfly.campaign.messagetemplate.application.command.MessageTemplateCreateCommand;
+import com.b101.butterfly.campaign.messagetemplate.application.command.MessageTemplateUpdateCommand;
 import com.b101.butterfly.campaign.messagetemplate.application.result.MessageTemplateDetailResult;
 import com.b101.butterfly.campaign.messagetemplate.application.result.MessageTemplateListResult;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateCreator;
+import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateModifier;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberInformationPort;
@@ -26,6 +28,7 @@ public class MessageTemplateService {
     private final MessageTemplateRepository messageTemplateRepository;
     private final MemberInformationPort memberInformationPort;
     private final ProjectInformationPort projectInformationPort;
+    private final MessageTemplateModifier messageTemplateModifier;
 
     @Transactional
     public Long createMessageTemplate(MessageTemplateCreateCommand command) {
@@ -61,6 +64,10 @@ public class MessageTemplateService {
         String memberName = memberInformationPort.getMemberName(messageTemplate.getMemberId());
         String projectName = projectInformationPort.findProjectName(messageTemplate.getProjectId());
         return MessageTemplateDetailResult.of(messageTemplate, memberName, projectName);
+    }
+
+    public Long updateMessageTemplate(MessageTemplateUpdateCommand command) {
+        return messageTemplateModifier.updateMessageTemplate(command.toMessageTemplate());
     }
 
 }

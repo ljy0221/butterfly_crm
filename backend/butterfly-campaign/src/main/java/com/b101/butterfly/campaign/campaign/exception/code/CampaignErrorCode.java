@@ -34,7 +34,8 @@ public enum CampaignErrorCode implements ErrorCode {
     RECURRING_DAY_OF_WEEK_REQUIRED(
             "CAMPAIGN_012", "주간 반복 시 요일은 필수입니다.", HttpStatus.BAD_REQUEST),
     RECURRING_DAY_OF_WEEK_INVALID(
-            "CAMPAIGN_013", "요일 값은 MON,TUE,WED,THU,FRI,SAT,SUN 중에서만 사용할 수 있습니다.", HttpStatus.BAD_REQUEST),
+            "CAMPAIGN_013", "요일 값은 MON,TUE,WED,THU,FRI,SAT,SUN 중에서만 사용할 수 있습니다.",
+            HttpStatus.BAD_REQUEST),
     RECURRING_DAY_OF_MONTH_INVALID(
             "CAMPAIGN_014", "월간 반복 일자는 1 이상 31 이하여야 합니다.", HttpStatus.BAD_REQUEST),
     // 캠페인 실행(CampaignExecution) 관련 에러
@@ -44,6 +45,7 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_016", "실행 회차는 1 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
     INVALID_TARGET_COUNT(
             "CAMPAIGN_017", "발송 대상자 수는 0 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
+    CAMPAIGN_IS_ACTIVE("CAMPAIGN_018", "현재 활성화된 캠페인입니다.", HttpStatus.CONFLICT),
     ;
 
     private final String code;

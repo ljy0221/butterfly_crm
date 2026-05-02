@@ -1,7 +1,6 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
 import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
-import com.b101.butterfly.campaign.messagetemplate.domain.converter.RequiredVariablesConverter;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;
@@ -95,8 +94,8 @@ public class MessageTemplate extends SoftDeletedDomain {
             String messageTemplateBody,
             String messageTemplateImageUrl
     ) {
-        validate(projectId, memberId, messageTemplateName, channel, messageTemplateBody);
-        validateTemplateDescAndTitle(messageTemplateDescription, messageTemplateTitle);
+        validate(projectId, memberId, messageTemplateName, channel, messageTemplateBody,
+                messageTemplateDescription, messageTemplateTitle);
         return new MessageTemplate(
                 projectId,
                 memberId,
@@ -109,24 +108,14 @@ public class MessageTemplate extends SoftDeletedDomain {
                 MessageTemplateVariableExtractor.extract(messageTemplateBody));
     }
 
-    private static void validateTemplateDescAndTitle(
-            String messageTemplateDescription,
-            String messageTemplateTitle
-    ) {
-        if (messageTemplateDescription == null || messageTemplateDescription.isBlank()) {
-            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_DESCRIPTION_REQUIRED);
-        }
-        if (messageTemplateTitle == null || messageTemplateTitle.isBlank()) {
-            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_TITLE_REQUIRED);
-        }
-    }
-
     private static void validate(
             Long projectId,
             Long memberId,
             String messageTemplateName,
             Channel channel,
-            String messageTemplateBody
+            String messageTemplateBody,
+            String messageTemplateDescription,
+            String messageTemplateTitle
     ) {
         if (projectId == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_PROJECT_REQUIRED);
@@ -137,27 +126,55 @@ public class MessageTemplate extends SoftDeletedDomain {
         if (channel == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_CHANNEL_REQUIRED);
         }
-        if (messageTemplateName == null || messageTemplateName.isBlank()) {
-            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_NAME_REQUIRED);
-        }
+        validateMessageTemplateName(messageTemplateName);
+        validateMessageTemplateBody(messageTemplateBody);
+        validateTemplateDescription(messageTemplateDescription);
+        validateMessageTemplateTitle(messageTemplateTitle);
+    }
+
+    private static void validateMessageTemplateBody(String messageTemplateBody) {
         if (messageTemplateBody == null || messageTemplateBody.isBlank()) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_BODY_REQUIRED);
         }
     }
 
-    public void updateBody(String messageTemplateBody) {
-        if (messageTemplateBody == null || messageTemplateBody.isBlank()) {
-            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_BODY_REQUIRED);
+    private static void validateMessageTemplateName(String messageTemplateName) {
+        if (messageTemplateName == null || messageTemplateName.isBlank()) {
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_NAME_REQUIRED);
         }
+    }
+
+    private static void validateTemplateDescription(String messageTemplateDescription) {
+        if (messageTemplateDescription == null || messageTemplateDescription.isBlank()) {
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_DESCRIPTION_REQUIRED);
+        }
+    }
+
+    private static void validateMessageTemplateTitle(String messageTemplateTitle) {
+        if (messageTemplateTitle == null || messageTemplateTitle.isBlank()) {
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_TITLE_REQUIRED);
+        }
+    }
+
+    public void placeMessageTemplate(
+            String messageTemplateBody,
+            String messageTemplateImageUrl,
+            String messageTemplateName,
+            String messageTemplateDescription,
+            String messageTemplateTitle,
+            Channel channel
+    ) {
+        validateMessageTemplateBody(messageTemplateBody);
+        validateMessageTemplateName(messageTemplateName);
+        validateTemplateDescription(messageTemplateDescription);
+        validateMessageTemplateTitle(messageTemplateTitle);
         this.messageTemplateBody = messageTemplateBody;
         this.requiredVariables = MessageTemplateVariableExtractor.extract(messageTemplateBody);
-    }
-
-    public void placeTemplateName(String messageTemplateName) {
-        if (messageTemplateName == null || messageTemplateName.isBlank()) {
-            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_NAME_REQUIRED);
-        }
         this.messageTemplateName = messageTemplateName;
+        this.messageTemplateDescription = messageTemplateDescription;
+        this.messageTemplateImageUrl = messageTemplateImageUrl;
+        this.messageTemplateTitle = messageTemplateTitle;
+        this.channel = channel;
     }
 
 }

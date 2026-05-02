@@ -19,13 +19,13 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/templates")
+@RequestMapping("/api/v1/project/{projectId}/templates")
 public class MessageTemplateController {
 
     private final MessageTemplateService messageTemplateService;
@@ -34,10 +34,11 @@ public class MessageTemplateController {
     @PostMapping
     public ResponseEntity<MessageTemplateCreateResponse> createMessageTemplate(
             Long memberId,
+            @PathVariable Long projectId,
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
         Long messageTemplateId = messageTemplateService.createMessageTemplate(
-                request.toCommand(memberId));
+                request.toCommand(projectId, memberId));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
                 .body(new MessageTemplateCreateResponse(messageTemplateId));
@@ -47,7 +48,7 @@ public class MessageTemplateController {
     @GetMapping
     public ResponseEntity<MessageTemplateListResponse> getMessageTemplates(
             Long memberId,
-            @RequestParam Long projectId,
+            @PathVariable Long projectId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<MessageTemplateListResult> resultPage =
@@ -61,11 +62,28 @@ public class MessageTemplateController {
     @GetMapping("/{templateId}")
     public ResponseEntity<MessageTemplateDetailResponse> getMessageTemplateDetail(
             Long memberId,
+            @PathVariable Long projectId,
             @PathVariable Long templateId
     ) {
         MessageTemplateDetailResult result = messageTemplateService.getMessageTemplate(templateId);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(MessageTemplateDetailResponse.from(result));
+    }
+
+    // TODO memberId 추출 역할 검증 추가
+    @PutMapping("/{templateId}")
+    public ResponseEntity<MessageTemplateCreateResponse> updateMessageTemplate(
+            Long memberId,
+            @PathVariable Long projectId,
+            @PathVariable Long templateId,
+            @RequestBody @Valid MessageTemplateCreateRequest request
+    ) {
+        Long messageTemplateId = messageTemplateService.updateMessageTemplate(
+                request.toUpdateCommand(projectId, memberId));
+
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(new MessageTemplateCreateResponse(messageTemplateId));
     }
 }

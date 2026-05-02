@@ -428,6 +428,12 @@ public class Campaign extends SoftDeletedDomain {
         }
     }
 
+    public void validateTemplateUpdatable() {
+        if (this.campaignStatus == CampaignStatus.ACTIVE) {
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_IS_ACTIVE);
+        }
+    }
+
     public void addExecution(CampaignExecution execution) {
         this.executions.add(execution);
         execution.assignCampaign(this);
