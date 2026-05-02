@@ -438,4 +438,57 @@ public class Campaign extends SoftDeletedDomain {
         this.executions.add(execution);
         execution.assignCampaign(this);
     }
+
+    public boolean isOwnedBy(Long projectId) {
+        return this.projectId.equals(projectId);
+    }
+
+    public void update(String campaignName, String campaignDescription) {
+        assertModifiable();
+        validateName(campaignName);
+        validateDescription(campaignDescription);
+        this.campaignName = campaignName;
+        this.campaignDescription = campaignDescription;
+    }
+
+    public void activate() {
+        transitionTo(CampaignStatus.ACTIVE);
+    }
+
+    public void pause() {
+        transitionTo(CampaignStatus.PAUSED);
+    }
+
+    public void resume() {
+        transitionTo(CampaignStatus.ACTIVE);
+    }
+
+    public void complete() {
+        transitionTo(CampaignStatus.ENDED);
+    }
+
+    public void transitionTo(CampaignStatus target) {
+        if (!this.campaignStatus.canTransitionTo(target)) {
+            throw new BusinessException(CampaignErrorCode.INVALID_STATUS_TRANSITION);
+        }
+        this.campaignStatus = target;
+    }
+
+    private void assertModifiable() {
+        if (this.campaignStatus != CampaignStatus.DRAFT) {
+            throw new BusinessException(CampaignErrorCode.NOT_MODIFIABLE);
+        }
+    }
+
+    private static void validateName(String campaignName) {
+        if (campaignName == null || campaignName.isBlank()) {
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_NAME_REQUIRED);
+        }
+    }
+
+    private static void validateDescription(String campaignDescription) {
+        if (campaignDescription == null || campaignDescription.isBlank()) {
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_DESCRIPTION_REQUIRED);
+        }
+    }
 }

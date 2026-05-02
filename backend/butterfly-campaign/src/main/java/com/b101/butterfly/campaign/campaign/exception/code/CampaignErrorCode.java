@@ -46,6 +46,18 @@ public enum CampaignErrorCode implements ErrorCode {
     INVALID_TARGET_COUNT(
             "CAMPAIGN_017", "발송 대상자 수는 0 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
     CAMPAIGN_IS_ACTIVE("CAMPAIGN_018", "현재 활성화된 캠페인입니다.", HttpStatus.CONFLICT),
+    INVALID_STATUS_TRANSITION(
+            "CAMPAIGN_019",
+            "허용되지 않은 캠페인 상태 전이입니다.",
+            HttpStatus.CONFLICT),
+    NOT_MODIFIABLE(
+            "CAMPAIGN_020",
+            "DRAFT 상태의 캠페인만 수정할 수 있습니다.",
+            HttpStatus.CONFLICT),
+    CAMPAIGN_NOT_FOUND(
+            "CAMPAIGN_021",
+            "존재하지 않는 캠페인입니다.",
+            HttpStatus.NOT_FOUND),
     ;
 
     private final String code;
