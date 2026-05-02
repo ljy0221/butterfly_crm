@@ -15,6 +15,6 @@ public record MessageTemplateUpdateCommand(
 ) {
 
     public Channel toChannel() {
-        return Channel.valueOf(messageChannel);
+        return MessageChannelResolver.resolve(messageChannel);
     }
 }

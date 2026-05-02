@@ -9,10 +9,8 @@ import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateCreator
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateModifier;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRemover;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
-import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberInformationPort;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectInformationPort;
-import com.b101.butterfly.global.error.BusinessException;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -44,19 +42,20 @@ public class MessageTemplateService {
     ) {
         Page<MessageTemplate> templatePage =
                 messageTemplateRepository.findAllByProjectId(projectId, pageable);
-        List<Long> memberIds = templatePage.stream()
-                .map(MessageTemplate::getMemberId)
-                .toList();
-        if (memberIds.isEmpty()) {
-            throw new BusinessException(MessageTemplateErrorCode.MEMBER_ID_INVALID);
+        if (templatePage.isEmpty()) {
+            return Page.empty(pageable);
         }
 
+        List<Long> memberIds = templatePage.stream()
+                .map(MessageTemplate::getMemberId)
+                .distinct()
+                .toList();
         Map<Long, String> memberMap = memberInformationPort.getMemberNames(memberIds);
 
-        return templatePage.map(templates -> {
-            String memberName = memberMap.get(templates.getMemberId());
-            return MessageTemplateListResult.of(templates, memberName);
-        });
+        return templatePage.map(template -> MessageTemplateListResult.of(
+                template,
+                memberMap.get(template.getMemberId())
+        ));
     }
 
     @Transactional(readOnly = true)

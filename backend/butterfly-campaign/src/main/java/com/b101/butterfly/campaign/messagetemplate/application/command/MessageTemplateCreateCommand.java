@@ -1,6 +1,5 @@
 package com.b101.butterfly.campaign.messagetemplate.application.command;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 
 public record MessageTemplateCreateCommand(
@@ -20,7 +19,7 @@ public record MessageTemplateCreateCommand(
                 memberId,
                 messageTemplateName,
                 messageTemplateDescription,
-                Channel.valueOf(channel),
+                MessageChannelResolver.resolve(channel),
                 messageTemplateTitle,
                 messageTemplateBody,
                 messageTemplateImageUrl

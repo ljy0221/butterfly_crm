@@ -21,7 +21,8 @@ public enum MessageTemplateErrorCode implements ErrorCode {
     TEMPLATE_DESCRIPTION_REQUIRED("TEMPLATE_009", "템플릿 설명은 필수입니다.", HttpStatus.BAD_REQUEST),
     TEMPLATE_TITLE_REQUIRED("TEMPLATE_010", "메세지 제목은 필수입니다.", HttpStatus.BAD_REQUEST),
     MEMBER_ID_INVALID("TEMPLATE_011", "생성자 아이디를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
-    TEMPLATE_NOT_FOUND("TEPLATE_012", "존재하지 않는 템플릿입니다.", HttpStatus.NOT_FOUND),
+    TEMPLATE_NOT_FOUND("TEMPLATE_012", "존재하지 않는 템플릿입니다.", HttpStatus.NOT_FOUND),
+    TEMPLATE_CHANNEL_INVALID("TEMPLATE_013", "지원하지 않는 발송 채널입니다.", HttpStatus.BAD_REQUEST),
     ;
 
     private final String code;
