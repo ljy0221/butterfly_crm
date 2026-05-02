@@ -25,8 +25,13 @@ public record MessageTemplateCreateRequest(
         );
     }
 
-    public MessageTemplateUpdateCommand toUpdateCommand(Long projectId, Long memberId) {
+    public MessageTemplateUpdateCommand toUpdateCommand(
+            Long projectId,
+            Long memberId,
+            Long messageTemplateId
+    ) {
         return new MessageTemplateUpdateCommand(
+                messageTemplateId,
                 projectId,
                 memberId,
                 messageTemplateName,

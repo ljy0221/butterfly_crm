@@ -66,8 +66,18 @@ public class MessageTemplateService {
         return MessageTemplateDetailResult.of(messageTemplate, memberName, projectName);
     }
 
+    @Transactional
     public Long updateMessageTemplate(MessageTemplateUpdateCommand command) {
-        return messageTemplateModifier.updateMessageTemplate(command.toMessageTemplate());
+        return messageTemplateModifier.updateMessageTemplate(
+                command.messageTemplateId(),
+                command.projectId(),
+                command.messageTemplateName(),
+                command.messageTemplateDescription(),
+                command.toChannel(),
+                command.messageTemplateTitle(),
+                command.messageTemplateBody(),
+                command.messageTemplateImageUrl()
+        );
     }
 
 }

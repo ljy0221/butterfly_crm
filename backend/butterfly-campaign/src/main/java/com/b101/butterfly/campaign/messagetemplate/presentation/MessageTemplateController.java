@@ -80,7 +80,7 @@ public class MessageTemplateController {
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
         Long messageTemplateId = messageTemplateService.updateMessageTemplate(
-                request.toUpdateCommand(projectId, memberId));
+                request.toUpdateCommand(projectId, memberId, templateId));
 
         return ResponseEntity
                 .status(HttpStatus.OK)

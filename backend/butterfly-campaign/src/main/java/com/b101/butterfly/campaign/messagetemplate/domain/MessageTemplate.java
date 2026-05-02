@@ -1,6 +1,7 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
 import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.converter.RequiredVariablesConverter;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;
@@ -123,13 +124,17 @@ public class MessageTemplate extends SoftDeletedDomain {
         if (memberId == null) {
             throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_MEMBER_REQUIRED);
         }
-        if (channel == null) {
-            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_CHANNEL_REQUIRED);
-        }
+        validateChannel(channel);
         validateMessageTemplateName(messageTemplateName);
         validateMessageTemplateBody(messageTemplateBody);
         validateTemplateDescription(messageTemplateDescription);
         validateMessageTemplateTitle(messageTemplateTitle);
+    }
+
+    private static void validateChannel(Channel channel) {
+        if (channel == null) {
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_CHANNEL_REQUIRED);
+        }
     }
 
     private static void validateMessageTemplateBody(String messageTemplateBody) {
@@ -156,25 +161,38 @@ public class MessageTemplate extends SoftDeletedDomain {
         }
     }
 
-    public void placeMessageTemplate(
-            String messageTemplateBody,
-            String messageTemplateImageUrl,
+    public void update(
             String messageTemplateName,
             String messageTemplateDescription,
+            Channel channel,
             String messageTemplateTitle,
-            Channel channel
+            String messageTemplateBody,
+            String messageTemplateImageUrl
     ) {
-        validateMessageTemplateBody(messageTemplateBody);
+        validateChannel(channel);
         validateMessageTemplateName(messageTemplateName);
         validateTemplateDescription(messageTemplateDescription);
         validateMessageTemplateTitle(messageTemplateTitle);
-        this.messageTemplateBody = messageTemplateBody;
-        this.requiredVariables = MessageTemplateVariableExtractor.extract(messageTemplateBody);
+        validateMessageTemplateBody(messageTemplateBody);
+
         this.messageTemplateName = messageTemplateName;
         this.messageTemplateDescription = messageTemplateDescription;
-        this.messageTemplateImageUrl = messageTemplateImageUrl;
-        this.messageTemplateTitle = messageTemplateTitle;
         this.channel = channel;
+        this.messageTemplateTitle = messageTemplateTitle;
+        this.messageTemplateBody = messageTemplateBody;
+        this.messageTemplateImageUrl = normalizeImageUrl(messageTemplateImageUrl);
+        this.requiredVariables = MessageTemplateVariableExtractor.extract(messageTemplateBody);
+    }
+
+    public boolean isOwnedBy(Long projectId) {
+        return this.projectId.equals(projectId);
+    }
+
+    private static String normalizeImageUrl(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) {
+            return null;
+        }
+        return imageUrl;
     }
 
 }

@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.messagetemplate.domain;
+package com.b101.butterfly.campaign.messagetemplate.domain.converter;
 
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
