@@ -16,5 +16,8 @@ public final class AuditAction {
     public static final String SEGMENT_UPDATED = "SEGMENT_UPDATED";
     public static final String SEGMENT_DELETED = "SEGMENT_DELETED";
 
+    /** 사용자가 rebuild API #44를 호출. Codex 합의 — Phase 6에서 추가 (이 시점). */
+    public static final String SEGMENT_REBUILD_REQUESTED = "SEGMENT_REBUILD_REQUESTED";
+
     private AuditAction() {}
 }
