@@ -27,7 +27,7 @@ class NotificationLogIngestServiceIntegrationTest extends AbstractMySqlContainer
     private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 4, 28, 10, 0, 5);
 
     @Autowired private NotificationLogIngestService service;
-    @Autowired private NotificationLogRepository repository;
+    @Autowired private ReportingNotificationLogRepository repository;
 
     @AfterEach
     void cleanup() {
