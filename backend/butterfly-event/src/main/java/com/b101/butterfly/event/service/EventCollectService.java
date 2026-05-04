@@ -10,7 +10,6 @@ import com.b101.butterfly.event.messaging.EventPayload;
 import com.b101.butterfly.event.messaging.EventProducer;
 import com.b101.butterfly.event.repository.DeviceRepository;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
-import com.b101.butterfly.event.repository.UserRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +27,7 @@ public class EventCollectService {
 
     private final EventProducer eventProducer;
     private final EventCategoryRepository eventCategoryRepository;
-    private final UserRepository userRepository;
+    private final UserDirectory userDirectory;
     private final DeviceRepository deviceRepository;
 
     @Transactional
@@ -37,7 +36,7 @@ public class EventCollectService {
                 .findByProjectIdAndName(projectId, request.eventCategory())
                 .orElseThrow(() -> new BusinessException(EventErrorCode.CATEGORY_NOT_FOUND));
 
-        User user = lookupOrCreateUser(projectId, request.userId());
+        User user = userDirectory.lookupOrCreate(projectId, request.userId());
         Device device = lookupDevice(projectId, request.deviceId());
 
         String eventUuid = UUID.randomUUID().toString();
@@ -65,20 +64,6 @@ public class EventCollectService {
         }
 
         return new EventCollectResponse(eventUuid, LocalDateTime.now(), schemaVersion);
-    }
-
-    private User lookupOrCreateUser(Long projectId, String externalUserId) {
-        String key = (externalUserId != null && !externalUserId.isBlank())
-                ? externalUserId
-                : User.PLACEHOLDER_EXTERNAL_ID;
-
-        return userRepository.findByProjectIdAndExternalId(projectId, key)
-                .orElseGet(() -> userRepository.save(
-                        User.builder()
-                                .projectId(projectId)
-                                .externalId(key)
-                                .build()
-                ));
     }
 
     private Device lookupDevice(Long projectId, String externalDeviceId) {
