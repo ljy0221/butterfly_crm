@@ -21,9 +21,10 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 
 /**
- * 세그먼트 엔티티. ADR-0006 v2 기반 — condition_tree JSON 단일 소스.
+ * 세그먼트 엔티티. ADR-0006 v2 + ADR-0014 기반 — condition_tree JSON 단일 소스.
  *
- * <p>schemaVersion 기본값은 ADR-0006 v2 기준 3. ERD의 default 1은 v1 시점 잔재이므로 엔티티에서 v2 기본값을 채워준다.
+ * <p>schemaVersion 기본값은 ADR-0014 기준 4 (EventNode.categoryId 정규화 반영).
+ * ERD의 default 1은 v1 시점 잔재이므로 엔티티에서 v4 기본값을 채워준다.
  */
 @Entity
 @Table(name = "segments")
@@ -111,7 +112,7 @@ public class Segment extends BaseEntity {
         this.description = description;
         this.conditionTree = conditionTree;
         this.createdBy = createdBy;
-        this.schemaVersion = 3;
+        this.schemaVersion = 4;
         this.estimatedCount = 0;
         this.buildStatus = BuildStatus.PENDING;
         this.isDeleted = false;

@@ -21,7 +21,7 @@ class StubEventAggReaderTest {
     private final StubEventAggReader stub = new StubEventAggReader();
 
     private static final EventNode SAMPLE_NODE =
-            new EventNode("purchase", List.of(), new Period.Cumulative(), 1);
+            new EventNode(42L, List.of(), new Period.Cumulative(), 1);
 
     private static final EventQueryContext CTX =
             new EventQueryContext(1L, LocalDate.of(2026, 5, 4), ZoneId.of("Asia/Seoul"));

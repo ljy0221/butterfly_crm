@@ -64,7 +64,7 @@ class PreviewServiceTest {
     }
 
     private static EventNode eventNode() {
-        return new EventNode("page_view", List.of(), new Period.Relative(7), 5);
+        return new EventNode(99L, List.of(), new Period.Relative(7), 5);
     }
 
     private static GroupNode eventOnlyTree() {

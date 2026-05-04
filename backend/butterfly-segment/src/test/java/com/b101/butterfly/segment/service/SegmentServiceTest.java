@@ -90,7 +90,7 @@ class SegmentServiceTest {
 
             assertThat(response.name()).isEqualTo("VIP");
             assertThat(response.buildStatus()).isEqualTo(BuildStatus.PENDING);
-            assertThat(response.schemaVersion()).isEqualTo(3);
+            assertThat(response.schemaVersion()).isEqualTo(4);
             assertThat(response.createdBy()).isEqualTo(MEMBER_ID);
             verify(conditionTreeValidator).validate(request.conditionTree());
             verify(segmentRepository).save(any(Segment.class));
@@ -105,7 +105,7 @@ class SegmentServiceTest {
             assertThat(event.detail())
                     .containsEntry("name", "VIP")
                     .containsEntry("conditionTreeHash", STUB_HASH.substring(0, 8))
-                    .containsEntry("conditionTreeVersion", 3);
+                    .containsEntry("conditionTreeVersion", 4);
         }
 
         @Test

@@ -238,14 +238,14 @@ class SegmentBuildJobTest {
     private static GroupNode eventTree() {
         EventNode event =
                 new EventNode(
-                        "purchase", new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
+                        42L, new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
         return new GroupNode(LogicOp.AND, List.of(event));
     }
 
     private static GroupNode mixedTree() {
         EventNode event =
                 new EventNode(
-                        "purchase", new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
+                        42L, new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
         TagNode tag =
                 new TagNode("region", Operator.EQ, JsonNodeFactory.instance.textNode("서울"));
         return new GroupNode(LogicOp.AND, List.of(event, tag));
