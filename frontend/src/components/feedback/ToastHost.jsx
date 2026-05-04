@@ -1,5 +1,5 @@
 import React from "react";
-import { UIBus } from "../../lib/ui-bus.js";
+import { UIBus } from "../../lib/ui-bus";
 
 const TONES = {
   info:    { bg: "#1f2937", color: "#fff", accent: "#3b5bdb" },
