@@ -1,5 +1,6 @@
 package com.b101.butterfly.auth.service;
 
+import com.b101.butterfly.auth.config.JwtProperties;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.dto.request.LoginRequest;
 import com.b101.butterfly.auth.dto.request.SetOwnerPasswordRequest;
@@ -8,6 +9,7 @@ import com.b101.butterfly.auth.dto.response.LoginResponse;
 import com.b101.butterfly.auth.dto.response.MemberInfoResponse;
 import com.b101.butterfly.auth.dto.response.SignupResponse;
 import com.b101.butterfly.auth.entity.Member;
+import com.b101.butterfly.auth.entity.RefreshToken;
 import com.b101.butterfly.auth.exception.AuthErrorCode;
 import com.b101.butterfly.auth.port.CompanyAuthPort;
 import com.b101.butterfly.auth.repository.MemberRepository;
@@ -17,6 +19,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -30,13 +35,14 @@ public class AuthService {
     private final RedisService redisService;
     private final PasswordEncoder passwordEncoder;
     private final CompanyAuthPort companyAuthPort;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final JwtProperties jwtProperties;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
         if (!emailVerificationService.isVerified(request.email())) {
             throw new BusinessException(AuthErrorCode.EMAIL_NOT_VERIFIED);
         }
-        // 네이티브 쿼리로 탈퇴 계정 포함 체크 — DB unique 제약 위반 방지
         if (memberRepository.countByEmailIncludingDeleted(request.email()) > 0) {
             throw new BusinessException(AuthErrorCode.DUPLICATE_EMAIL);
         }
@@ -70,21 +76,78 @@ public class AuthService {
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        // TODO: 인증 통합 시 JwtTokenProvider로 실제 토큰 생성
-        return new LoginResponse("", "", MemberInfoResponse.from(member));
+        // 기존 Refresh Token 삭제 (재로그인 시 갱신)
+        refreshTokenRepository.deleteByMemberId(member.getId());
+        redisService.delete("auth:refresh:" + member.getId());
+
+        // 토큰 발급
+        String accessToken  = jwtTokenProvider.createAccessToken(
+                member.getId(), member.getProjectId(), member.getRoleType());
+        String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
+
+        // Refresh Token 저장 (DB + Redis)
+        LocalDateTime expiresAt = LocalDateTime.now()
+                .plusSeconds(jwtProperties.getRefreshTokenExpiryMs() / 1000);
+        refreshTokenRepository.save(RefreshToken.builder()
+                .memberId(member.getId())
+                .token(refreshToken)
+                .expiresAt(expiresAt)
+                .build());
+        redisService.set("auth:refresh:" + member.getId(), refreshToken,
+                Duration.ofMillis(jwtProperties.getRefreshTokenExpiryMs()));
+
+        return new LoginResponse(accessToken, refreshToken, MemberInfoResponse.from(member));
     }
 
     @Transactional
-    public void logout(Long memberId) {
-        // TODO: 인증 통합 시 accessToken jti 추출 → Redis+DB 블랙리스트 등록
+    public void logout(Long memberId, String accessToken) {
+        // Access Token 블랙리스트 등록
+        if (accessToken != null && jwtTokenProvider.isValid(accessToken)) {
+            String jti = jwtTokenProvider.getJti(accessToken);
+            Duration remaining = jwtTokenProvider.getRemainingTtl(accessToken);
+            if (!remaining.isZero()) {
+                redisService.set("auth:blacklist:" + jti, "1", remaining);
+            }
+        }
+        // Refresh Token 삭제
         refreshTokenRepository.deleteByMemberId(memberId);
         redisService.delete("auth:refresh:" + memberId);
     }
 
     @Transactional
     public LoginResponse refreshToken(String refreshToken) {
-        // TODO: 인증 통합 시 RTR 구현 (기존 토큰 삭제 후 새 토큰 발급)
-        throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+        // Redis 우선 조회, 없으면 DB 조회
+        RefreshToken stored = refreshTokenRepository.findByToken(refreshToken)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID));
+
+        if (stored.isExpired()) {
+            refreshTokenRepository.delete(stored);
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_EXPIRED);
+        }
+
+        Long memberId = stored.getMemberId();
+        Member member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.MEMBER_NOT_FOUND));
+
+        // RTR: 기존 토큰 삭제 후 새 토큰 발급
+        refreshTokenRepository.delete(stored);
+        redisService.delete("auth:refresh:" + memberId);
+
+        String newAccessToken  = jwtTokenProvider.createAccessToken(
+                member.getId(), member.getProjectId(), member.getRoleType());
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(member.getId());
+
+        LocalDateTime expiresAt = LocalDateTime.now()
+                .plusSeconds(jwtProperties.getRefreshTokenExpiryMs() / 1000);
+        refreshTokenRepository.save(RefreshToken.builder()
+                .memberId(memberId)
+                .token(newRefreshToken)
+                .expiresAt(expiresAt)
+                .build());
+        redisService.set("auth:refresh:" + memberId, newRefreshToken,
+                Duration.ofMillis(jwtProperties.getRefreshTokenExpiryMs()));
+
+        return new LoginResponse(newAccessToken, newRefreshToken, MemberInfoResponse.from(member));
     }
 
     @Transactional
