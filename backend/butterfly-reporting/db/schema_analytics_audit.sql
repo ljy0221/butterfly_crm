@@ -379,23 +379,19 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 
 -- =============================================================================
--- [5] DB 권한 분리 (참고용 - DBA 협의 후 적용)
+-- [5] DB 권한 분리 — 운영 적용 가이드
+--
+-- 본 파일은 v2 스키마의 단일 진실의 원천이지만, GRANT 스크립트는 환경별로 다르게
+-- 적용되므로 본 파일에 직접 두지 않는다. 대신 운영 적용용 스크립트는 다음 위치에 있다:
+--
+--   backend/butterfly-reporting/db/grants/app_user.sql        — 애플리케이션 계정
+--   backend/butterfly-reporting/db/grants/audit_viewer.sql    — 감사 조회 전용 계정
+--   backend/butterfly-reporting/db/grants/revoke_legacy.sql   — 기존 계정 회수
+--   backend/butterfly-reporting/db/grants/README.md           — 적용 절차 안내
+--
+-- 적용 절차·롤백 계획·통합 테스트 구성은 다음 제안서 참고:
+--   backend/docs/proposals/04-audit-logs-db-permission-separation.md
+--
+-- 관련 Jira: S14P31B101-173 (정착, 173-A) / S14P31B101-183 (운영 적용, 173-B)
+-- 관련 ADR : ADR-0008 "Append-only 3중 방어선"
 -- =============================================================================
-/*
--- 애플리케이션 계정: audit_logs는 INSERT/SELECT만
-GRANT INSERT, SELECT ON butterfly.audit_logs TO 'app_user'@'%';
-
--- 감사 조회 전용 계정
-GRANT SELECT ON butterfly.audit_logs TO 'audit_viewer'@'%';
-
--- 다른 테이블은 정상 권한
-GRANT SELECT, INSERT, UPDATE ON butterfly.notification_logs       TO 'app_user'@'%';
-GRANT SELECT, INSERT         ON butterfly.user_action_logs        TO 'app_user'@'%';
-GRANT SELECT, INSERT, UPDATE ON butterfly.send_reconciliations    TO 'app_user'@'%';
-GRANT SELECT, INSERT         ON butterfly.system_health_snapshots TO 'app_user'@'%';
-GRANT SELECT, INSERT, UPDATE ON butterfly.campaign_stats_hourly   TO 'app_user'@'%';
-GRANT SELECT, INSERT, UPDATE ON butterfly.campaign_stats_daily    TO 'app_user'@'%';
-GRANT SELECT, INSERT, UPDATE ON butterfly.template_stats_daily    TO 'app_user'@'%';
-GRANT SELECT, INSERT, UPDATE ON butterfly.failure_stats_daily     TO 'app_user'@'%';
-GRANT SELECT, INSERT, UPDATE ON butterfly.project_stats_daily     TO 'app_user'@'%';
-*/
