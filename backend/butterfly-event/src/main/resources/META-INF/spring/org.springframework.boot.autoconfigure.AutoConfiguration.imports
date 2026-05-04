@@ -1,3 +1,4 @@
 com.b101.butterfly.event.config.EventJpaAutoConfig
 com.b101.butterfly.event.config.EventKafkaProducerConfig
 com.b101.butterfly.event.config.EventKafkaConsumerConfig
+com.b101.butterfly.event.config.WorkerKafkaProducerConfig
