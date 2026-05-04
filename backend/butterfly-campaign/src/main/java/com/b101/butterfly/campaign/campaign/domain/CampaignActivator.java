@@ -33,6 +33,7 @@ public class CampaignActivator {
     private static final int INITIAL_TARGET_COUNT = 0;
 
     private final CampaignRepository campaignRepository;
+    private final CampaignExecutionRepository campaignExecutionRepository;
     private final CampaignSendInstructionPublisher publisher;
     private final Clock clock;
 
@@ -43,13 +44,14 @@ public class CampaignActivator {
         assertActivatable(campaign);
 
         campaign.activate();
-        CampaignExecution execution = CampaignExecution.ready(
-                campaign, IMMEDIATE_RUN_ROUND, INITIAL_TARGET_COUNT);
-        campaign.addExecution(execution);
         campaignRepository.saveAndFlush(campaign);
 
+        CampaignExecution execution = CampaignExecution.ready(
+                campaign.getCampaignId(), IMMEDIATE_RUN_ROUND, INITIAL_TARGET_COUNT);
+        CampaignExecution saved = campaignExecutionRepository.saveAndFlush(execution);
+
         publisher.publish(CampaignSendInstruction.of(
-                execution.getCampaignExecutionId(),
+                saved.getCampaignExecutionId(),
                 campaign.getCampaignId(),
                 campaign.getProjectId(),
                 campaign.getMessageTemplate().getMessageTemplateId(),
@@ -57,9 +59,9 @@ public class CampaignActivator {
                 campaign.getChannel(),
                 Instant.now(clock)
         ));
-        execution.markAsSent();
+        saved.markAsSent();
 
-        return execution.getCampaignExecutionId();
+        return saved.getCampaignExecutionId();
     }
 
     private void assertOwnedBy(Campaign campaign, Long projectId) {

@@ -9,7 +9,6 @@ import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,13 +19,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -110,9 +106,6 @@ public class Campaign extends SoftDeletedDomain {
     @Column(name = "version", nullable = false)
     private Integer version;
 
-    @OneToMany(mappedBy = "campaign", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<CampaignExecution> executions;
-
     private Campaign(
             Long projectId,
             MessageTemplate messageTemplate,
@@ -150,7 +143,6 @@ public class Campaign extends SoftDeletedDomain {
         this.recurringCount = recurringCount;
         this.recurringExecutionCount = 0;
         this.nextRunAt = nextRunAt;
-        this.executions = new ArrayList<>();
     }
 
     // 즉시+전체
@@ -432,11 +424,6 @@ public class Campaign extends SoftDeletedDomain {
         if (this.campaignStatus == CampaignStatus.ACTIVE) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_IS_ACTIVE);
         }
-    }
-
-    public void addExecution(CampaignExecution execution) {
-        this.executions.add(execution);
-        execution.assignCampaign(this);
     }
 
     public boolean isOwnedBy(Long projectId) {

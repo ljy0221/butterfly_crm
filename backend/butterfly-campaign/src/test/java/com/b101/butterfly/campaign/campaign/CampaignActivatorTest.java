@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import com.b101.butterfly.campaign.campaign.domain.Campaign;
 import com.b101.butterfly.campaign.campaign.domain.CampaignActivator;
 import com.b101.butterfly.campaign.campaign.domain.CampaignExecution;
+import com.b101.butterfly.campaign.campaign.domain.CampaignExecutionRepository;
 import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignExecutionStatus;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
@@ -41,15 +42,18 @@ class CampaignActivatorTest {
     private static final Instant FIXED_NOW = Instant.parse("2026-05-02T12:00:00Z");
 
     private CampaignRepository campaignRepository;
+    private CampaignExecutionRepository campaignExecutionRepository;
     private CampaignSendInstructionPublisher publisher;
     private CampaignActivator activator;
 
     @BeforeEach
     void setUp() {
         campaignRepository = mock(CampaignRepository.class);
+        campaignExecutionRepository = mock(CampaignExecutionRepository.class);
         publisher = mock(CampaignSendInstructionPublisher.class);
         Clock fixedClock = Clock.fixed(FIXED_NOW, ZoneId.of("UTC"));
-        activator = new CampaignActivator(campaignRepository, publisher, fixedClock);
+        activator = new CampaignActivator(
+                campaignRepository, campaignExecutionRepository, publisher, fixedClock);
     }
 
     @Test
@@ -58,10 +62,11 @@ class CampaignActivatorTest {
         Campaign campaign = draftCampaign();
         given(campaignRepository.getByCampaignId(CAMPAIGN_ID)).willReturn(campaign);
         given(campaignRepository.saveAndFlush(any(Campaign.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(campaignExecutionRepository.saveAndFlush(any(CampaignExecution.class)))
                 .willAnswer(inv -> {
-                    Campaign saved = inv.getArgument(0);
-                    // simulate JPA generated execution id
-                    setField(saved.getExecutions().get(0), "campaignExecutionId", EXECUTION_ID);
+                    CampaignExecution saved = inv.getArgument(0);
+                    setField(saved, "campaignExecutionId", EXECUTION_ID);
                     return saved;
                 });
 
@@ -69,9 +74,12 @@ class CampaignActivatorTest {
 
         assertThat(returnedExecutionId).isEqualTo(EXECUTION_ID);
         assertThat(campaign.getCampaignStatus()).isEqualTo(CampaignStatus.ACTIVE);
-        assertThat(campaign.getExecutions()).hasSize(1);
 
-        CampaignExecution execution = campaign.getExecutions().get(0);
+        ArgumentCaptor<CampaignExecution> execCaptor =
+                ArgumentCaptor.forClass(CampaignExecution.class);
+        verify(campaignExecutionRepository, times(1)).saveAndFlush(execCaptor.capture());
+        CampaignExecution execution = execCaptor.getValue();
+        assertThat(execution.getCampaignId()).isEqualTo(CAMPAIGN_ID);
         assertThat(execution.getRunRound()).isEqualTo(1);
         assertThat(execution.getCampaignExecutionStatus()).isEqualTo(CampaignExecutionStatus.SEND);
         assertThat(execution.getSendStartedAt()).isNotNull();

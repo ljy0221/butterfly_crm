@@ -8,12 +8,9 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -22,6 +19,12 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
 
+/**
+ * 캠페인 실행 회차 단위 엔티티 (Unidirectional — Campaign로 향하는 FK는 {@link #campaignId} Long).
+ *
+ * <p>Campaign와의 컬렉션 양방향 매핑은 두지 않는다. Cascade/orphanRemoval로 인한
+ * 의도치 않은 일괄 삭제 + 1차 캐시 일관성 부담을 피하기 위함이다.
+ */
 @Entity
 @Table(name = "campaign_executions")
 @Getter
@@ -35,9 +38,8 @@ public class CampaignExecution extends SoftDeletedDomain {
     @Column(name = "campaign_execution_id")
     private Long campaignExecutionId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "campaign_id", nullable = false)
-    private Campaign campaign;
+    @Column(name = "campaign_id", nullable = false)
+    private Long campaignId;
 
     @Column(name = "run_round", nullable = false)
     private Integer runRound;
@@ -64,8 +66,8 @@ public class CampaignExecution extends SoftDeletedDomain {
     @Column(name = "fail_reason")
     private String failReason;
 
-    private CampaignExecution(Campaign campaign, Integer runRound, Integer targetCount) {
-        this.campaign = campaign;
+    private CampaignExecution(Long campaignId, Integer runRound, Integer targetCount) {
+        this.campaignId = campaignId;
         this.runRound = runRound;
         this.campaignExecutionStatus = CampaignExecutionStatus.READY;
         this.targetCount = targetCount;
@@ -74,11 +76,11 @@ public class CampaignExecution extends SoftDeletedDomain {
     }
 
     public static CampaignExecution ready(
-            Campaign campaign,
+            Long campaignId,
             Integer runRound,
             Integer targetCount
     ) {
-        if (campaign == null) {
+        if (campaignId == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_REQUIRED);
         }
         if (runRound == null || runRound < 1) {
@@ -88,11 +90,7 @@ public class CampaignExecution extends SoftDeletedDomain {
             throw new BusinessException(CampaignErrorCode.INVALID_TARGET_COUNT);
         }
 
-        return new CampaignExecution(campaign, runRound, targetCount);
-    }
-
-    void assignCampaign(Campaign campaign) {
-        this.campaign = campaign;
+        return new CampaignExecution(campaignId, runRound, targetCount);
     }
 
     public void markAsSent() {
@@ -100,6 +98,6 @@ public class CampaignExecution extends SoftDeletedDomain {
             throw new BusinessException(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
         }
         this.campaignExecutionStatus = CampaignExecutionStatus.SEND;
-        this.sendStartedAt = java.time.LocalDateTime.now();
+        this.sendStartedAt = LocalDateTime.now();
     }
 }
