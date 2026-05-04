@@ -19,12 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 베이스라인 V1/V2/V3 마이그레이션이 클린 MySQL 8 testcontainer에서 단독 적용되는지 검증한다.
+ * 베이스라인 V1/V2/V3/V4 마이그레이션이 클린 MySQL 8 testcontainer에서 단독 적용되는지 검증한다.
  *
  * - V1: 22개 테이블 (core_baseline)
  * - V2: 10개 테이블 (reporting_baseline)
  * - V3: audit_logs 트리거 2개
- * - flyway_schema_history: 3 row
+ * - V4: segments 테이블에 build_token / build_started_at / build_heartbeat_at 추가 + schema_version DEFAULT 4
+ * - flyway_schema_history: 4 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
@@ -61,7 +62,7 @@ class BaselineMigrationIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
-    void v1_v2_v3_적용_후_테이블_32개_생성() {
+    void v1_v2_v3_v4_적용_후_테이블_32개_생성() {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.tables " +
                 "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
@@ -71,11 +72,11 @@ class BaselineMigrationIntegrationTest {
     }
 
     @Test
-    void schema_history_3개_row_성공_상태() {
+    void schema_history_4개_row_성공_상태() {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(3);
+        assertThat(count).isEqualTo(4);
     }
 
     @Test
@@ -93,5 +94,25 @@ class BaselineMigrationIntegrationTest {
                     "VALUES (1, 'TEST', 'test', NOW())");
         assertThatThrownBy(() -> jdbc.update("UPDATE audit_logs SET action='HACK' WHERE audit_id=1"))
                 .hasMessageContaining("audit_logs is append-only");
+    }
+
+    @Test
+    void v4_segments_빌드락_컬럼_3개_추가() {
+        // build_token / build_started_at / build_heartbeat_at 컬럼 존재 검증
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'segments' " +
+                "AND column_name IN ('build_token', 'build_started_at', 'build_heartbeat_at')",
+                Integer.class, mysql.getDatabaseName());
+        assertThat(count).isEqualTo(3);
+    }
+
+    @Test
+    void v4_segments_schema_version_default_4() {
+        String columnDefault = jdbc.queryForObject(
+                "SELECT column_default FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'segments' AND column_name = 'schema_version'",
+                String.class, mysql.getDatabaseName());
+        assertThat(columnDefault).isEqualTo("4");
     }
 }
