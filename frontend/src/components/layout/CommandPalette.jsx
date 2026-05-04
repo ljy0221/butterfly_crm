@@ -1,7 +1,7 @@
 import React from "react";
 import { Icon } from "../common/Icon.jsx";
 import Tag from "../common/Tag.jsx";
-import { toast } from "../../lib/ui-bus.js";
+import { toast } from "../../lib/ui-bus";
 
 const ITEMS = [
   { k: "대시보드", l: "대시보드로 이동", kind: "페이지" },
