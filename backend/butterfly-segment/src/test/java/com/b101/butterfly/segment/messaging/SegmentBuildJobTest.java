@@ -57,6 +57,8 @@ class SegmentBuildJobTest {
     @Mock private ConditionTreeToSqlConverter sqlConverter;
     @Mock private UserDirectoryReader userDirectoryReader;
     @Mock private EventAggReader eventAggReader;
+    @Mock private com.b101.butterfly.segment.service.match.ActiveEventSegmentCache
+            activeEventSegmentCache;
 
     @InjectMocks private SegmentBuildJob segmentBuildJob;
 

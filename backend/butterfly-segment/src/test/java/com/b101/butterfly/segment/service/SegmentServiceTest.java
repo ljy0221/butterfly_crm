@@ -59,6 +59,8 @@ class SegmentServiceTest {
     @Mock private LinkedCampaignChecker linkedCampaignChecker;
     @Mock private ConditionTreeHasher conditionTreeHasher;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private com.b101.butterfly.segment.service.match.ActiveEventSegmentCache
+            activeEventSegmentCache;
 
     @InjectMocks private SegmentService segmentService;
 
