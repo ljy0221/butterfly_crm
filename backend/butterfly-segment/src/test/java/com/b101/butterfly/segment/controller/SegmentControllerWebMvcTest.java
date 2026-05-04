@@ -19,9 +19,11 @@ import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.exception.SegmentValidationExceptionHandler;
+import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
+import com.b101.butterfly.segment.service.SegmentUsersService;
 import com.b101.butterfly.segment.service.preview.PreviewService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -70,6 +72,7 @@ class SegmentControllerWebMvcTest {
     @MockitoBean private SegmentFavoriteService segmentFavoriteService;
     @MockitoBean private PreviewService previewService;
     @MockitoBean private SegmentRebuildService segmentRebuildService;
+    @MockitoBean private SegmentUsersService segmentUsersService;
 
     @Test
     @DisplayName("POST /segments — 정상 요청은 201 + ApiResponse 래핑")
@@ -214,11 +217,21 @@ class SegmentControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("GET /segments/{id}/users — 더미 빈 페이지")
-    void usersReturnsEmptyPage() throws Exception {
-        mockMvc.perform(get("/api/v1/projects/1/segments/42/users?page=0&size=50"))
+    @DisplayName("GET /segments/{id}/users — service 반환을 그대로 페이지로 응답")
+    void usersReturnsServicePage() throws Exception {
+        SegmentUserResponse u1 =
+                new SegmentUserResponse(100L, "ext-100", "a@x.com", null, LocalDateTime.now());
+        SegmentUserResponse u2 =
+                new SegmentUserResponse(200L, "ext-200", "b@x.com", null, LocalDateTime.now());
+        when(segmentUsersService.listUsers(eq(1L), eq(42L), any()))
+                .thenReturn(PageResponse.of(List.of(u1, u2), 0, 20, 2));
+
+        mockMvc.perform(get("/api/v1/projects/1/segments/42/users?page=0&size=20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalElements").value(0));
+                .andExpect(jsonPath("$.data.totalElements").value(2))
+                .andExpect(jsonPath("$.data.content[0].userId").value(100))
+                .andExpect(jsonPath("$.data.content[0].externalId").value("ext-100"))
+                .andExpect(jsonPath("$.data.content[1].userId").value(200));
     }
 
     @Test

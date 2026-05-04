@@ -18,6 +18,22 @@ public interface SegmentMemberRepository extends JpaRepository<SegmentMember, Se
     Page<SegmentMember> findBySegmentId(Long segmentId, Pageable pageable);
 
     /**
+     * 활성(미만료) 멤버만 페이지 조회 — Phase 8-1 대상 유저 목록 API용.
+     *
+     * <p>Codex 합의: 만료 배치 cron 사이 시점에 stale row가 보일 수 있으므로
+     * {@code expires_at IS NULL OR expires_at > now} 필터를 query 단계에서 강제.
+     * cumulative 매칭(expires_at NULL)은 자동 포함.
+     */
+    @Query(
+            "SELECT sm FROM SegmentMember sm "
+                    + "WHERE sm.segmentId = :segmentId "
+                    + "AND (sm.expiresAt IS NULL OR sm.expiresAt > :now)")
+    Page<SegmentMember> findActiveBySegmentId(
+            @Param("segmentId") Long segmentId,
+            @Param("now") LocalDateTime now,
+            Pageable pageable);
+
+    /**
      * rebuild 시점에 기존 멤버 일괄 삭제. 새 매칭으로 INSERT 전 호출.
      *
      * @return 삭제된 row 수 (estimated 기준 비교용)
