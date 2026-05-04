@@ -36,12 +36,14 @@ public class EmailService {
     @Async
     public void sendOwnerInvite(@NonNull String to, @NonNull String token,
             @NonNull String companyAuthNo) {
-        String link = baseUrl + "/auth/owner-setup?token=" + token;
+        String link = baseUrl + "/owner/setup?token=" + token;
         String subject = "[Butterfly] 계정 설정 링크";
         String body = "<h2>Butterfly CRM 계정 설정</h2>"
                 + "<p>아래 버튼을 클릭하여 비밀번호를 설정하고 서비스를 시작하세요.</p>"
-                + "<a href='" + link + "' style='padding:12px 24px;background:#4F46E5;color:#fff;"
-                + "text-decoration:none;border-radius:6px'>계정 설정하기</a>"
+                + "<br>"
+                + "<div><a href='" + link + "' style='padding:12px 24px;background:#4F46E5;color:#fff;"
+                + "text-decoration:none;border-radius:6px'>계정 설정하기</a></div>"
+                + "<br>"
                 + "<p>링크는 24시간 후 만료됩니다.</p>"
                 + "<hr>"
                 + "<p><strong>회사 인증번호:</strong> " + companyAuthNo + "</p>"
