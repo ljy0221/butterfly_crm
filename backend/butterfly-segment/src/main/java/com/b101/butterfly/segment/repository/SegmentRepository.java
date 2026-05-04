@@ -1,5 +1,6 @@
 package com.b101.butterfly.segment.repository;
 
+import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.entity.Segment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -9,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Segment Repository. {@link Segment}는 {@code @SQLRestriction("is_deleted = false")}가 걸려 있어
@@ -22,6 +24,12 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
     Page<Segment> findByProjectId(Long projectId, Pageable pageable);
 
     boolean existsByProjectIdAndName(Long projectId, String name);
+
+    /**
+     * 활성 segment 캐시 적재용 — 프로젝트의 READY 상태 segment 모두 로드.
+     * EVENT-only 트리 + categoryId 추출은 호출자가 conditionTree 검사로 분류.
+     */
+    List<Segment> findByProjectIdAndBuildStatus(Long projectId, BuildStatus buildStatus);
 
     /**
      * 빌드 시작 CAS — {@code BUILDING}이 아닌 row, 또는 {@code BUILDING}이지만 heartbeat가
