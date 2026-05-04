@@ -2,12 +2,17 @@ package com.b101.butterfly.event.service;
 
 import com.b101.butterfly.event.dto.request.EventCollectRequest;
 import com.b101.butterfly.event.dto.response.EventCollectResponse;
+import com.b101.butterfly.event.entity.Device;
 import com.b101.butterfly.event.entity.EventCategory;
 import com.b101.butterfly.event.entity.EventCategoryType;
+import com.b101.butterfly.event.entity.Platform;
+import com.b101.butterfly.event.entity.User;
 import com.b101.butterfly.event.exception.EventErrorCode;
 import com.b101.butterfly.event.messaging.EventPayload;
 import com.b101.butterfly.event.messaging.EventProducer;
+import com.b101.butterfly.event.repository.DeviceRepository;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
+import com.b101.butterfly.event.repository.UserRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +30,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,13 +41,18 @@ class EventCollectServiceTest {
 
     @Mock private EventProducer eventProducer;
     @Mock private EventCategoryRepository eventCategoryRepository;
+    @Mock private UserRepository userRepository;
+    @Mock private DeviceRepository deviceRepository;
 
     @InjectMocks private EventCollectService eventCollectService;
 
     private static final Long PROJECT_ID = 100L;
-    private static final Long USER_ID = 7L;
-    private static final Long DEVICE_ID = 42L;
+    private static final Long INTERNAL_USER_ID = 7L;
+    private static final Long INTERNAL_DEVICE_ID = 42L;
+    private static final Long PLACEHOLDER_USER_ID = 9L;
     private static final Long CATEGORY_ID = 1L;
+    private static final String EXTERNAL_USER_ID = "u_kim_xyz";
+    private static final String EXTERNAL_DEVICE_ID = "dev_abc789";
     private static final String CATEGORY_NAME = "page_view";
     private static final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 4, 30, 12, 0);
 
@@ -58,10 +69,35 @@ class EventCollectServiceTest {
         return c;
     }
 
-    private EventCollectRequest request() throws Exception {
+    private User user(Long id, String externalId) {
+        User u = User.builder()
+                .projectId(PROJECT_ID)
+                .externalId(externalId)
+                .build();
+        ReflectionTestUtils.setField(u, "id", id);
+        return u;
+    }
+
+    private Device device() {
+        Device d = Device.builder()
+                .projectId(PROJECT_ID)
+                .userId(INTERNAL_USER_ID)
+                .externalId(EXTERNAL_DEVICE_ID)
+                .platform(Platform.ANDROID)
+                .pushToken("")
+                .pushTokenUpdatedAt(LocalDateTime.now())
+                .tokenValid(true)
+                .appVersion("2.1.0")
+                .osVersion("14")
+                .build();
+        ReflectionTestUtils.setField(d, "id", INTERNAL_DEVICE_ID);
+        return d;
+    }
+
+    private EventCollectRequest request(String externalUserId) throws Exception {
         return new EventCollectRequest(
-                USER_ID,
-                DEVICE_ID,
+                externalUserId,
+                EXTERNAL_DEVICE_ID,
                 CATEGORY_NAME,
                 OCCURRED_AT,
                 MAPPER.readTree("{\"page\":\"/home\"}")
@@ -69,20 +105,24 @@ class EventCollectServiceTest {
     }
 
     @Test
-    @DisplayName("collect — 정상 흐름: Kafka publish 후 response 반환, payload 필드가 request와 일치")
+    @DisplayName("collect — 정상 흐름: user/device lookup 후 internal PK로 publish")
     void collectPublishesAndReturnsResponse() throws Exception {
         when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
                 .thenReturn(Optional.of(category()));
+        when(userRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_USER_ID))
+                .thenReturn(Optional.of(user(INTERNAL_USER_ID, EXTERNAL_USER_ID)));
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.of(device()));
 
-        EventCollectResponse response = eventCollectService.collect(PROJECT_ID, request());
+        EventCollectResponse response = eventCollectService.collect(PROJECT_ID, request(EXTERNAL_USER_ID));
 
         ArgumentCaptor<EventPayload> captor = ArgumentCaptor.forClass(EventPayload.class);
         verify(eventProducer).send(captor.capture());
         EventPayload payload = captor.getValue();
 
         assertThat(payload.projectId()).isEqualTo(PROJECT_ID);
-        assertThat(payload.userId()).isEqualTo(USER_ID);
-        assertThat(payload.deviceId()).isEqualTo(DEVICE_ID);
+        assertThat(payload.userId()).isEqualTo(INTERNAL_USER_ID);
+        assertThat(payload.deviceId()).isEqualTo(INTERNAL_DEVICE_ID);
         assertThat(payload.categoryId()).isEqualTo(CATEGORY_ID);
         assertThat(payload.occurredAt()).isEqualTo(OCCURRED_AT);
         assertThat(payload.schemaVersion()).isEqualTo(1);
@@ -95,13 +135,60 @@ class EventCollectServiceTest {
     }
 
     @Test
+    @DisplayName("collect — userId가 null이면 placeholder user lookup-or-create")
+    void collectAnonymousUserUsesPlaceholder() throws Exception {
+        when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
+                .thenReturn(Optional.of(category()));
+        when(userRepository.findByProjectIdAndExternalId(PROJECT_ID, User.PLACEHOLDER_EXTERNAL_ID))
+                .thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class)))
+                .thenAnswer(inv -> {
+                    User u = inv.getArgument(0);
+                    ReflectionTestUtils.setField(u, "id", PLACEHOLDER_USER_ID);
+                    return u;
+                });
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.of(device()));
+
+        eventCollectService.collect(PROJECT_ID, request(null));
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getExternalId()).isEqualTo(User.PLACEHOLDER_EXTERNAL_ID);
+        assertThat(userCaptor.getValue().getProjectId()).isEqualTo(PROJECT_ID);
+
+        ArgumentCaptor<EventPayload> payloadCaptor = ArgumentCaptor.forClass(EventPayload.class);
+        verify(eventProducer).send(payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue().userId()).isEqualTo(PLACEHOLDER_USER_ID);
+    }
+
+    @Test
+    @DisplayName("collect — userId가 빈 문자열이어도 placeholder로 취급")
+    void collectBlankUserIdUsesPlaceholder() throws Exception {
+        when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
+                .thenReturn(Optional.of(category()));
+        when(userRepository.findByProjectIdAndExternalId(PROJECT_ID, User.PLACEHOLDER_EXTERNAL_ID))
+                .thenReturn(Optional.of(user(PLACEHOLDER_USER_ID, User.PLACEHOLDER_EXTERNAL_ID)));
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.of(device()));
+
+        eventCollectService.collect(PROJECT_ID, request("   "));
+
+        verify(userRepository).findByProjectIdAndExternalId(PROJECT_ID, User.PLACEHOLDER_EXTERNAL_ID);
+    }
+
+    @Test
     @DisplayName("collect — eventData가 null이면 payload.eventData도 null")
     void collectAllowsNullEventData() {
         when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
                 .thenReturn(Optional.of(category()));
+        when(userRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_USER_ID))
+                .thenReturn(Optional.of(user(INTERNAL_USER_ID, EXTERNAL_USER_ID)));
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.of(device()));
 
         EventCollectRequest req = new EventCollectRequest(
-                USER_ID, DEVICE_ID, CATEGORY_NAME, OCCURRED_AT, null
+                EXTERNAL_USER_ID, EXTERNAL_DEVICE_ID, CATEGORY_NAME, OCCURRED_AT, null
         );
 
         eventCollectService.collect(PROJECT_ID, req);
@@ -112,17 +199,39 @@ class EventCollectServiceTest {
     }
 
     @Test
-    @DisplayName("collect — 카테고리 미존재 시 CATEGORY_NOT_FOUND 던지고 publish 안 함")
+    @DisplayName("collect — 카테고리 미존재 시 CATEGORY_NOT_FOUND 던지고 user/device lookup 안 함")
     void collectThrowsWhenCategoryMissing() throws Exception {
         when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
                 .thenReturn(Optional.empty());
 
-        EventCollectRequest req = request();
+        EventCollectRequest req = request(EXTERNAL_USER_ID);
 
         assertThatThrownBy(() -> eventCollectService.collect(PROJECT_ID, req))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(EventErrorCode.CATEGORY_NOT_FOUND);
+
+        verify(userRepository, never()).findByProjectIdAndExternalId(any(), any());
+        verify(deviceRepository, never()).findByProjectIdAndExternalId(any(), any());
+        verify(eventProducer, never()).send(any());
+    }
+
+    @Test
+    @DisplayName("collect — 디바이스 미등록 시 DEVICE_NOT_REGISTERED 던지고 publish 안 함")
+    void collectThrowsWhenDeviceNotRegistered() throws Exception {
+        when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
+                .thenReturn(Optional.of(category()));
+        when(userRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_USER_ID))
+                .thenReturn(Optional.of(user(INTERNAL_USER_ID, EXTERNAL_USER_ID)));
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.empty());
+
+        EventCollectRequest req = request(EXTERNAL_USER_ID);
+
+        assertThatThrownBy(() -> eventCollectService.collect(PROJECT_ID, req))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(EventErrorCode.DEVICE_NOT_REGISTERED);
 
         verify(eventProducer, never()).send(any());
     }
@@ -132,9 +241,13 @@ class EventCollectServiceTest {
     void collectWrapsProducerFailureAsInternalError() throws Exception {
         when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
                 .thenReturn(Optional.of(category()));
+        when(userRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_USER_ID))
+                .thenReturn(Optional.of(user(INTERNAL_USER_ID, EXTERNAL_USER_ID)));
+        when(deviceRepository.findByProjectIdAndExternalId(eq(PROJECT_ID), eq(EXTERNAL_DEVICE_ID)))
+                .thenReturn(Optional.of(device()));
         doThrow(new IllegalStateException("kafka down")).when(eventProducer).send(any());
 
-        EventCollectRequest req = request();
+        EventCollectRequest req = request(EXTERNAL_USER_ID);
 
         assertThatThrownBy(() -> eventCollectService.collect(PROJECT_ID, req))
                 .isInstanceOf(BusinessException.class)
