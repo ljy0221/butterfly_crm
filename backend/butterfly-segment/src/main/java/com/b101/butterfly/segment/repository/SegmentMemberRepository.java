@@ -62,4 +62,17 @@ public interface SegmentMemberRepository extends JpaRepository<SegmentMember, Se
             @Param("userId") Long userId,
             @Param("matchedAt") LocalDateTime matchedAt,
             @Param("expiresAt") LocalDateTime expiresAt);
+
+    /**
+     * 만료된 멤버 일괄 삭제. KST 03:00 cron이 호출.
+     *
+     * <p>{@code expires_at IS NULL}(Cumulative semantic)은 자동 제외. {@code <= now}로 경계
+     * 시점 포함 (Codex 합의 D4).
+     *
+     * @return 삭제된 row 수
+     */
+    @Modifying
+    @Query(
+            "DELETE FROM SegmentMember sm WHERE sm.expiresAt IS NOT NULL AND sm.expiresAt <= :now")
+    int deleteExpiredMembers(@Param("now") LocalDateTime now);
 }
