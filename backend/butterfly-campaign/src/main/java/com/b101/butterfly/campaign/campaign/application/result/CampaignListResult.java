@@ -2,7 +2,7 @@ package com.b101.butterfly.campaign.campaign.application.result;
 
 import com.b101.butterfly.campaign.campaign.domain.Campaign;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import java.time.LocalDateTime;
 
 public record CampaignListResult(

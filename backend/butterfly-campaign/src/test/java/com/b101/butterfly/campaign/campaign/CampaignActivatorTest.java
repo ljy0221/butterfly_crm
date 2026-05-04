@@ -16,7 +16,7 @@ import com.b101.butterfly.campaign.campaign.domain.CampaignExecutionRepository;
 import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignExecutionStatus;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstructionPublisher;
 import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;

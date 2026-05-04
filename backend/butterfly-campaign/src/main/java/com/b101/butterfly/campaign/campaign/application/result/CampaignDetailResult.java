@@ -3,7 +3,7 @@ package com.b101.butterfly.campaign.campaign.application.result;
 import com.b101.butterfly.campaign.campaign.domain.Campaign;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignType;
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.campaign.domain.enums.SendMode;
 import java.time.LocalDateTime;
 

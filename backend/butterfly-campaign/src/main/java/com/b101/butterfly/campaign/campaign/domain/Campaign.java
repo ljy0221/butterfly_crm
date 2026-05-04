@@ -2,10 +2,10 @@ package com.b101.butterfly.campaign.campaign.domain;
 
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.campaign.domain.enums.CampaignType;
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.campaign.domain.enums.RepeatType;
 import com.b101.butterfly.campaign.campaign.domain.enums.SendMode;
 import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;

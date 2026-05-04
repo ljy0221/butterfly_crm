@@ -7,7 +7,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.campaign.infrastructure.kafka.KafkaCampaignSendInstructionAdapter;
 import java.time.Instant;

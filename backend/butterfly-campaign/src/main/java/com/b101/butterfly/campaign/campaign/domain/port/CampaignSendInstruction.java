@@ -1,6 +1,6 @@
 package com.b101.butterfly.campaign.campaign.domain.port;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import java.time.Instant;
 
 /**

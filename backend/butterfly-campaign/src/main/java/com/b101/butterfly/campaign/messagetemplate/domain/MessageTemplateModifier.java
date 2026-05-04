@@ -1,6 +1,6 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;

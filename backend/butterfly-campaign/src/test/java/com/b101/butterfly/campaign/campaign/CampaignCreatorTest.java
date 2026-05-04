@@ -9,7 +9,7 @@ import static org.mockito.Mockito.mock;
 import com.b101.butterfly.campaign.campaign.domain.Campaign;
 import com.b101.butterfly.campaign.campaign.domain.CampaignCreator;
 import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;

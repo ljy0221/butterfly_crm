@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.application.MessageTemplateService;
 import com.b101.butterfly.campaign.messagetemplate.application.result.MessageTemplateListResult;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;

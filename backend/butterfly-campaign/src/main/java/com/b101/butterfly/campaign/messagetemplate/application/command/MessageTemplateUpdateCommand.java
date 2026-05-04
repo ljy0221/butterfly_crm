@@ -1,6 +1,6 @@
 package com.b101.butterfly.campaign.messagetemplate.application.command;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 
 public record MessageTemplateUpdateCommand(
         Long messageTemplateId,
