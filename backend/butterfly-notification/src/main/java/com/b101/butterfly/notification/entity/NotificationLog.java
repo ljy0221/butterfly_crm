@@ -10,11 +10,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "SenderNotificationLog")
 @Table(name = "notification_logs", indexes = {
-        @Index(name = "idx_nlog_project_campaign", columnList = "projectId, campaignId"),
-        @Index(name = "idx_nlog_project_user", columnList = "projectId, userId"),
-        @Index(name = "idx_nlog_project_channel", columnList = "projectId, channel")
+        @Index(name = "idx_nlog_project_campaign", columnList = "project_id, campaign_id"),
+        @Index(name = "idx_nlog_project_user", columnList = "project_id, user_id"),
+        @Index(name = "idx_nlog_project_channel", columnList = "project_id, channel")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -22,16 +22,19 @@ public class NotificationLog extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "log_id")
     private Long logId;
 
-    @Column(nullable = false)
+    @Column(name = "project_id", nullable = false)
     private Long projectId;
 
-    @Column(nullable = false)
+    @Column(name = "campaign_id", nullable = false)
     private Long campaignId;
 
+    @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "device_id")
     private Long deviceId;
 
     @Enumerated(EnumType.STRING)
@@ -45,14 +48,17 @@ public class NotificationLog extends BaseEntity {
     @Column(nullable = false)
     private NotificationStatus status;
 
-    @Column(length = 50)
+    @Column(name = "error_code", length = 50)
     private String errorCode;
 
-    @Column(length = 500)
+    @Column(name = "error_message", length = 500)
     private String errorMessage;
 
+    @Column(name = "sent_at")
     private LocalDateTime sentAt;
+    @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
+    @Column(name = "clicked_at")
     private LocalDateTime clickedAt;
 
     @Builder
