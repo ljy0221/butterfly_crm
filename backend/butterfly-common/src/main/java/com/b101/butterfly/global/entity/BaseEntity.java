@@ -11,9 +11,10 @@ import lombok.Getter;
 @MappedSuperclass
 public abstract class BaseEntity {
 
-    @Column(updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @PrePersist

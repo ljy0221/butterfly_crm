@@ -3,7 +3,7 @@ package com.b101.butterfly.reporting.notification.service;
 import com.b101.butterfly.reporting.notification.dto.NotificationLogIngestRequest;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
-import com.b101.butterfly.reporting.notification.repository.NotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
