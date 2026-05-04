@@ -2,10 +2,10 @@
 
 > Owner: 이재영
 > 최초 작성: 2026-05-04
-> 상태: **합의 대기 (proposed)**
-> 관련 Jira: `S14P31B101-173` (제안서/스크립트 — 173-A, 본 PR), `S14P31B101-183` (운영 적용 — 173-B)
+> 상태: **accepted (2026-05-04)** — 팀 리뷰 결과 별도 의견 없이 원안대로 합의
+> 관련 Jira: `S14P31B101-173` (제안서/스크립트 — 173-A, 머지 완료), `S14P31B101-183` (운영 적용 — 173-B)
 > 관련 ADR: [ADR-0008](../adr/0008-audit-log-architecture-v2.md) "Append-only 3중 방어선"
-> 관련 자료: [SCHEMA_DESIGN.md](../../butterfly-reporting/docs/SCHEMA_DESIGN.md), [db/grants/README.md](../../butterfly-reporting/db/grants/README.md)
+> 관련 자료: [SCHEMA_DESIGN.md](../../butterfly-reporting/docs/SCHEMA_DESIGN.md), [db/grants/README.md](../../butterfly-reporting/db/grants/README.md), [audit-db-permission-rollout.md](../operations/audit-db-permission-rollout.md) (실행 계획)
 
 ## 1. 요약
 
@@ -188,3 +188,5 @@ CI에서 GRANT 효과를 자동 검증해, 운영 적용 후에도 회귀를 막
 | 일자 | 내용 | 작성자 |
 |---|---|---|
 | 2026-05-04 | 최초 작성 (S14P31B101-173 / 173-A) | 이재영 |
+| 2026-05-04 | 팀 리뷰 결과 별도 의견 없이 원안대로 합의 — 상태 accepted. 단, `audit_viewer`는 v1 보류, 운영 데이터 본 후 재결정 | 이재영 |
+| 2026-05-04 | 실행 계획·진행 상세 내역 문서 [audit-db-permission-rollout.md](../operations/audit-db-permission-rollout.md) 정착 (S14P31B101-183 / 173-B 단계 0) | 이재영 |
