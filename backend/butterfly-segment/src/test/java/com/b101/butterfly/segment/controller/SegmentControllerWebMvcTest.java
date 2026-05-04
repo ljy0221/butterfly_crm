@@ -15,10 +15,12 @@ import com.b101.butterfly.segment.domain.condition.validation.TypeFieldValidator
 import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
 import com.b101.butterfly.segment.dto.response.FavoritesResponse;
+import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.exception.SegmentValidationExceptionHandler;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
+import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
 import com.b101.butterfly.segment.service.preview.PreviewService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,6 +69,7 @@ class SegmentControllerWebMvcTest {
     @MockitoBean private SegmentService segmentService;
     @MockitoBean private SegmentFavoriteService segmentFavoriteService;
     @MockitoBean private PreviewService previewService;
+    @MockitoBean private SegmentRebuildService segmentRebuildService;
 
     @Test
     @DisplayName("POST /segments — 정상 요청은 201 + ApiResponse 래핑")
@@ -191,11 +194,15 @@ class SegmentControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("POST /segments/{id}/rebuild — 202 Accepted")
+    @DisplayName("POST /segments/{id}/rebuild — service 호출 + 202 Accepted")
     void rebuildReturnsAccepted() throws Exception {
-        mockMvc.perform(post("/api/v1/projects/1/segments/42/rebuild"))
+        when(segmentRebuildService.requestRebuild(eq(1L), eq(42L), eq(17L)))
+                .thenReturn(new RebuildResponse(42L, BuildStatus.PENDING, LocalDateTime.now()));
+
+        mockMvc.perform(
+                        post("/api/v1/projects/1/segments/42/rebuild").header("X-Member-Id", 17L))
                 .andExpect(status().isAccepted())
-                .andExpect(jsonPath("$.data.buildStatus").value("BUILDING"));
+                .andExpect(jsonPath("$.data.segmentId").value(42L));
     }
 
     @Test

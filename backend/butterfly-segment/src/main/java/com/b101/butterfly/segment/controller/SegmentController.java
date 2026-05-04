@@ -13,12 +13,13 @@ import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
-import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
+import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
 import com.b101.butterfly.segment.service.preview.PreviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +52,13 @@ public class SegmentController {
     private final SegmentService segmentService;
     private final SegmentFavoriteService segmentFavoriteService;
     private final PreviewService previewService;
+
+    /**
+     * {@link SegmentRebuildService}는 {@code @Profile("api")}로 worker에서는 등록되지 않는다.
+     * Controller는 worker에도 빈 등록되므로 {@link ObjectProvider}로 lazy resolution — 실제 호출은
+     * api 프로파일에서만 발생.
+     */
+    private final ObjectProvider<SegmentRebuildService> segmentRebuildServiceProvider;
 
     @PostMapping
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
@@ -121,11 +129,14 @@ public class SegmentController {
     @PostMapping("/{segmentId}/rebuild")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ResponseEntity<ApiResponse<RebuildResponse>> rebuild(
-            @PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 6 — buildStatus CAS + 큐 publish
-        RebuildResponse stub =
-                new RebuildResponse(segmentId, BuildStatus.BUILDING, LocalDateTime.now());
-        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok(stub));
+            @PathVariable Long projectId,
+            @PathVariable Long segmentId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        RebuildResponse response =
+                segmentRebuildServiceProvider
+                        .getObject()
+                        .requestRebuild(projectId, segmentId, memberId);
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok(response));
     }
 
     @GetMapping("/{segmentId}/campaigns")

@@ -1,1 +1,3 @@
 com.b101.butterfly.segment.config.SegmentJpaAutoConfig
+com.b101.butterfly.segment.config.SegmentKafkaProducerConfig
+com.b101.butterfly.segment.config.SegmentKafkaConsumerConfig
