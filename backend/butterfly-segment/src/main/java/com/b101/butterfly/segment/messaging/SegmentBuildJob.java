@@ -10,6 +10,7 @@ import com.b101.butterfly.segment.port.EventQueryContext;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
+import com.b101.butterfly.segment.service.match.ActiveEventSegmentCache;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import com.b101.butterfly.segment.service.preview.ConditionTreeToSqlConverter;
 import com.b101.butterfly.segment.service.preview.EventConditionNotReadyException;
@@ -74,6 +75,7 @@ public class SegmentBuildJob {
     private final ConditionTreeToSqlConverter sqlConverter;
     private final UserDirectoryReader userDirectoryReader;
     private final EventAggReader eventAggReader;
+    private final ActiveEventSegmentCache activeEventSegmentCache;
 
     @KafkaListener(
             topics = SegmentRebuildMessage.TOPIC,
@@ -129,6 +131,9 @@ public class SegmentBuildJob {
                 return;
             }
             log.info("Segment {} 빌드 완료. estimatedCount={}", segmentId, totalCount);
+
+            // Phase 6-3: READY 전환으로 활성 segment 목록이 바뀌었으므로 캐시 무효화
+            activeEventSegmentCache.invalidate(message.projectId());
         } catch (RuntimeException e) {
             log.error(
                     "Segment {} 빌드 실패 (token={}): {}", segmentId, token, e.getMessage(), e);

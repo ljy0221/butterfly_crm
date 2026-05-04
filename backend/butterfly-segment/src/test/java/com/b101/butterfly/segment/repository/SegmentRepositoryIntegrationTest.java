@@ -30,12 +30,12 @@ class SegmentRepositoryIntegrationTest extends AbstractMySqlContainerTest {
     @Autowired private EntityManager entityManager;
 
     @Test
-    @DisplayName("저장 시 기본값(schemaVersion=3, buildStatus=PENDING, isDeleted=false)이 채워진다")
+    @DisplayName("저장 시 기본값(schemaVersion=4, buildStatus=PENDING, isDeleted=false)이 채워진다")
     void saveAppliesDefaults() {
         Segment saved = repository.save(newSegment(1L, "VIP 고객"));
 
         assertThat(saved.getId()).isNotNull();
-        assertThat(saved.getSchemaVersion()).isEqualTo(3);
+        assertThat(saved.getSchemaVersion()).isEqualTo(4);
         assertThat(saved.getBuildStatus()).isEqualTo(BuildStatus.PENDING);
         assertThat(saved.isDeleted()).isFalse();
         assertThat(saved.getEstimatedCount()).isZero();

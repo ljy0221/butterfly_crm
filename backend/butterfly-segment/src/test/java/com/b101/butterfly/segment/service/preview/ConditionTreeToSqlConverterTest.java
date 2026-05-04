@@ -158,7 +158,7 @@ class ConditionTreeToSqlConverterTest {
                         LogicOp.AND,
                         List.of(
                                 new EventNode(
-                                        "purchase",
+                                        42L,
                                         List.of(),
                                         new Period.Relative(30),
                                         3)));
@@ -176,7 +176,7 @@ class ConditionTreeToSqlConverterTest {
                         List.of(
                                 new TagNode("region", Operator.EQ, NODE.textNode("서울")),
                                 new EventNode(
-                                        "purchase",
+                                        42L,
                                         List.of(
                                                 new EventFilter(
                                                         "color",

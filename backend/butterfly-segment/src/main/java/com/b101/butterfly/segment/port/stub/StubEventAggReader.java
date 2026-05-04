@@ -22,4 +22,9 @@ public class StubEventAggReader implements EventAggReader {
     public Stream<Long> queryMatchingUserIds(EventNode node, EventQueryContext context) {
         throw new EventConditionNotReadyException();
     }
+
+    @Override
+    public boolean userMatches(EventNode node, Long userId, EventQueryContext context) {
+        throw new EventConditionNotReadyException();
+    }
 }

@@ -3,7 +3,7 @@
   "conditions": [
     {
       "type": "event",
-      "category": "page_view",
+      "categoryId": 99,
       "filters": [
         { "key": "path", "op": "contains", "value": "/product" }
       ],

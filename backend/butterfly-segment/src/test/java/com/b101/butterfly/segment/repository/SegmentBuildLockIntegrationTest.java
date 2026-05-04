@@ -16,15 +16,21 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 /**
  * {@link SegmentRepository}의 빌드 잡 CAS 쿼리 통합 테스트 ([-178] PR1).
  *
  * <p>{@code markBuildingIfPossible / updateHeartbeat / completeBuildIfOwner / failBuildIfOwner /
  * markStaleBuildsAsFailed} 5개 메서드의 동시성 안전성을 Testcontainers MySQL로 검증.
+ *
+ * <p>시간 비교는 {@code isCloseTo within 1 SECOND} — Java LocalDateTime 나노초 정밀도와
+ * MySQL DATETIME 정밀도 사이 환경 의존성(timezone/MySQL driver/JVM 정밀도)을 회피.
+ * CAS 동작/token/status가 핵심이고 정밀 시간은 부수적 검증.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -52,8 +58,8 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
         Segment reloaded = repository.findById(saved.getId()).orElseThrow();
         assertThat(reloaded.getBuildStatus()).isEqualTo(BuildStatus.BUILDING);
         assertThat(reloaded.getBuildToken()).isEqualTo(TOKEN_A);
-        assertThat(reloaded.getBuildStartedAt()).isEqualTo(now);
-        assertThat(reloaded.getBuildHeartbeatAt()).isEqualTo(now);
+        assertThat(reloaded.getBuildStartedAt()).isCloseTo(now, within(1, ChronoUnit.SECONDS));
+        assertThat(reloaded.getBuildHeartbeatAt()).isCloseTo(now, within(1, ChronoUnit.SECONDS));
     }
 
     @Test
@@ -118,7 +124,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
         assertThat(updatedA).isEqualTo(1);
         assertThat(updatedB).isZero();
         Segment reloaded = repository.findById(saved.getId()).orElseThrow();
-        assertThat(reloaded.getBuildHeartbeatAt()).isEqualTo(later);
+        assertThat(reloaded.getBuildHeartbeatAt()).isCloseTo(later, within(1, ChronoUnit.SECONDS));
     }
 
     @Test
@@ -139,8 +145,8 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
         Segment reloaded = repository.findById(saved.getId()).orElseThrow();
         assertThat(reloaded.getBuildStatus()).isEqualTo(BuildStatus.READY);
         assertThat(reloaded.getEstimatedCount()).isEqualTo(12345);
-        assertThat(reloaded.getEstimatedAt()).isEqualTo(builtAt);
-        assertThat(reloaded.getLastBuiltAt()).isEqualTo(builtAt);
+        assertThat(reloaded.getEstimatedAt()).isCloseTo(builtAt, within(1, ChronoUnit.SECONDS));
+        assertThat(reloaded.getLastBuiltAt()).isCloseTo(builtAt, within(1, ChronoUnit.SECONDS));
         assertThat(reloaded.getBuildToken()).isNull();
         assertThat(reloaded.getBuildHeartbeatAt()).isNull();
     }

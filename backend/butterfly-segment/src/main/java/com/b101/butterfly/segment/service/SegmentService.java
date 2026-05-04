@@ -19,6 +19,7 @@ import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
+import com.b101.butterfly.segment.service.match.ActiveEventSegmentCache;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,6 +56,7 @@ public class SegmentService {
     private final LinkedCampaignChecker linkedCampaignChecker;
     private final ConditionTreeHasher conditionTreeHasher;
     private final ApplicationEventPublisher eventPublisher;
+    private final ActiveEventSegmentCache activeEventSegmentCache;
 
     @Transactional
     public CreateSegmentResponse create(
@@ -170,6 +172,11 @@ public class SegmentService {
                             detail));
         }
 
+        // Phase 6-3: 트리 변경 시 활성 segment 캐시 무효화 (categoryId 변경 가능성)
+        if (conditionTreeChanged) {
+            activeEventSegmentCache.invalidate(projectId);
+        }
+
         return toDetail(segment, memberId);
     }
 
@@ -195,6 +202,9 @@ public class SegmentService {
                         null,
                         null,
                         detail));
+
+        // Phase 6-3: 삭제된 segment가 캐시에 남아 매칭되지 않도록 즉시 무효화
+        activeEventSegmentCache.invalidate(projectId);
     }
 
     private Segment findActiveSegment(Long segmentId) {

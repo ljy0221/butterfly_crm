@@ -57,6 +57,8 @@ class SegmentBuildJobTest {
     @Mock private ConditionTreeToSqlConverter sqlConverter;
     @Mock private UserDirectoryReader userDirectoryReader;
     @Mock private EventAggReader eventAggReader;
+    @Mock private com.b101.butterfly.segment.service.match.ActiveEventSegmentCache
+            activeEventSegmentCache;
 
     @InjectMocks private SegmentBuildJob segmentBuildJob;
 
@@ -238,14 +240,14 @@ class SegmentBuildJobTest {
     private static GroupNode eventTree() {
         EventNode event =
                 new EventNode(
-                        "purchase", new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
+                        42L, new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
         return new GroupNode(LogicOp.AND, List.of(event));
     }
 
     private static GroupNode mixedTree() {
         EventNode event =
                 new EventNode(
-                        "purchase", new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
+                        42L, new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
         TagNode tag =
                 new TagNode("region", Operator.EQ, JsonNodeFactory.instance.textNode("서울"));
         return new GroupNode(LogicOp.AND, List.of(event, tag));
