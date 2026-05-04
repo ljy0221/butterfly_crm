@@ -4,6 +4,7 @@ import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.entity.Member;
 import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.auth.repository.RefreshTokenRepository;
+import com.b101.butterfly.auth.security.ProjectPermissionEvaluator;
 import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.tenant.dto.request.UpdateMemberRoleRequest;
 import com.b101.butterfly.tenant.dto.response.ProjectMemberResponse;
@@ -22,6 +23,7 @@ public class ProjectMemberService {
 
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final ProjectPermissionEvaluator projectPermissionEvaluator;
 
     public List<ProjectMemberResponse> getMembers(Long projectId) {
         return memberRepository.findAllByProjectId(projectId)
@@ -40,6 +42,7 @@ public class ProjectMemberService {
 
         target.softDelete();
         refreshTokenRepository.deleteByMemberId(targetMemberId);
+        projectPermissionEvaluator.evictCache(targetMemberId, projectId);
         // TODO(P7): AccessToken 블랙리스트 등록 — JWT 통합 시 구현
         // TODO(P7): AuditRecordedEvent 발행 (MEMBER_REMOVED) — ADR-0009
     }
@@ -53,6 +56,7 @@ public class ProjectMemberService {
         }
 
         target.updateRole(request.roleType());
+        projectPermissionEvaluator.evictCache(targetMemberId, projectId);
         // TODO(P7): AuditRecordedEvent 발행 (MEMBER_ROLE_CHANGED) — ADR-0009
     }
 
