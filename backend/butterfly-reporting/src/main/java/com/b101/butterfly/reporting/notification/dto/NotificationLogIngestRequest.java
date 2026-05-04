@@ -25,6 +25,9 @@ public record NotificationLogIngestRequest(
         Long deviceId,
         @NotNull Channel channel,
         @NotNull NotificationStatus status,
-        LocalDateTime sentAt
+        LocalDateTime sentAt,
+        LocalDateTime deliveredAt,
+        String errorCode,
+        String errorMessage
 ) {
 }
