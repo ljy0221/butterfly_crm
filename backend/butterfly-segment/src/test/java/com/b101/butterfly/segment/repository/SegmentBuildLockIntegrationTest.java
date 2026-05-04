@@ -16,6 +16,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,7 +41,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("markBuildingIfPossible — PENDING 상태에서 점유 성공 (return 1)")
     void markBuildingFromPending() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
 
         int updated =
                 repository.markBuildingIfPossible(
@@ -60,7 +61,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("markBuildingIfPossible — BUILDING + heartbeat 신선 시 다른 worker 거절 (return 0)")
     void markBuildingRejectedWhenHeartbeatFresh() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         repository.markBuildingIfPossible(saved.getId(), TOKEN_A, now, now.minusMinutes(30));
         repository.flush();
         entityManager.clear();
@@ -82,14 +83,14 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("markBuildingIfPossible — BUILDING + heartbeat stale 시 새 worker 인수 (return 1)")
     void markBuildingTakesOverStale() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime longAgo = LocalDateTime.now().minusHours(2);
+        LocalDateTime longAgo = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS).minusHours(2);
         repository.markBuildingIfPossible(
                 saved.getId(), TOKEN_A, longAgo, longAgo.minusMinutes(30));
         repository.flush();
         entityManager.clear();
 
         // worker-b가 지금 점유 시도, stale threshold = 10분 전 → TOKEN_A의 heartbeat가 stale
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         int updated =
                 repository.markBuildingIfPossible(
                         saved.getId(), TOKEN_B, now, now.minusMinutes(10));
@@ -105,7 +106,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("updateHeartbeat — 자기 token이면 갱신 (return 1), 다른 token이면 거절 (return 0)")
     void updateHeartbeatRespectsTokenOwnership() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         repository.markBuildingIfPossible(saved.getId(), TOKEN_A, now, now.minusMinutes(30));
         repository.flush();
 
@@ -125,7 +126,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("completeBuildIfOwner — 자기 token이면 READY + estimated 갱신 + token/heartbeat 정리")
     void completeBuildOwnerSucceeds() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime startedAt = LocalDateTime.now();
+        LocalDateTime startedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         repository.markBuildingIfPossible(
                 saved.getId(), TOKEN_A, startedAt, startedAt.minusMinutes(30));
         repository.flush();
@@ -149,7 +150,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("completeBuildIfOwner — 다른 token이면 거절 (return 0, 상태 보존)")
     void completeBuildRejectsStaleOwner() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime startedAt = LocalDateTime.now();
+        LocalDateTime startedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         repository.markBuildingIfPossible(
                 saved.getId(), TOKEN_A, startedAt, startedAt.minusMinutes(30));
         repository.flush();
@@ -170,7 +171,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     @DisplayName("failBuildIfOwner — 자기 token이면 FAILED 전환, 다른 token이면 거절")
     void failBuildRespectsOwnership() {
         Segment saved = repository.saveAndFlush(newSegment());
-        LocalDateTime startedAt = LocalDateTime.now();
+        LocalDateTime startedAt = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         repository.markBuildingIfPossible(
                 saved.getId(), TOKEN_A, startedAt, startedAt.minusMinutes(30));
         repository.flush();
@@ -193,13 +194,13 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
     void staleBuildsConvertedToFailed() {
         // stale BUILDING (heartbeat 1시간 전)
         Segment stale = repository.saveAndFlush(newSegment());
-        LocalDateTime longAgo = LocalDateTime.now().minusHours(1);
+        LocalDateTime longAgo = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS).minusHours(1);
         repository.markBuildingIfPossible(
                 stale.getId(), TOKEN_A, longAgo, longAgo.minusMinutes(30));
 
         // 신선 BUILDING (heartbeat 방금)
         Segment fresh = repository.saveAndFlush(newSegment("fresh"));
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now().truncatedTo(ChronoUnit.MICROS);
         repository.markBuildingIfPossible(fresh.getId(), TOKEN_B, now, now.minusMinutes(30));
 
         // PENDING (변경 없음)
@@ -208,7 +209,7 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
         repository.flush();
         entityManager.clear();
 
-        int converted = repository.markStaleBuildsAsFailed(LocalDateTime.now().minusMinutes(30));
+        int converted = repository.markStaleBuildsAsFailed(LocalDateTime.now().truncatedTo(ChronoUnit.MICROS).minusMinutes(30));
         repository.flush();
         entityManager.clear();
 
