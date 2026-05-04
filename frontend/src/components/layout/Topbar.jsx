@@ -2,13 +2,15 @@ import React from "react";
 import { Icon } from "../common/Icon.jsx";
 import Avatar from "../common/Avatar.jsx";
 import Button from "../common/Button.jsx";
-import { openModal } from "../../lib/ui-bus.js";
-import { CRM_DATA } from "../../data/mock.js";
+import { openModal } from "../../lib/ui-bus";
+import { useAuthStore } from "@/stores/auth";
 import CommandPalette from "./CommandPalette.jsx";
 import NotificationsPanel from "./NotificationsPanel.jsx";
-import UserMenuModal from "./UserMenuModal.jsx";
+import UserMenuModal from "./UserMenuModal";
 
 export default function Topbar({ crumbs, onToggleSidebar, onNavigate }) {
+  // 로그인한 사용자 이름을 store에서 직접 — 옛 mock(CRM_DATA.USER.name)과 결별.
+  const memberName = useAuthStore((s) => s.member?.name ?? "Guest");
   const openCommandPalette = React.useCallback(
     () => openModal(({ close }) => <CommandPalette close={close} onNavigate={onNavigate} />),
     [onNavigate]
@@ -137,8 +139,12 @@ export default function Topbar({ crumbs, onToggleSidebar, onNavigate }) {
 
       <div style={{ width: 12 }} />
 
-      <span onClick={openUserMenu} style={{ cursor: "pointer" }}>
-        <Avatar name={CRM_DATA.USER.name} size={30} />
+      <span
+        onClick={openUserMenu}
+        style={{ cursor: "pointer" }}
+        title={memberName}
+      >
+        <Avatar name={memberName} size={30} />
       </span>
     </header>
   );
