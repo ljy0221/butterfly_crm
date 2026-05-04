@@ -24,8 +24,10 @@ import java.time.LocalDateTime;
  * S14P31B101-177(122-A2)에서 다룬다.
  *
  * <p><b>상태 전이</b>: 초기 INSERT 후 status는 {@code PENDING → SENT → DELIVERED} 또는
- * {@code SENT → FAILED} 등으로 UPDATE된다. 전이 규칙 검증은 S14P31B101-175(122-B)에서
- * 추가된다 — 본 엔티티는 setter 없이 update 헬퍼만 제공할 수 있도록 열어둔다.
+ * {@code SENT → FAILED} 등으로 UPDATE된다. 전이 가능 여부는
+ * {@link NotificationStatus#canTransitionTo(NotificationStatus)}로 검증하고,
+ * 통과한 경우에만 {@link #applyTransition(NotificationStatus, java.time.LocalDateTime,
+ * java.time.LocalDateTime, String, String)}으로 갱신한다 (setter 미노출).
  *
  * <p><b>멱등성</b>: {@link #messageKey}에 UNIQUE INDEX가 걸려 있으므로 동일 키 재INSERT는
  * DB 레벨에서 차단된다 (V13).
@@ -119,5 +121,35 @@ public class NotificationLog {
     @PrePersist
     void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    /**
+     * 상태 전이 적용. 호출자는 사전에
+     * {@link NotificationStatus#canTransitionTo(NotificationStatus)}로 가능 여부를 확인해야 한다.
+     * 같은 status 재수신은 멱등이므로 호출해도 무방하다 (필드는 새 값으로 덮어쓴다).
+     *
+     * <p>각 인자는 nullable — 들어온 값으로만 갱신하면 되는 케이스(예: SENT→DELIVERED 시
+     * sentAt은 그대로 유지)도 있으므로 null이면 기존 값을 유지한다.
+     */
+    public void applyTransition(
+            NotificationStatus newStatus,
+            LocalDateTime newSentAt,
+            LocalDateTime newDeliveredAt,
+            String newErrorCode,
+            String newErrorMessage
+    ) {
+        this.status = newStatus;
+        if (newSentAt != null) {
+            this.sentAt = newSentAt;
+        }
+        if (newDeliveredAt != null) {
+            this.deliveredAt = newDeliveredAt;
+        }
+        if (newErrorCode != null) {
+            this.errorCode = newErrorCode;
+        }
+        if (newErrorMessage != null) {
+            this.errorMessage = newErrorMessage;
+        }
     }
 }
