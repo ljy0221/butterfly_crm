@@ -73,7 +73,15 @@ public class Device extends BaseEntity {
         this.lastActiveAt = lastActiveAt;
     }
 
-    public void rebindUser(Long newUserId) {
-        this.userId = newUserId;
+    public void applyRegistration(Long userId, Platform platform, String pushToken,
+                                  LocalDateTime pushTokenUpdatedAt,
+                                  String appVersion, String osVersion) {
+        this.userId = userId;
+        this.platform = platform;
+        this.pushToken = pushToken;
+        this.pushTokenUpdatedAt = pushTokenUpdatedAt;
+        this.tokenValid = !pushToken.isEmpty();
+        this.appVersion = appVersion;
+        this.osVersion = osVersion;
     }
 }
