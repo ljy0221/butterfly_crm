@@ -30,6 +30,14 @@ public enum SegmentErrorCode implements ErrorCode {
             "SEGMENT_400_INVALID_CONDITION_TREE",
             "조건 트리 스키마가 올바르지 않습니다.",
             HttpStatus.BAD_REQUEST),
+    SEGMENT_400_EVENT_FILTER_NOT_SUPPORTED_V1(
+            "SEGMENT_400_EVENT_FILTER_NOT_SUPPORTED_V1",
+            "EVENT 조건의 filters는 v1에서 지원하지 않습니다.",
+            HttpStatus.BAD_REQUEST),
+    SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1(
+            "SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1",
+            "EVENT 조건은 v1에서 단독 트리로만 사용할 수 있습니다.",
+            HttpStatus.BAD_REQUEST),
     SEGMENT_404_NOT_FOUND(
             "SEGMENT_404_NOT_FOUND",
             "세그먼트를 찾을 수 없습니다.",
