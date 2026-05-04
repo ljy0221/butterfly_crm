@@ -27,11 +27,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class NotificationLogRepositoryIntegrationTest extends AbstractMySqlContainerTest {
+class ReportingNotificationLogRepositoryIntegrationTest extends AbstractMySqlContainerTest {
 
     private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 4, 28, 10, 0, 5);
 
-    @Autowired private NotificationLogRepository repository;
+    @Autowired private ReportingNotificationLogRepository repository;
     @Autowired private EntityManager entityManager;
 
     private NotificationLog newLog(String messageKey) {

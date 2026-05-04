@@ -3,7 +3,7 @@ package com.b101.butterfly.reporting.notification.service;
 import com.b101.butterfly.reporting.notification.dto.NotificationLogIngestRequest;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
-import com.b101.butterfly.reporting.notification.repository.NotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,7 @@ public class NotificationLogIngestService {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationLogIngestService.class);
 
-    private final NotificationLogRepository repository;
+    private final ReportingNotificationLogRepository repository;
 
     /**
      * 멱등 적재. 같은 {@code messageKey}로 들어온 요청은 INSERT 없이 기존 row를 반환하고,
