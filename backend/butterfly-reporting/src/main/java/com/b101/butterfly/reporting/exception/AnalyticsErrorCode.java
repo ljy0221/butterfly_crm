@@ -10,7 +10,8 @@ public enum AnalyticsErrorCode implements ErrorCode {
 
     CAMPAIGN_STATS_NOT_FOUND("ANALYTICS_001", "캠페인 통계를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     INVALID_DATE_RANGE("ANALYTICS_002", "from은 to보다 이전이어야 합니다.", HttpStatus.BAD_REQUEST),
-    DATE_RANGE_TOO_LARGE("ANALYTICS_003", "조회 기간이 너무 깁니다.", HttpStatus.BAD_REQUEST);
+    DATE_RANGE_TOO_LARGE("ANALYTICS_003", "조회 기간이 너무 깁니다.", HttpStatus.BAD_REQUEST),
+    AUDIT_NOT_FOUND("ANALYTICS_004", "감사 로그를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

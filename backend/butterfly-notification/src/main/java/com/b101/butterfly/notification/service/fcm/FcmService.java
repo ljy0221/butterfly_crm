@@ -3,13 +3,13 @@ package com.b101.butterfly.notification.service.fcm;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.dto.request.FcmSendRequest;
 import com.b101.butterfly.notification.dto.response.DeliveryResult;
-import com.b101.butterfly.notification.exception.DeliveryErrorCode;
 import com.b101.butterfly.notification.dto.response.FcmSendResponse;
 import com.b101.butterfly.notification.dto.response.FcmTokenResult;
+import com.b101.butterfly.notification.dto.response.TargetOutcome;
+import com.b101.butterfly.notification.exception.DeliveryErrorCode;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
-import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
@@ -83,44 +83,80 @@ public class FcmService {
         return new FcmSendResponse(successCount, failureCount, allResults);
     }
 
-    public DeliveryResult sendOne(Long projectId, String credentialJson,
-                                  DeliveryCommand.MessagePayload messagePayload,
-                                  DeliveryCommand.DeliveryTarget target) {
-        if (target.pushToken() == null || target.pushToken().isBlank()) {
-            return DeliveryResult.permanentFailure(
-                    DeliveryErrorCode.FCM_TOKEN_MISSING.getCode(),
-                    DeliveryErrorCode.FCM_TOKEN_MISSING.getMessage());
+    public List<TargetOutcome> sendBatch(Long projectId, String credentialJson,
+                                         DeliveryCommand.MessagePayload messagePayload,
+                                         List<DeliveryCommand.DeliveryTarget> targets) {
+        List<TargetOutcome> outcomes = new ArrayList<>();
+
+        // 토큰 없는 대상은 즉시 실패 처리, 유효한 대상만 모아서 배치 발송
+        List<DeliveryCommand.DeliveryTarget> validTargets = new ArrayList<>();
+        for (DeliveryCommand.DeliveryTarget target : targets) {
+            if (target.pushToken() == null || target.pushToken().isBlank()) {
+                outcomes.add(new TargetOutcome(target, DeliveryResult.permanentFailure(
+                        DeliveryErrorCode.FCM_TOKEN_MISSING.getCode(),
+                        DeliveryErrorCode.FCM_TOKEN_MISSING.getMessage())));
+            } else {
+                validTargets.add(target);
+            }
+        }
+
+        if (validTargets.isEmpty()) {
+            return outcomes;
         }
 
         FirebaseMessaging messaging = FirebaseMessaging.getInstance(
                 fcmAppManager.getOrCreateApp(projectId, credentialJson));
 
-        Message.Builder messageBuilder = Message.builder()
-                .setToken(target.pushToken())
-                .setNotification(Notification.builder()
-                        .setTitle(messagePayload.title())
-                        .setBody(messagePayload.body())
-                        .setImage(messagePayload.imageUrl())
-                        .build());
+        Notification notification = Notification.builder()
+                .setTitle(messagePayload.title())
+                .setBody(messagePayload.body())
+                .setImage(messagePayload.imageUrl())
+                .build();
 
-        if (messagePayload.clickAction() != null) {
-            messageBuilder.putData("clickAction", messagePayload.clickAction());
+        for (int i = 0; i < validTargets.size(); i += BATCH_SIZE) {
+            List<DeliveryCommand.DeliveryTarget> chunk =
+                    validTargets.subList(i, Math.min(i + BATCH_SIZE, validTargets.size()));
+            List<String> tokens = chunk.stream()
+                    .map(DeliveryCommand.DeliveryTarget::pushToken)
+                    .toList();
+
+            MulticastMessage.Builder builder = MulticastMessage.builder()
+                    .addAllTokens(tokens)
+                    .setNotification(notification);
+
+            if (messagePayload.clickAction() != null) {
+                builder.putData("clickAction", messagePayload.clickAction());
+            }
+            if (messagePayload.data() != null) {
+                builder.putData("customData", messagePayload.data());
+            }
+
+            try {
+                BatchResponse batchResponse = messaging.sendEachForMulticast(builder.build());
+                List<SendResponse> responses = batchResponse.getResponses();
+
+                for (int j = 0; j < responses.size(); j++) {
+                    SendResponse resp = responses.get(j);
+                    DeliveryCommand.DeliveryTarget target = chunk.get(j);
+                    if (resp.isSuccessful()) {
+                        outcomes.add(new TargetOutcome(target, DeliveryResult.success()));
+                    } else {
+                        outcomes.add(new TargetOutcome(target, mapFcmError(resp.getException())));
+                    }
+                }
+            } catch (FirebaseMessagingException e) {
+                log.error("FCM 배치 발송 실패: projectId={}, chunkStart={}", projectId, i, e);
+                DeliveryResult error = mapFcmError(e);
+                for (DeliveryCommand.DeliveryTarget target : chunk) {
+                    outcomes.add(new TargetOutcome(target, error));
+                }
+            }
         }
 
-        if (messagePayload.data() != null) {
-            messageBuilder.putData("customData", messagePayload.data());
-        }
-
-        try {
-            String messageId = messaging.send(messageBuilder.build());
-            log.debug("FCM 발송 성공: messageId={}, projectId={}, userId={}",
-                    messageId, projectId, target.userId());
-            return DeliveryResult.success();
-        } catch (FirebaseMessagingException e) {
-            log.warn("FCM 발송 실패: projectId={}, userId={}, errorCode={}",
-                    projectId, target.userId(), e.getMessagingErrorCode(), e);
-            return mapFcmError(e);
-        }
+        long successCount = outcomes.stream().filter(o -> o.result().successful()).count();
+        log.info("FCM 배치 발송 완료: projectId={}, success={}, failure={}",
+                projectId, successCount, outcomes.size() - successCount);
+        return outcomes;
     }
 
     private DeliveryResult mapFcmError(FirebaseMessagingException e) {

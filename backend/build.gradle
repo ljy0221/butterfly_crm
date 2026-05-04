@@ -47,7 +47,28 @@ subprojects {
     }
 
     tasks.named('test') {
-        useJUnitPlatform()
+        useJUnitPlatform {
+            excludeTags 'integration'
+        }
+    }
+
+    // butterfly-testsupport와 butterfly-archtest는 integrationTest 대상 아님
+    if (project.name != 'butterfly-testsupport' && project.name != 'butterfly-archtest') {
+        tasks.register('integrationTest', Test) {
+            description = 'Runs JUnit tests tagged "integration".'
+            group = 'verification'
+            useJUnitPlatform {
+                includeTags 'integration'
+            }
+            shouldRunAfter tasks.named('test')
+            testClassesDirs = sourceSets.test.output.classesDirs
+            classpath = sourceSets.test.runtimeClasspath
+            reports {
+                html.outputLocation = layout.buildDirectory.dir("reports/tests/integrationTest")
+                junitXml.outputLocation = layout.buildDirectory.dir("test-results/integrationTest")
+            }
+            binaryResultsDirectory = layout.buildDirectory.dir("test-results/integrationTest/binary")
+        }
     }
 
     // ===== Checkstyle =====
@@ -77,6 +98,10 @@ subprojects {
             jib {
                 from {
                     image = 'eclipse-temurin:21-jre'
+                    auth {
+                        username = System.getenv("DOCKER_USERNAME") ?: ""
+                        password = System.getenv("DOCKER_PASSWORD") ?: ""
+                    }
                     platforms {
                         platform {
                             architecture = 'amd64'

@@ -1,14 +1,17 @@
 package com.b101.butterfly.notification.service;
 
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
-import com.b101.butterfly.notification.dto.response.DeliveryResult;
+import com.b101.butterfly.notification.dto.request.DeliveryCommand.ChannelCredential;
+import com.b101.butterfly.notification.dto.request.DeliveryCommand.DeliveryTarget;
+import com.b101.butterfly.notification.dto.response.TargetOutcome;
 import com.b101.butterfly.notification.exception.DeliveryErrorCode;
+import com.b101.butterfly.notification.port.UserContactPort;
+import com.b101.butterfly.notification.service.credential.ChannelCredentialService;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -23,23 +26,42 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     private final ChannelAdapterRegistry channelAdapterRegistry;
     private final DeliveryResultPersister deliveryResultPersister;
+    private final ChannelCredentialService channelCredentialService;
+    private final UserContactPort userContactPort;
 
     @Override
     public void deliver(DeliveryCommand command) {
-        if (command.targets() == null || command.targets().isEmpty()) {
+        // 1. credential 결정: 있으면 그대로, 없으면 DB 조회
+        ChannelCredential credential = command.credential() != null
+                ? command.credential()
+                : channelCredentialService.getCredential(command.projectId(), command.channel());
+
+        // 2. targets 결정: 있으면 그대로, 없으면 userIds로 조회
+        List<DeliveryTarget> targets = command.targets() != null && !command.targets().isEmpty()
+                ? command.targets()
+                : userContactPort.getContactsByUserIds(
+                        command.projectId(), command.userIds(), command.channel())
+                    .stream()
+                    .map(c -> new DeliveryTarget(
+                            c.userId(), c.deviceId(),
+                            c.pushToken(), c.email(), c.phoneNumber()))
+                    .toList();
+
+        if (targets.isEmpty()) {
             throw new BusinessException(DeliveryErrorCode.EMPTY_TARGETS);
         }
+
+        // 3. 내부용 command 재조립 (credential + targets 확정)
+        DeliveryCommand resolved = new DeliveryCommand(
+                command.projectId(), command.campaignId(), command.channel(),
+                command.message(), command.userIds(), credential, targets);
 
         ChannelAdapter adapter = channelAdapterRegistry.getAdapter(command.channel());
 
         // Phase 1: 발송 — 트랜잭션 밖에서 HTTP 호출
-        List<DeliveryResultPersister.TargetOutcome> outcomes = new ArrayList<>();
-        for (DeliveryCommand.DeliveryTarget target : command.targets()) {
-            DeliveryResult result = adapter.send(command, target);
-            outcomes.add(new DeliveryResultPersister.TargetOutcome(target, result));
-        }
+        List<TargetOutcome> outcomes = adapter.sendBatch(resolved, targets);
 
         // Phase 2: 결과 저장 — 별도 빈의 @Transactional 메서드 호출
-        deliveryResultPersister.persist(command, outcomes);
+        deliveryResultPersister.persist(resolved, outcomes);
     }
 }

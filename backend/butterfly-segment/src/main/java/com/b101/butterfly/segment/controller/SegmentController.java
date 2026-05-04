@@ -113,7 +113,7 @@ public class SegmentController {
             @PathVariable Long projectId,
             @PathVariable Long segmentId,
             Pageable pageable) {
-        // TODO Phase 8-1 — SegmentMember 페이지 + customer.users JOIN
+        // TODO Phase 8-1 — SegmentMember 페이지 + event.users JOIN
         return ApiResponse.ok(
                 PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
     }
@@ -139,9 +139,10 @@ public class SegmentController {
 
     @GetMapping("/favorites")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
-    public ApiResponse<FavoritesResponse> favorites(@PathVariable Long projectId) {
-        // TODO Phase 8-2 — favorites + recentlyUsed
-        return ApiResponse.ok(new FavoritesResponse(List.of(), List.of()));
+    public ApiResponse<FavoritesResponse> favorites(
+            @PathVariable Long projectId,
+            @RequestHeader("X-Member-Id") Long memberId) {
+        return ApiResponse.ok(segmentFavoriteService.list(projectId, memberId));
     }
 
     @PostMapping("/{segmentId}/favorite")
