@@ -1,16 +1,19 @@
 package com.b101.butterfly.segment.service.preview;
 
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
 import com.b101.butterfly.segment.domain.condition.Operator;
+import com.b101.butterfly.segment.domain.condition.Period;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.domain.condition.validation.ConditionTreeValidator;
 import com.b101.butterfly.segment.dto.response.PreviewResponse;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
+import com.b101.butterfly.segment.port.EventAggReader;
+import com.b101.butterfly.segment.port.EventQueryContext;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -40,6 +44,7 @@ class PreviewServiceTest {
     @Mock private ConditionTreeValidator conditionTreeValidator;
     @Mock private ConditionTreeToSqlConverter sqlConverter;
     @Mock private UserDirectoryReader userDirectoryReader;
+    @Mock private EventAggReader eventAggReader;
     @Mock private HllPreviewExecutor hllPreviewExecutor;
     @Mock private ConditionTreeHasher hasher;
 
@@ -47,18 +52,31 @@ class PreviewServiceTest {
 
     private static final Long PROJECT_ID = 1L;
     private static final String HASH = "abc123";
-    private static GroupNode tree;
 
-    @BeforeEach
-    void setUp() {
-        tree =
-                new GroupNode(
-                        LogicOp.AND,
-                        List.of(
-                                new TagNode(
-                                        "region",
-                                        Operator.EQ,
-                                        JsonNodeFactory.instance.textNode("서울"))));
+    private static GroupNode tagOnlyTree() {
+        return new GroupNode(
+                LogicOp.AND,
+                List.of(
+                        new TagNode(
+                                "region",
+                                Operator.EQ,
+                                JsonNodeFactory.instance.textNode("서울"))));
+    }
+
+    private static EventNode eventNode() {
+        return new EventNode("page_view", List.of(), new Period.Relative(7), 5);
+    }
+
+    private static GroupNode eventOnlyTree() {
+        return new GroupNode(LogicOp.AND, List.of(eventNode()));
+    }
+
+    private static GroupNode mixedTree() {
+        return new GroupNode(
+                LogicOp.AND,
+                List.of(
+                        new TagNode("region", Operator.EQ, JsonNodeFactory.instance.textNode("서울")),
+                        eventNode()));
     }
 
     @Test
@@ -67,18 +85,20 @@ class PreviewServiceTest {
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.of(1820L));
 
-        PreviewResponse response = previewService.preview(PROJECT_ID, tree);
+        PreviewResponse response = previewService.preview(PROJECT_ID, tagOnlyTree());
 
         assertThat(response.estimatedCount()).isEqualTo(1820);
         assertThat(response.method()).isEqualTo("HLL");
         verify(sqlConverter, never()).convert(any(), anyLong());
         verify(userDirectoryReader, never()).queryUserIds(anyString(), anyMap());
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
         verify(hllPreviewExecutor, never()).computeAndCache(anyString(), anyList(), any());
     }
 
     @Test
-    @DisplayName("캐시 miss 시 SQL 변환 → reader 조회 → HLL 캐시 → count 반환")
-    void cacheMissComputesAndCaches() {
+    @DisplayName("TAG/USER/DEVICE 트리: SQL 변환 → reader 조회 → HLL 캐시")
+    void cacheMissComputesAndCachesViaSql() {
+        GroupNode tree = tagOnlyTree();
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u", Map.of());
@@ -92,25 +112,58 @@ class PreviewServiceTest {
 
         assertThat(response.estimatedCount()).isEqualTo(3);
         verify(conditionTreeValidator).validate(tree);
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
     }
 
     @Test
-    @DisplayName("EVENT 노드 포함 시 SEGMENT_501_EVENT_NOT_READY로 변환 + reader 미호출")
-    void eventNodeMappedTo501() {
+    @DisplayName("EVENT 단독 트리: EventAggReader port 호출 → HLL 캐시 (sqlConverter 미호출)")
+    void eventOnlyTreeUsesEventPort() {
+        GroupNode tree = eventOnlyTree();
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
-        when(sqlConverter.convert(any(), eq(PROJECT_ID)))
+        when(eventAggReader.queryMatchingUserIds(any(EventNode.class), any(EventQueryContext.class)))
+                .thenReturn(Stream.of(10L, 20L));
+        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(10L, 20L)), any()))
+                .thenReturn(2L);
+
+        PreviewResponse response = previewService.preview(PROJECT_ID, tree);
+
+        assertThat(response.estimatedCount()).isEqualTo(2);
+        verify(sqlConverter, never()).convert(any(), anyLong());
+        verify(userDirectoryReader, never()).queryUserIds(anyString(), anyMap());
+    }
+
+    @Test
+    @DisplayName("EVENT 단독 트리에서 stub이 EventConditionNotReadyException 던지면 SEGMENT_501_EVENT_NOT_READY")
+    void eventOnlyTreeMappedTo501WhenStub() {
+        GroupNode tree = eventOnlyTree();
+        when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
+        when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
+        when(eventAggReader.queryMatchingUserIds(any(EventNode.class), any(EventQueryContext.class)))
                 .thenThrow(new EventConditionNotReadyException());
 
         assertThatThrownBy(() -> previewService.preview(PROJECT_ID, tree))
                 .isInstanceOfSatisfying(
                         BusinessException.class,
-                        e ->
-                                assertThat(e.getErrorCode())
-                                        .isEqualTo(SegmentErrorCode.SEGMENT_501_EVENT_NOT_READY));
+                        e -> assertThat(e.getErrorCode())
+                                .isEqualTo(SegmentErrorCode.SEGMENT_501_EVENT_NOT_READY));
+    }
 
-        verify(userDirectoryReader, never()).queryUserIds(anyString(), anyMap());
-        verify(hllPreviewExecutor, never()).computeAndCache(anyString(), anyList(), any());
+    @Test
+    @DisplayName("EVENT가 다른 노드와 결합된 mixed 트리: SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1로 reject")
+    void mixedTreeRejectedV1() {
+        GroupNode tree = mixedTree();
+        when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
+        when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
+
+        assertThatThrownBy(() -> previewService.preview(PROJECT_ID, tree))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        e -> assertThat(e.getErrorCode())
+                                .isEqualTo(SegmentErrorCode.SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1));
+
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
+        verify(sqlConverter, never()).convert(any(), anyLong());
     }
 
     @Test
@@ -123,7 +176,7 @@ class PreviewServiceTest {
         when(userDirectoryReader.queryUserIds(anyString(), anyMap())).thenReturn(List.of());
         when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of()), any())).thenReturn(0L);
 
-        PreviewResponse response = previewService.preview(PROJECT_ID, tree);
+        PreviewResponse response = previewService.preview(PROJECT_ID, tagOnlyTree());
 
         assertThat(response.estimatedCount()).isZero();
     }

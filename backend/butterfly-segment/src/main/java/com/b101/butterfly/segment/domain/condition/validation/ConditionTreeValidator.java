@@ -1,12 +1,13 @@
 package com.b101.butterfly.segment.domain.condition.validation;
 
+import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.segment.domain.condition.ConditionNode;
 import com.b101.butterfly.segment.domain.condition.DeviceNode;
-import com.b101.butterfly.segment.domain.condition.EventFilter;
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.domain.condition.UserNode;
+import com.b101.butterfly.segment.exception.SegmentErrorCode;
 import org.springframework.stereotype.Component;
 
 /**
@@ -61,11 +62,9 @@ public class ConditionTreeValidator {
 
     private void validateEvent(EventNode event) {
         periodValidator.validate(event.period());
-        if (event.filters() != null) {
-            for (EventFilter filter : event.filters()) {
-                typeFieldValidator.validate(filter);
-                operatorCompatibilityValidator.validate(filter);
-            }
+        // v1: filters 미지원 — 명시적 reject (ignore 시 사용자가 적용된 줄 알고 결과 받을 위험)
+        if (event.filters() != null && !event.filters().isEmpty()) {
+            throw new BusinessException(SegmentErrorCode.SEGMENT_400_EVENT_FILTER_NOT_SUPPORTED_V1);
         }
     }
 }
