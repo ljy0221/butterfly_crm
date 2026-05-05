@@ -1,36 +1,44 @@
 package com.b101.butterfly.config.idempotency;
 
+import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponseWrapper;
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 /**
- * Idempotency-Key 헤더 처리 인터셉터 (Stripe 패턴 Phase 3: body fingerprint).
+ * Idempotency-Key 헤더 처리 인터셉터 (Stripe 패턴 Phase 4: 응답 캐시 완성).
  *
  * <p>POST/PUT/PATCH/DELETE 요청에 {@code Idempotency-Key} 헤더가 있으면 본문 SHA-256
  * fingerprint를 계산해 SETNX로 24h lock value에 저장한다.
  *
  * <p>같은 키 충돌 처리:
  * <ul>
- *   <li>같은 본문 (fingerprint match) → 409 Conflict — 단순 재시도/중복</li>
+ *   <li>같은 본문 (fingerprint match) + 캐시된 응답 있음 → controller 거치지 않고 캐시 응답 즉시 반환 (Phase 4)</li>
+ *   <li>같은 본문 (fingerprint match) + 캐시 없음 (첫 요청 진행 중) → 409 Conflict</li>
  *   <li>다른 본문 (fingerprint mismatch) → 422 Unprocessable Entity — 클라이언트 버그
  *     (같은 키 재사용은 같은 요청 의도여야 함; 본문이 다르면 키 재사용 오류)</li>
  * </ul>
  *
- * <p>응답 상태가 5xx (서버 에러)이면 {@code afterCompletion}에서 lock을 즉시 해제해
- * 클라이언트가 재시도할 수 있도록 한다. 4xx는 lock 유지 — 클라이언트 에러는 재시도해도 동일 결과.
+ * <p>응답 처리 ({@code afterCompletion}):
+ * <ul>
+ *   <li>5xx (서버 에러): lock 즉시 해제 — 클라이언트 재시도 허용 (Phase 2)</li>
+ *   <li>2xx/3xx/4xx: 응답 본문을 캐시 저장 (Phase 4) — 다음 동일 키 + 동일 본문 재요청에 즉답</li>
+ * </ul>
  *
- * <p>본문 읽기는 {@link IdempotencyBodyCachingFilter}가 미리 {@link CachedBodyHttpServletRequest}로
- * 감싸 stream 두 번 읽기를 안전하게 만든다 (interceptor → controller 모두 같은 바이트).
- * 헤더가 없으면 wrap도 안 되므로 cost-zero.
+ * <p>본문 입출력은 {@link IdempotencyBodyCachingFilter}가 미리 {@link CachedBodyHttpServletRequest}/
+ * {@link ContentCachingResponseWrapper}로 감싸 stream 두 번 읽기를 안전하게 만든다.
  */
 @Component
 @RequiredArgsConstructor
@@ -69,13 +77,7 @@ public class IdempotencyKeyInterceptor implements HandlerInterceptor {
 
         return switch (outcome) {
             case ACQUIRED -> true;
-            case FINGERPRINT_MATCH -> {
-                log.warn("Idempotency-Key duplicate: key={} method={} uri={}",
-                        key, request.getMethod(), request.getRequestURI());
-                response.sendError(HttpStatus.CONFLICT.value(),
-                        "Idempotency-Key already in use");
-                yield false;
-            }
+            case FINGERPRINT_MATCH -> handleFingerprintMatch(key, fingerprint, request, response);
             case FINGERPRINT_MISMATCH -> {
                 log.warn("Idempotency-Key body mismatch: key={} method={} uri={}",
                         key, request.getMethod(), request.getRequestURI());
@@ -84,6 +86,42 @@ public class IdempotencyKeyInterceptor implements HandlerInterceptor {
                 yield false;
             }
         };
+    }
+
+    /**
+     * 같은 키 + 같은 본문 충돌 처리. 캐시된 응답이 있으면 그대로 write하고 chain 중단.
+     * 캐시 없으면 409 Conflict (첫 요청이 아직 진행 중이거나 5xx 후 재시도 케이스).
+     */
+    private boolean handleFingerprintMatch(String key,
+                                           String fingerprint,
+                                           HttpServletRequest request,
+                                           HttpServletResponse response) throws IOException {
+        Optional<CachedResponse> cached = store.findResponse(key);
+        if (cached.isPresent() && fingerprint.equals(cached.get().requestBodyHash())) {
+            CachedResponse hit = cached.get();
+            log.info("Idempotency cache hit: key={} method={} uri={} status={}",
+                    key, request.getMethod(), request.getRequestURI(), hit.status());
+            writeCachedResponse(response, hit);
+            return false;
+        }
+        log.warn("Idempotency-Key duplicate (no cache): key={} method={} uri={}",
+                key, request.getMethod(), request.getRequestURI());
+        response.sendError(HttpStatus.CONFLICT.value(),
+                "Idempotency-Key already in use");
+        return false;
+    }
+
+    private void writeCachedResponse(HttpServletResponse response, CachedResponse cached) throws IOException {
+        response.setStatus(cached.status());
+        if (cached.contentType() != null) {
+            response.setContentType(cached.contentType());
+        }
+        byte[] body = cached.body();
+        if (body != null && body.length > 0) {
+            response.setContentLength(body.length);
+            response.getOutputStream().write(body);
+            response.getOutputStream().flush();
+        }
     }
 
     @Override
@@ -98,10 +136,35 @@ public class IdempotencyKeyInterceptor implements HandlerInterceptor {
         if (key == null || key.isBlank()) {
             return;
         }
-        if (response.getStatus() >= 500) {
+        int status = response.getStatus();
+        if (status >= 500) {
             store.release(key);
-            log.info("idempotency lock released on 5xx status={} key={}", response.getStatus(), key);
+            log.info("idempotency lock released on 5xx status={} key={}", status, key);
+            return;
         }
+        // 2xx/3xx/4xx — 응답 캐시 저장 (Phase 4)
+        ContentCachingResponseWrapper wrapper = unwrap(response);
+        if (wrapper == null) {
+            return;
+        }
+        byte[] body = wrapper.getContentAsByteArray();
+        String contentType = wrapper.getContentType();
+        String fingerprint = computeBodyFingerprint(request);
+        CachedResponse snapshot = new CachedResponse(status, contentType, body, fingerprint);
+        store.saveResponse(key, snapshot, LOCK_TTL);
+        log.debug("idempotency response cached key={} status={} bytes={}", key, status,
+                body == null ? 0 : body.length);
+    }
+
+    private static ContentCachingResponseWrapper unwrap(HttpServletResponse response) {
+        ServletResponse current = response;
+        while (current instanceof HttpServletResponseWrapper wrapper) {
+            if (wrapper instanceof ContentCachingResponseWrapper ccrw) {
+                return ccrw;
+            }
+            current = wrapper.getResponse();
+        }
+        return null;
     }
 
     /**

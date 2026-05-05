@@ -1,6 +1,7 @@
 package com.b101.butterfly.config.idempotency;
 
 import java.time.Duration;
+import java.util.Optional;
 
 /**
  * Idempotency-Key 저장소 추상.
@@ -11,6 +12,8 @@ import java.time.Duration;
  *   <li>Phase 2: 5xx 응답 시 lock 즉시 해제 — 재시도 허용</li>
  *   <li>Phase 3: 본문 SHA-256 fingerprint를 lock value로 함께 저장 — 같은 키로 다른 본문이
  *     재요청되면 422 Unprocessable Entity로 거부 (요청 중복 vs 클라이언트 버그 구분)</li>
+ *   <li>Phase 4: 첫 요청의 응답을 캐시 — 같은 키 + 같은 본문 재요청 시 controller를 거치지 않고
+ *     캐시된 응답을 그대로 반환 (Stripe 패턴 완성)</li>
  * </ul>
  */
 public interface IdempotencyStore {
@@ -34,6 +37,23 @@ public interface IdempotencyStore {
      * lock을 즉시 해제한다. 5xx 서버 에러 시 클라이언트 재시도를 허용하기 위해 사용.
      */
     void release(String key);
+
+    /**
+     * Phase 4: 첫 요청의 응답을 캐시 저장. lock과 동일 TTL.
+     *
+     * @param key      Idempotency-Key 헤더 값
+     * @param response 캐시 대상 응답 스냅샷
+     * @param ttl      캐시 유지 시간 (보통 24h)
+     */
+    void saveResponse(String key, CachedResponse response, Duration ttl);
+
+    /**
+     * Phase 4: 캐시된 응답을 조회한다. 같은 키 + 같은 본문 fingerprint 재요청에서 사용.
+     *
+     * @param key Idempotency-Key 헤더 값
+     * @return 캐시 hit 시 CachedResponse, 미존재/TTL 만료 시 empty
+     */
+    Optional<CachedResponse> findResponse(String key);
 
     /**
      * lock 점유 시도 결과.
