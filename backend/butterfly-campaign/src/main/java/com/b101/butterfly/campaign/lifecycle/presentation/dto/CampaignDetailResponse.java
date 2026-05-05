@@ -1,10 +1,10 @@
-package com.b101.butterfly.campaign.campaign.presentation.dto;
+package com.b101.butterfly.campaign.lifecycle.presentation.dto;
 
-import com.b101.butterfly.campaign.campaign.application.result.CampaignDetailResult;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignType;
+import com.b101.butterfly.campaign.lifecycle.application.result.CampaignDetailResult;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignType;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.domain.enums.SendMode;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.SendMode;
 import java.time.LocalDateTime;
 
 public record CampaignDetailResponse(

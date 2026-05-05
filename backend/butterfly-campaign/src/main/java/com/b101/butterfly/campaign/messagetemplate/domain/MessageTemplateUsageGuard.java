@@ -1,7 +1,7 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -16,7 +16,7 @@ public class MessageTemplateUsageGuard {
     private final CampaignRepository campaignRepository;
 
     public void assertNotInUseByActiveCampaign(Long messageTemplateId) {
-        campaignRepository.findAllByMessageTemplate_messageTemplateId(messageTemplateId)
+        campaignRepository.findAllByMessageTemplateId(messageTemplateId)
                 .forEach(Campaign::validateTemplateUpdatable);
     }
 }

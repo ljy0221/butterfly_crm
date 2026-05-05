@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign.domain.port;
+package com.b101.butterfly.campaign.lifecycle.port;
 
 /**
  * 캠페인 발송 지시(Send Instruction)를 외부 메시지 인프라로 발행하는 out port.

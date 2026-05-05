@@ -1,7 +1,7 @@
-package com.b101.butterfly.campaign.campaign.presentation.dto;
+package com.b101.butterfly.campaign.lifecycle.presentation.dto;
 
-import com.b101.butterfly.campaign.campaign.application.command.CampaignStatusTransitionCommand;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.application.command.CampaignStatusTransitionCommand;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import jakarta.validation.constraints.NotNull;
 
 /**

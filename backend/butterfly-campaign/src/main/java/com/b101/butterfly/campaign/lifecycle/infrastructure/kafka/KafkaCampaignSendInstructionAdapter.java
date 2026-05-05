@@ -1,7 +1,7 @@
-package com.b101.butterfly.campaign.campaign.infrastructure.kafka;
+package com.b101.butterfly.campaign.lifecycle.infrastructure.kafka;
 
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstructionPublisher;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstructionPublisher;
 import java.util.concurrent.ExecutionException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;

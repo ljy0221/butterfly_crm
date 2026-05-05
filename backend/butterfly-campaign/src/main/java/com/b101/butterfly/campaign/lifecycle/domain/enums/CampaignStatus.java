@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign.domain.enums;
+package com.b101.butterfly.campaign.lifecycle.domain.enums;
 
 import java.util.Set;
 import lombok.Getter;

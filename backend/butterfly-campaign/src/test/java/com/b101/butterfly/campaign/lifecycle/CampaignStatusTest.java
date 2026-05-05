@@ -1,8 +1,8 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;

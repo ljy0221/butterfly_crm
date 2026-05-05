@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,8 +8,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
-import com.b101.butterfly.campaign.campaign.infrastructure.kafka.KafkaCampaignSendInstructionAdapter;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
+import com.b101.butterfly.campaign.lifecycle.infrastructure.kafka.KafkaCampaignSendInstructionAdapter;
 import java.time.Instant;
 import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.RecordMetadata;

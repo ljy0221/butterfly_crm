@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -9,18 +9,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignActivator;
-import com.b101.butterfly.campaign.campaign.domain.CampaignExecution;
-import com.b101.butterfly.campaign.campaign.domain.CampaignExecutionRepository;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignExecutionStatus;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignActivator;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecution;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecutionRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignExecutionStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstructionPublisher;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstructionPublisher;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
 import java.time.Clock;
@@ -129,10 +129,8 @@ class CampaignActivatorTest {
     }
 
     private Campaign draftCampaign() {
-        MessageTemplate template = MessageTemplate.create(
-                PROJECT_ID, MEMBER_ID, "T", "T-desc",
-                Channel.PUSH, "T-title", "T-body", null);
-        setField(template, "messageTemplateId", TEMPLATE_ID);
+        MessageTemplateSnapshot template =
+                new MessageTemplateSnapshot(TEMPLATE_ID, PROJECT_ID, Channel.PUSH);
         Campaign c = Campaign.immediateAll(PROJECT_ID, template, MEMBER_ID, "원본", "원본설명");
         setField(c, "campaignId", CAMPAIGN_ID);
         return c;

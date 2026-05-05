@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign.config;
+package com.b101.butterfly.campaign.lifecycle.config;
 
 import java.time.Clock;
 import java.time.ZoneId;

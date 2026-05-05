@@ -1,7 +1,7 @@
-package com.b101.butterfly.campaign.campaign.application.result;
+package com.b101.butterfly.campaign.lifecycle.application.result;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import java.time.LocalDateTime;
 

@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -6,15 +6,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignCreator;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignCreator;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
 import com.b101.butterfly.global.error.BusinessException;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +30,7 @@ class CampaignCreatorTest {
     private static final Long TEMPLATE_ID = 100L;
 
     private CampaignRepository campaignRepository;
-    private MessageTemplateRepository messageTemplateRepository;
+    private MessageTemplateLookupPort messageTemplateLookupPort;
     private ProjectExistencePort projectExistencePort;
     private MemberExistencePort memberExistencePort;
     private CampaignCreator creator;
@@ -38,12 +38,12 @@ class CampaignCreatorTest {
     @BeforeEach
     void setUp() {
         campaignRepository = mock(CampaignRepository.class);
-        messageTemplateRepository = mock(MessageTemplateRepository.class);
+        messageTemplateLookupPort = mock(MessageTemplateLookupPort.class);
         projectExistencePort = mock(ProjectExistencePort.class);
         memberExistencePort = mock(MemberExistencePort.class);
         creator = new CampaignCreator(
                 campaignRepository,
-                messageTemplateRepository,
+                messageTemplateLookupPort,
                 projectExistencePort,
                 memberExistencePort
         );
@@ -115,8 +115,8 @@ class CampaignCreatorTest {
         void crossProjectTemplate() {
             given(projectExistencePort.existsProject(PROJECT_ID)).willReturn(true);
             given(memberExistencePort.existsMember(MEMBER_ID)).willReturn(true);
-            given(messageTemplateRepository.getByMessageTemplateId(TEMPLATE_ID))
-                    .willReturn(otherProjectTemplate());
+            given(messageTemplateLookupPort.lookup(TEMPLATE_ID))
+                    .willReturn(otherProjectSnapshot());
 
             assertThatThrownBy(() -> creator.createImmediateCampaign(
                     PROJECT_ID, MEMBER_ID, TEMPLATE_ID, null, "이름", "설명"))
@@ -129,17 +129,15 @@ class CampaignCreatorTest {
     private void stubAllExist() {
         given(projectExistencePort.existsProject(PROJECT_ID)).willReturn(true);
         given(memberExistencePort.existsMember(MEMBER_ID)).willReturn(true);
-        given(messageTemplateRepository.getByMessageTemplateId(TEMPLATE_ID))
-                .willReturn(template(PROJECT_ID));
+        given(messageTemplateLookupPort.lookup(TEMPLATE_ID))
+                .willReturn(snapshot(PROJECT_ID));
     }
 
-    private MessageTemplate template(Long projectId) {
-        return MessageTemplate.create(
-                projectId, MEMBER_ID, "T", "T-desc",
-                Channel.PUSH, "T-title", "T-body", null);
+    private MessageTemplateSnapshot snapshot(Long projectId) {
+        return new MessageTemplateSnapshot(TEMPLATE_ID, projectId, Channel.PUSH);
     }
 
-    private MessageTemplate otherProjectTemplate() {
-        return template(999L);
+    private MessageTemplateSnapshot otherProjectSnapshot() {
+        return snapshot(999L);
     }
 }

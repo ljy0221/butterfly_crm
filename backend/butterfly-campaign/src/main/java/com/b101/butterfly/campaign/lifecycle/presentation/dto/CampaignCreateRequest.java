@@ -1,6 +1,6 @@
-package com.b101.butterfly.campaign.campaign.presentation.dto;
+package com.b101.butterfly.campaign.lifecycle.presentation.dto;
 
-import com.b101.butterfly.campaign.campaign.application.command.CampaignCreateCommand;
+import com.b101.butterfly.campaign.lifecycle.application.command.CampaignCreateCommand;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 

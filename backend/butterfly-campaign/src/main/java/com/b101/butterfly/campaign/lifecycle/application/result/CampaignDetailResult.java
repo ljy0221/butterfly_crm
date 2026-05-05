@@ -1,10 +1,10 @@
-package com.b101.butterfly.campaign.campaign.application.result;
+package com.b101.butterfly.campaign.lifecycle.application.result;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignType;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignType;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.domain.enums.SendMode;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.SendMode;
 import java.time.LocalDateTime;
 
 public record CampaignDetailResult(
@@ -27,7 +27,7 @@ public record CampaignDetailResult(
         return new CampaignDetailResult(
                 campaign.getCampaignId(),
                 campaign.getProjectId(),
-                campaign.getMessageTemplate().getMessageTemplateId(),
+                campaign.getMessageTemplateId(),
                 campaign.getSegmentId(),
                 campaign.getMemberId(),
                 campaign.getCampaignName(),

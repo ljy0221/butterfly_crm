@@ -6,9 +6,9 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateUsageGuard;
 import com.b101.butterfly.global.error.BusinessException;
 import java.util.List;
@@ -33,7 +33,7 @@ class MessageTemplateUsageGuardTest {
     @Test
     @DisplayName("연결된 캠페인이 없으면 통과한다")
     void noCampaignsAllow() {
-        given(campaignRepository.findAllByMessageTemplate_messageTemplateId(TEMPLATE_ID))
+        given(campaignRepository.findAllByMessageTemplateId(TEMPLATE_ID))
                 .willReturn(List.of());
 
         assertThatCode(() -> guard.assertNotInUseByActiveCampaign(TEMPLATE_ID))
@@ -44,7 +44,7 @@ class MessageTemplateUsageGuardTest {
     @DisplayName("ACTIVE가 아닌 캠페인은 통과시킨다 (validateTemplateUpdatable이 던지지 않음)")
     void nonActiveCampaignsAllow() {
         Campaign passive = mock(Campaign.class);
-        given(campaignRepository.findAllByMessageTemplate_messageTemplateId(TEMPLATE_ID))
+        given(campaignRepository.findAllByMessageTemplateId(TEMPLATE_ID))
                 .willReturn(List.of(passive, mock(Campaign.class)));
 
         assertThatCode(() -> guard.assertNotInUseByActiveCampaign(TEMPLATE_ID))
@@ -57,7 +57,7 @@ class MessageTemplateUsageGuardTest {
         Campaign active = mock(Campaign.class);
         doThrow(new BusinessException(CampaignErrorCode.CAMPAIGN_IS_ACTIVE))
                 .when(active).validateTemplateUpdatable();
-        given(campaignRepository.findAllByMessageTemplate_messageTemplateId(TEMPLATE_ID))
+        given(campaignRepository.findAllByMessageTemplateId(TEMPLATE_ID))
                 .willReturn(List.of(active));
 
         assertThatThrownBy(() -> guard.assertNotInUseByActiveCampaign(TEMPLATE_ID))

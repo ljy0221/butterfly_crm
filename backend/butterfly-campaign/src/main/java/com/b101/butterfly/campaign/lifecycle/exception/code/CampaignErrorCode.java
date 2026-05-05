@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign.exception.code;
+package com.b101.butterfly.campaign.lifecycle.exception.code;
 
 import com.b101.butterfly.global.error.ErrorCode;
 import lombok.Getter;

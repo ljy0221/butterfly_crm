@@ -1,6 +1,6 @@
-package com.b101.butterfly.campaign.campaign.application.command;
+package com.b101.butterfly.campaign.lifecycle.application.command;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 
 public record CampaignStatusTransitionCommand(
         Long campaignId,

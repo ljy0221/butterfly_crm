@@ -1,7 +1,7 @@
-package com.b101.butterfly.campaign.campaign.domain;
+package com.b101.butterfly.campaign.lifecycle.domain;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignExecutionStatus;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignExecutionStatus;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.entity.SoftDeletedDomain;
 import com.b101.butterfly.global.error.BusinessException;
 import jakarta.persistence.Column;

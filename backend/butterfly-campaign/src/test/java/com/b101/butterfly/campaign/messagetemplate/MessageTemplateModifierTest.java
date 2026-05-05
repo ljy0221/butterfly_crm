@@ -10,7 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateModifier;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;

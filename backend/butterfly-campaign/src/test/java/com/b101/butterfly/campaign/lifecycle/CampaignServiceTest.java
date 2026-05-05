@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -11,20 +11,20 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
-import com.b101.butterfly.campaign.campaign.application.CampaignService;
-import com.b101.butterfly.campaign.campaign.application.command.CampaignCreateCommand;
-import com.b101.butterfly.campaign.campaign.application.command.CampaignStatusTransitionCommand;
-import com.b101.butterfly.campaign.campaign.application.command.CampaignUpdateCommand;
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignActivator;
-import com.b101.butterfly.campaign.campaign.domain.CampaignCreator;
-import com.b101.butterfly.campaign.campaign.domain.CampaignModifier;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRemover;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignService;
+import com.b101.butterfly.campaign.lifecycle.application.command.CampaignCreateCommand;
+import com.b101.butterfly.campaign.lifecycle.application.command.CampaignStatusTransitionCommand;
+import com.b101.butterfly.campaign.lifecycle.application.command.CampaignUpdateCommand;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignActivator;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignCreator;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignModifier;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignRemover;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
 import org.junit.jupiter.api.BeforeEach;
@@ -176,8 +176,8 @@ class CampaignServiceTest {
     }
 
     private Campaign persisted(CampaignStatus initialStatus) {
-        MessageTemplate t = MessageTemplate.create(
-                PROJECT_ID, MEMBER_ID, "T", "TD", Channel.PUSH, "TT", "TB", null);
+        MessageTemplateSnapshot t =
+                new MessageTemplateSnapshot(50L, PROJECT_ID, Channel.PUSH);
         Campaign c = Campaign.immediateAll(PROJECT_ID, t, MEMBER_ID, "C", "CD");
         setField(c, "campaignId", CAMPAIGN_ID);
         // initialStatus는 항상 DRAFT로 시작 — 호출자가 추가 전이로 setup

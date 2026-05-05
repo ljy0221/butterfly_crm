@@ -1,6 +1,6 @@
-package com.b101.butterfly.campaign.campaign.infrastructure.kafka;
+package com.b101.butterfly.campaign.lifecycle.infrastructure.kafka;
 
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;

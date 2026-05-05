@@ -1,9 +1,13 @@
-package com.b101.butterfly.campaign.campaign.domain;
+package com.b101.butterfly.campaign.lifecycle.application;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstruction;
-import com.b101.butterfly.campaign.campaign.domain.port.CampaignSendInstructionPublisher;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecution;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecutionRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstructionPublisher;
 import com.b101.butterfly.global.error.BusinessException;
 import java.time.Clock;
 import java.time.Instant;
@@ -54,7 +58,7 @@ public class CampaignActivator {
                 saved.getCampaignExecutionId(),
                 campaign.getCampaignId(),
                 campaign.getProjectId(),
-                campaign.getMessageTemplate().getMessageTemplateId(),
+                campaign.getMessageTemplateId(),
                 campaign.getSegmentId(),
                 campaign.getChannel(),
                 Instant.now(clock)

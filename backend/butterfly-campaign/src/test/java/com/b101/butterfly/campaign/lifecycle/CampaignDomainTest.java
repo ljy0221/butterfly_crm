@@ -1,14 +1,14 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,11 +19,10 @@ class CampaignDomainTest {
 
     private static final Long PROJECT_ID = 1L;
     private static final Long MEMBER_ID = 10L;
+    private static final Long TEMPLATE_ID = 100L;
 
-    private MessageTemplate template() {
-        return MessageTemplate.create(
-                PROJECT_ID, MEMBER_ID,
-                "T", "T-desc", Channel.PUSH, "T-title", "T-body", null);
+    private MessageTemplateSnapshot template() {
+        return new MessageTemplateSnapshot(TEMPLATE_ID, PROJECT_ID, Channel.PUSH);
     }
 
     private Campaign draftCampaign() {

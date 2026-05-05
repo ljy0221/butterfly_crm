@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign.application.command;
+package com.b101.butterfly.campaign.lifecycle.application.command;
 
 public record CampaignCreateCommand(
         Long projectId,

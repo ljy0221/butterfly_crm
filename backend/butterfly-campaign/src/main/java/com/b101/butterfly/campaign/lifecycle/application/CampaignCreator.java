@@ -1,10 +1,12 @@
-package com.b101.butterfly.campaign.campaign.domain;
+package com.b101.butterfly.campaign.lifecycle.application;
 
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CampaignCreator {
 
     private final CampaignRepository campaignRepository;
-    private final MessageTemplateRepository messageTemplateRepository;
+    private final MessageTemplateLookupPort messageTemplateLookupPort;
     private final ProjectExistencePort projectExistencePort;
     private final MemberExistencePort memberExistencePort;
 
@@ -38,8 +40,8 @@ public class CampaignCreator {
         assertProjectExists(projectId);
         assertMemberExists(memberId);
 
-        MessageTemplate template =
-                messageTemplateRepository.getByMessageTemplateId(messageTemplateId);
+        MessageTemplateSnapshot template =
+                messageTemplateLookupPort.lookup(messageTemplateId);
         assertTemplateOwnedBy(template, projectId);
 
         Campaign campaign = (segmentId == null)
@@ -62,8 +64,8 @@ public class CampaignCreator {
         }
     }
 
-    private void assertTemplateOwnedBy(MessageTemplate template, Long projectId) {
-        if (!template.isOwnedBy(projectId)) {
+    private void assertTemplateOwnedBy(MessageTemplateSnapshot template, Long projectId) {
+        if (!projectId.equals(template.projectId())) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_MESSAGE_TEMPLATE_REQUIRED);
         }
     }

@@ -1,11 +1,11 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.b101.butterfly.campaign.campaign.domain.RecurringCronGenerator;
-import com.b101.butterfly.campaign.campaign.domain.enums.RepeatType;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.domain.RecurringCronGenerator;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.RepeatType;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import java.time.LocalTime;
 import org.junit.jupiter.api.DisplayName;

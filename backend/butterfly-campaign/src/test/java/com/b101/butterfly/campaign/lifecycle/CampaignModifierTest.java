@@ -1,16 +1,16 @@
-package com.b101.butterfly.campaign.campaign;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-import com.b101.butterfly.campaign.campaign.domain.Campaign;
-import com.b101.butterfly.campaign.campaign.domain.CampaignModifier;
-import com.b101.butterfly.campaign.campaign.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignModifier;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.campaign.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
+import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,9 +72,8 @@ class CampaignModifierTest {
     }
 
     private Campaign persistedCampaign(Long projectId) {
-        MessageTemplate template = MessageTemplate.create(
-                projectId, MEMBER_ID, "T", "T-desc",
-                Channel.PUSH, "T-title", "T-body", null);
+        MessageTemplateSnapshot template =
+                new MessageTemplateSnapshot(50L, projectId, Channel.PUSH);
         Campaign c = Campaign.immediateAll(projectId, template, MEMBER_ID, "원본", "원본설명");
         setField(c, "campaignId", CAMPAIGN_ID);
         return c;

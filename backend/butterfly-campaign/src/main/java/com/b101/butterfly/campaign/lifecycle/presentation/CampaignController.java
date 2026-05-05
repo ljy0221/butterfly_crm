@@ -1,15 +1,15 @@
-package com.b101.butterfly.campaign.campaign.presentation;
+package com.b101.butterfly.campaign.lifecycle.presentation;
 
-import com.b101.butterfly.campaign.campaign.application.CampaignService;
-import com.b101.butterfly.campaign.campaign.application.result.CampaignDetailResult;
-import com.b101.butterfly.campaign.campaign.application.result.CampaignListResult;
-import com.b101.butterfly.campaign.campaign.domain.enums.CampaignStatus;
-import com.b101.butterfly.campaign.campaign.presentation.dto.CampaignCreateRequest;
-import com.b101.butterfly.campaign.campaign.presentation.dto.CampaignCreateResponse;
-import com.b101.butterfly.campaign.campaign.presentation.dto.CampaignDetailResponse;
-import com.b101.butterfly.campaign.campaign.presentation.dto.CampaignUpdateRequest;
-import com.b101.butterfly.campaign.campaign.presentation.dto.StatusTransitionRequest;
-import com.b101.butterfly.campaign.campaign.presentation.dto.StatusTransitionResponse;
+import com.b101.butterfly.campaign.lifecycle.application.CampaignService;
+import com.b101.butterfly.campaign.lifecycle.application.result.CampaignDetailResult;
+import com.b101.butterfly.campaign.lifecycle.application.result.CampaignListResult;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignCreateRequest;
+import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignCreateResponse;
+import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignDetailResponse;
+import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignUpdateRequest;
+import com.b101.butterfly.campaign.lifecycle.presentation.dto.StatusTransitionRequest;
+import com.b101.butterfly.campaign.lifecycle.presentation.dto.StatusTransitionResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.campaign.domain.port;
+package com.b101.butterfly.campaign.lifecycle.port;
 
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import java.time.Instant;
