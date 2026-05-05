@@ -14,11 +14,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -111,6 +114,31 @@ class GlobalExceptionHandlerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(resp.getBody().error().message()).contains("projectId");
+    }
+
+    @Test
+    @DisplayName("HttpRequestMethodNotSupportedException은 405 METHOD_NOT_ALLOWED 반환")
+    void methodNotSupported() {
+        HttpRequestMethodNotSupportedException ex =
+                new HttpRequestMethodNotSupportedException("DELETE");
+
+        ResponseEntity<ApiResponse<Void>> resp = handler.handleMethodNotSupported(ex);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.METHOD_NOT_ALLOWED);
+        assertThat(resp.getBody().error().code()).isEqualTo("COMMON_006");
+    }
+
+    @Test
+    @DisplayName("HttpMediaTypeNotSupportedException은 415 UNSUPPORTED_MEDIA_TYPE 반환")
+    void mediaTypeNotSupported() {
+        HttpMediaTypeNotSupportedException ex =
+                new HttpMediaTypeNotSupportedException(MediaType.TEXT_PLAIN,
+                        java.util.List.of(MediaType.APPLICATION_JSON));
+
+        ResponseEntity<ApiResponse<Void>> resp = handler.handleMediaTypeNotSupported(ex);
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+        assertThat(resp.getBody().error().code()).isEqualTo("COMMON_007");
     }
 
     @Test

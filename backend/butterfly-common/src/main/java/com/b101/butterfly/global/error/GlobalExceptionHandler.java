@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -25,6 +27,8 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
  *   <li>{@link HttpMessageNotReadableException} — JSON 파싱 실패/잘못된 타입 (400)</li>
  *   <li>{@link MethodArgumentTypeMismatchException} — PathVariable/RequestParam 타입 불일치 (400)</li>
  *   <li>{@link MissingServletRequestParameterException} — 필수 RequestParam 누락 (400)</li>
+ *   <li>{@link HttpRequestMethodNotSupportedException} — 잘못된 HTTP 메서드 (405)</li>
+ *   <li>{@link HttpMediaTypeNotSupportedException} — 잘못된 Content-Type (415)</li>
  *   <li>{@link Exception} — 그 외 (500)</li>
  * </ul>
  */
@@ -81,6 +85,20 @@ public class GlobalExceptionHandler {
                 e.getParameterName(), e.getParameterType());
         log.warn("Missing parameter: {}", detail);
         return buildResponse(CommonErrorCode.INVALID_REQUEST, detail);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        log.warn("Method not allowed: {}", e.getMethod());
+        return buildResponse(CommonErrorCode.METHOD_NOT_ALLOWED,
+                CommonErrorCode.METHOD_NOT_ALLOWED.getMessage());
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException e) {
+        log.warn("Unsupported media type: {}", e.getContentType());
+        return buildResponse(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE,
+                CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
