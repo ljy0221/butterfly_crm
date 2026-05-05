@@ -214,7 +214,14 @@
 
 세그먼트 매칭 유저 목록 (`segment_members` 기반).
 
-**Query Parameters**: `page`, `size`, `sort` (`matchedAt`, `userId`)
+**Query Parameters**: `page` (기본 0), `size` (기본 20)
+
+**구현 노트** ([-119], Phase 8-1):
+- 만료된 멤버(`expires_at <= now`)는 응답에서 제외 — 만료 배치 cron 사이 시점도 안전
+- 다른 프로젝트의 segmentId 접근 시 404 (정보 노출 회피)
+- `lastActiveAt`은 v1에서 항상 `null` — ERD에 `last_active_at` 컬럼 없음. v1.5/v2에서 정밀화
+- ADR-0012 anonymous placeholder user(`__anonymous__`)는 응답에서 제외 (v1 known-user only)
+- 미존재 user (placeholder/타프로젝트)는 `userId`/`matchedAt`만 채우고 `externalId`/`email`은 `null`
 
 **Response 200**
 ```json
@@ -224,12 +231,12 @@
       "userId": 9001,
       "externalId": "ext-9001",
       "email": "user@example.com",
-      "lastActiveAt": "2026-04-26T22:14:00",
-      "matchedAt": "2026-04-27T10:32:10"
+      "lastActiveAt": null,
+      "matchedAt": "2026-04-27T10:32:10.123"
     }
   ],
   "page": 0,
-  "size": 50,
+  "size": 20,
   "totalElements": 1820
 }
 ```
