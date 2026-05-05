@@ -7,6 +7,8 @@ import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecution;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignExecutionStatus;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
+import jakarta.persistence.Version;
+import java.lang.reflect.Field;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -158,6 +160,18 @@ class CampaignExecutionStateMachineTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
+        }
+    }
+
+    @Nested
+    @DisplayName("@Version optimistic locking 필드")
+    class OptimisticLocking {
+        @Test
+        @DisplayName("version 필드는 @Version 어노테이션 + Long 타입")
+        void versionFieldIsAnnotatedVersion() throws NoSuchFieldException {
+            Field versionField = CampaignExecution.class.getDeclaredField("version");
+            assertThat(versionField.getType()).isEqualTo(Long.class);
+            assertThat(versionField.isAnnotationPresent(Version.class)).isTrue();
         }
     }
 

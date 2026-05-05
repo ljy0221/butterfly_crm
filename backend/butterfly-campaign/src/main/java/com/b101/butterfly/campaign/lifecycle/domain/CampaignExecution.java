@@ -12,6 +12,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -65,6 +66,14 @@ public class CampaignExecution extends SoftDeletedDomain {
 
     @Column(name = "fail_reason")
     private String failReason;
+
+    /**
+     * JPA optimistic locking. 워커 fan-out에서 같은 executionId 동시 처리 race 방지 —
+     * 두 번째 transaction의 UPDATE는 OptimisticLockException으로 거부된다.
+     */
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     private CampaignExecution(Long campaignId, Integer runRound, Integer targetCount) {
         this.campaignId = campaignId;
