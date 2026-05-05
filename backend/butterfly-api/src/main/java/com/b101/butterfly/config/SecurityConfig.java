@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -53,11 +54,12 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   CorsConfigurationSource corsSource) throws Exception {
+            CorsConfigurationSource corsSource) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsSource))
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(
+                        session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/applications").permitAll()
@@ -67,12 +69,19 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
+    /**
+     * MVC autoconfig가 등록하는 mvcHandlerMappingIntrospector도 CorsConfigurationSource를 구현하므로
+     * SecurityFilterChain의 corsSource 주입이 NoUniqueBeanDefinitionException으로 실패한다. 명시 CORS 정책 빈을
+     * @Primary로 지정해 해당 의존을 우선 매칭한다.
+     */
     @Bean
+    @Primary
     public CorsConfigurationSource corsConfigurationSource(CorsProperties props) {
         CorsConfiguration cfg = new CorsConfiguration();
         // 명시 origin 사용 — wildcard + allowCredentials 조합은 브라우저가 거부함.

@@ -72,11 +72,12 @@ class BaselineMigrationIntegrationTest {
     }
 
     @Test
-    void schema_history_4개_row_성공_상태() {
+    void schema_history_6개_row_성공_상태() {
+        // V1 ~ V6 — V5(projects.fcm_credentials drop), V6(campaign_executions.version) 추가됨.
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(4);
+        assertThat(count).isEqualTo(6);
     }
 
     @Test
