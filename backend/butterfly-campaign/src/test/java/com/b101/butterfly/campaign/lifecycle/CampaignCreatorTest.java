@@ -11,7 +11,6 @@ import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
-import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
@@ -86,7 +85,7 @@ class CampaignCreatorTest {
     class FailurePath {
 
         @Test
-        @DisplayName("프로젝트 없으면 PROJECT_NOT_FOUND")
+        @DisplayName("프로젝트 없으면 CAMPAIGN_PROJECT_NOT_FOUND")
         void projectNotFound() {
             given(projectExistencePort.existsProject(PROJECT_ID)).willReturn(false);
 
@@ -94,11 +93,11 @@ class CampaignCreatorTest {
                     PROJECT_ID, MEMBER_ID, TEMPLATE_ID, null, "이름", "설명"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(MessageTemplateErrorCode.PROJECT_NOT_FOUND);
+                    .isEqualTo(CampaignErrorCode.CAMPAIGN_PROJECT_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("멤버 없으면 MEMBER_NOT_FOUND")
+        @DisplayName("멤버 없으면 CAMPAIGN_MEMBER_NOT_FOUND")
         void memberNotFound() {
             given(projectExistencePort.existsProject(PROJECT_ID)).willReturn(true);
             given(memberExistencePort.existsMember(MEMBER_ID)).willReturn(false);
@@ -107,7 +106,7 @@ class CampaignCreatorTest {
                     PROJECT_ID, MEMBER_ID, TEMPLATE_ID, null, "이름", "설명"))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(MessageTemplateErrorCode.MEMBER_NOT_FOUND);
+                    .isEqualTo(CampaignErrorCode.CAMPAIGN_MEMBER_NOT_FOUND);
         }
 
         @Test

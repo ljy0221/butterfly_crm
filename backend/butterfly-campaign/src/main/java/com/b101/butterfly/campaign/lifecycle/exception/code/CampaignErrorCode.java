@@ -126,6 +126,20 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_022",
             "허용되지 않은 발송 상태 전이입니다.",
             HttpStatus.CONFLICT),
+
+    // ==================== 외부 BC 자원 참조 검증 (CAMPAIGN_023 ~ CAMPAIGN_024) ====================
+
+    /** 캠페인 생성 시 지정한 프로젝트가 존재하지 않음. */
+    CAMPAIGN_PROJECT_NOT_FOUND(
+            "CAMPAIGN_023",
+            "프로젝트를 찾을 수 없습니다.",
+            HttpStatus.NOT_FOUND),
+
+    /** 캠페인 생성 시 지정한 멤버가 존재하지 않음. */
+    CAMPAIGN_MEMBER_NOT_FOUND(
+            "CAMPAIGN_024",
+            "멤버를 찾을 수 없습니다.",
+            HttpStatus.NOT_FOUND),
     ;
 
     private final String code;

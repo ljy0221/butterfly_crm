@@ -5,7 +5,6 @@ import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.domain.ScheduleSpec;
 import com.b101.butterfly.campaign.lifecycle.domain.Targeting;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
@@ -58,13 +57,13 @@ public class CampaignCreator {
 
     private void assertProjectExists(Long projectId) {
         if (!projectExistencePort.existsProject(projectId)) {
-            throw new BusinessException(MessageTemplateErrorCode.PROJECT_NOT_FOUND);
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_PROJECT_NOT_FOUND);
         }
     }
 
     private void assertMemberExists(Long memberId) {
         if (!memberExistencePort.existsMember(memberId)) {
-            throw new BusinessException(MessageTemplateErrorCode.MEMBER_NOT_FOUND);
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_MEMBER_NOT_FOUND);
         }
     }
 
