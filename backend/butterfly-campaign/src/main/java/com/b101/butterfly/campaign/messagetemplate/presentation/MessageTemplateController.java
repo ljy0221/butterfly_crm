@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
@@ -34,7 +35,7 @@ public class MessageTemplateController {
     // TODO memberId 추출 역할 검증 추가
     @PostMapping
     public ResponseEntity<MessageTemplateCreateResponse> createMessageTemplate(
-            Long memberId,
+            @RequestHeader(value = "X-Member-Id", required = false) Long memberId,
             @PathVariable Long projectId,
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
@@ -48,7 +49,7 @@ public class MessageTemplateController {
     // TODO memberId 추출 역할 검증 추가
     @GetMapping
     public ResponseEntity<MessageTemplateListResponse> getMessageTemplates(
-            Long memberId,
+            @RequestHeader(value = "X-Member-Id", required = false) Long memberId,
             @PathVariable Long projectId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
@@ -62,7 +63,7 @@ public class MessageTemplateController {
     // TODO memberId 추출 역할 검증 추가
     @GetMapping("/{templateId}")
     public ResponseEntity<MessageTemplateDetailResponse> getMessageTemplateDetail(
-            Long memberId,
+            @RequestHeader(value = "X-Member-Id", required = false) Long memberId,
             @PathVariable Long projectId,
             @PathVariable Long templateId
     ) {
@@ -75,7 +76,7 @@ public class MessageTemplateController {
     // TODO memberId 추출 역할 검증 추가
     @PutMapping("/{templateId}")
     public ResponseEntity<MessageTemplateCreateResponse> updateMessageTemplate(
-            Long memberId,
+            @RequestHeader(value = "X-Member-Id", required = false) Long memberId,
             @PathVariable Long projectId,
             @PathVariable Long templateId,
             @RequestBody @Valid MessageTemplateCreateRequest request
@@ -91,7 +92,7 @@ public class MessageTemplateController {
     // TODO memberId 추출 역할 검증 추가
     @DeleteMapping("/{templateId}")
     public ResponseEntity<Void> deleteMessageTemplate(
-            Long memberId,
+            @RequestHeader(value = "X-Member-Id", required = false) Long memberId,
             @PathVariable Long projectId,
             @PathVariable Long templateId
     ) {

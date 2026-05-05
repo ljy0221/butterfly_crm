@@ -50,7 +50,7 @@ public class CampaignController {
     // TODO memberId 추출 + @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')") 추가
     @PostMapping
     public ResponseEntity<CampaignCreateResponse> createCampaign(
-            Long memberId,
+            @RequestHeader(value = "X-Member-Id", required = false) Long memberId,
             @PathVariable Long projectId,
             @RequestBody @Valid CampaignCreateRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
