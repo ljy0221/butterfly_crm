@@ -1,6 +1,6 @@
 package com.b101.butterfly.config;
 
-import java.util.List;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -16,15 +16,21 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *
  * <p>CORS: PATCH(상태 전이 sub-resource), POST/PUT/DELETE/GET 명시 허용.
  * 클라이언트(브라우저 SPA, 모바일 SDK)에서 PATCH method가 차단되지 않도록 한다.
+ *
+ * <p>보안: {@code allowCredentials=true}와 wildcard origin 조합은 RFC 6454 위반이며 prod 사용 금지.
+ * Origin은 {@link CorsProperties}로 명시 주입한다 (env: {@code BUTTERFLY_CORS_ALLOWED_ORIGINS},
+ * properties: {@code butterfly.cors.allowed-origins}).
  */
 @Configuration
 @EnableWebSecurity
+@EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http,
+                                                   CorsConfigurationSource corsSource) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsSource))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -37,13 +43,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(CorsProperties props) {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOriginPatterns(List.of("*"));
-        cfg.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cfg.setAllowedHeaders(List.of("*"));
-        cfg.setExposedHeaders(List.of("Idempotency-Key"));
-        cfg.setAllowCredentials(true);
+        // 명시 origin 사용 — wildcard + allowCredentials 조합은 브라우저가 거부함.
+        cfg.setAllowedOrigins(props.allowedOrigins());
+        cfg.setAllowedMethods(props.allowedMethods());
+        cfg.setAllowedHeaders(props.allowedHeaders());
+        cfg.setExposedHeaders(props.exposedHeaders());
+        cfg.setAllowCredentials(props.allowCredentials());
+        cfg.setMaxAge(props.maxAgeSeconds());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
