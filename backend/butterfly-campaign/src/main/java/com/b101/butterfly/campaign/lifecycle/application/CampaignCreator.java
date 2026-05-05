@@ -2,6 +2,8 @@ package com.b101.butterfly.campaign.lifecycle.application;
 
 import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.ScheduleSpec;
+import com.b101.butterfly.campaign.lifecycle.domain.Targeting;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
@@ -44,10 +46,12 @@ public class CampaignCreator {
                 messageTemplateLookupPort.lookup(messageTemplateId);
         assertTemplateOwnedBy(template, projectId);
 
-        Campaign campaign = (segmentId == null)
-                ? Campaign.immediateAll(projectId, template, memberId, campaignName, campaignDescription)
-                : Campaign.immediateTarget(
-                        projectId, template, memberId, campaignName, campaignDescription, segmentId);
+        Campaign.CampaignCommonInputs common = new Campaign.CampaignCommonInputs(
+                projectId, template, memberId, campaignName, campaignDescription);
+        Targeting targeting = (segmentId == null)
+                ? new Targeting.All()
+                : new Targeting.Segment(segmentId);
+        Campaign campaign = Campaign.create(common, new ScheduleSpec.Immediate(), targeting);
 
         return campaignRepository.save(campaign).getCampaignId();
     }

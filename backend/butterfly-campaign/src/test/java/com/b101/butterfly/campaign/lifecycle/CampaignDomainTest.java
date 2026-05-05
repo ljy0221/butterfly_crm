@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
+import com.b101.butterfly.campaign.lifecycle.domain.ScheduleSpec;
+import com.b101.butterfly.campaign.lifecycle.domain.Targeting;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
@@ -26,8 +28,9 @@ class CampaignDomainTest {
     }
 
     private Campaign draftCampaign() {
-        return Campaign.immediateAll(
+        Campaign.CampaignCommonInputs common = new Campaign.CampaignCommonInputs(
                 PROJECT_ID, template(), MEMBER_ID, "캠페인-A", "설명-A");
+        return Campaign.create(common, new ScheduleSpec.Immediate(), new Targeting.All());
     }
 
     @Nested

@@ -10,6 +10,8 @@ import com.b101.butterfly.campaign.lifecycle.application.CampaignModifier;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.domain.ScheduleSpec;
+import com.b101.butterfly.campaign.lifecycle.domain.Targeting;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
@@ -74,7 +76,9 @@ class CampaignModifierTest {
     private Campaign persistedCampaign(Long projectId) {
         MessageTemplateSnapshot template =
                 new MessageTemplateSnapshot(50L, projectId, Channel.PUSH);
-        Campaign c = Campaign.immediateAll(projectId, template, MEMBER_ID, "원본", "원본설명");
+        Campaign.CampaignCommonInputs common = new Campaign.CampaignCommonInputs(
+                projectId, template, MEMBER_ID, "원본", "원본설명");
+        Campaign c = Campaign.create(common, new ScheduleSpec.Immediate(), new Targeting.All());
         setField(c, "campaignId", CAMPAIGN_ID);
         return c;
     }

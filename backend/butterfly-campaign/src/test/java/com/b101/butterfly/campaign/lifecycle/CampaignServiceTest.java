@@ -24,6 +24,8 @@ import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.domain.ScheduleSpec;
+import com.b101.butterfly.campaign.lifecycle.domain.Targeting;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
@@ -178,7 +180,9 @@ class CampaignServiceTest {
     private Campaign persisted(CampaignStatus initialStatus) {
         MessageTemplateSnapshot t =
                 new MessageTemplateSnapshot(50L, PROJECT_ID, Channel.PUSH);
-        Campaign c = Campaign.immediateAll(PROJECT_ID, t, MEMBER_ID, "C", "CD");
+        Campaign.CampaignCommonInputs common = new Campaign.CampaignCommonInputs(
+                PROJECT_ID, t, MEMBER_ID, "C", "CD");
+        Campaign c = Campaign.create(common, new ScheduleSpec.Immediate(), new Targeting.All());
         setField(c, "campaignId", CAMPAIGN_ID);
         // initialStatus는 항상 DRAFT로 시작 — 호출자가 추가 전이로 setup
         return c;

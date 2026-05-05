@@ -141,115 +141,67 @@ public class Campaign extends SoftDeletedDomain {
         this.nextRunAt = nextRunAt;
     }
 
-    // 즉시+전체
-    public static Campaign immediateAll(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription
+    /**
+     * 단일 진입점 — sealed {@link ScheduleSpec} + sealed {@link Targeting} 조합으로
+     * 모든 캠페인 variant를 생성한다. exhaustive switch가 컴파일러 차원에서 누락 케이스 검출.
+     *
+     * <p>이전의 8개 정적 팩토리(immediateAll/immediateTarget/scheduledAll/...)는 본 메서드로 통합.
+     */
+    public static Campaign create(
+            CampaignCommonInputs common,
+            ScheduleSpec schedule,
+            Targeting targeting
     ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        return new Campaign(
-                projectId,
-                template.messageTemplateId(),
-                null,
-                memberId,
-                campaignName,
-                campaignDescription,
-                CampaignType.ONE_TIME,
-                SendMode.IMMEDIATE,
-                template.channel(),
-                CampaignStatus.DRAFT,
-                null, null, null, null, null, null, null
-        );
+        validateCommon(common);
+        Long segmentId = applyTargeting(targeting);
+
+        return switch (schedule) {
+            case ScheduleSpec.Immediate ignored ->
+                    buildOneTime(common, segmentId, SendMode.IMMEDIATE,
+                            null, null, null, null, null, null, null);
+            case ScheduleSpec.Scheduled scheduled -> {
+                validateScheduledAt(scheduled.nextRunAt());
+                yield buildOneTime(common, segmentId, SendMode.SCHEDULED,
+                        null, null, null, null, null, 1, scheduled.nextRunAt());
+            }
+            case ScheduleSpec.Recurring recurring -> {
+                validateRecurring(recurring.repeatType(),
+                        recurring.recurringCount(), recurring.nextRunAt());
+                String cron = RecurringCronGenerator.toCron(
+                        recurring.repeatType(),
+                        recurring.repeatDayOfWeek(),
+                        recurring.repeatDayOfMonth(),
+                        recurring.repeatTime());
+                yield buildOneTime(common, segmentId, SendMode.RECURRING,
+                        cron,
+                        recurring.repeatType(),
+                        recurring.repeatDayOfWeek(),
+                        recurring.repeatDayOfMonth(),
+                        recurring.repeatTime(),
+                        recurring.recurringCount(),
+                        recurring.nextRunAt());
+            }
+            case ScheduleSpec.Automation ignored ->
+                    new Campaign(
+                            common.projectId(),
+                            common.template().messageTemplateId(),
+                            segmentId,
+                            common.memberId(),
+                            common.campaignName(),
+                            common.campaignDescription(),
+                            CampaignType.AUTOMATION,
+                            null,
+                            common.template().channel(),
+                            CampaignStatus.DRAFT,
+                            null, null, null, null, null, null, null);
+        };
     }
 
-    // 즉시+타겟
-    public static Campaign immediateTarget(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription,
-            Long segmentId
-    ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        validateSegment(segmentId);
-        return new Campaign(
-                projectId,
-                template.messageTemplateId(),
-                segmentId,
-                memberId,
-                campaignName,
-                campaignDescription,
-                CampaignType.ONE_TIME,
-                SendMode.IMMEDIATE,
-                template.channel(),
-                CampaignStatus.DRAFT,
-                null, null, null, null, null, null, null
-        );
-    }
-
-    // 예약+전체
-    public static Campaign scheduledAll(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription,
-            LocalDateTime nextRunAt
-    ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        validateScheduledAt(nextRunAt);
-        return new Campaign(
-                projectId, template.messageTemplateId(), null, memberId,
-                campaignName, campaignDescription,
-                CampaignType.ONE_TIME, SendMode.SCHEDULED,
-                template.channel(), CampaignStatus.DRAFT,
-                null, null, null, null, null,
-                1,
-                nextRunAt
-        );
-    }
-
-    // 예약+타겟
-    public static Campaign scheduledTarget(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription,
+    private static Campaign buildOneTime(
+            CampaignCommonInputs common,
             Long segmentId,
-            LocalDateTime nextRunAt
-    ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        validateSegment(segmentId);
-        validateScheduledAt(nextRunAt);
-        return new Campaign(
-                projectId,
-                template.messageTemplateId(),
-                segmentId,
-                memberId,
-                campaignName,
-                campaignDescription,
-                CampaignType.ONE_TIME,
-                SendMode.SCHEDULED,
-                template.channel(),
-                CampaignStatus.DRAFT,
-                null, null, null, null, null,
-                1,
-                nextRunAt
-        );
-    }
-
-    // 반복+전체
-    public static Campaign recurringAll(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription,
+            SendMode sendMode,
+            String recurringCron,
             RepeatType repeatType,
             String repeatDayOfWeek,
             Integer repeatDayOfMonth,
@@ -257,20 +209,16 @@ public class Campaign extends SoftDeletedDomain {
             Integer recurringCount,
             LocalDateTime nextRunAt
     ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        validateRecurring(repeatType, recurringCount, nextRunAt);
-        String recurringCron = RecurringCronGenerator.toCron(
-                repeatType, repeatDayOfWeek, repeatDayOfMonth, repeatTime);
         return new Campaign(
-                projectId,
-                template.messageTemplateId(),
-                null,
-                memberId,
-                campaignName,
-                campaignDescription,
+                common.projectId(),
+                common.template().messageTemplateId(),
+                segmentId,
+                common.memberId(),
+                common.campaignName(),
+                common.campaignDescription(),
                 CampaignType.ONE_TIME,
-                SendMode.RECURRING,
-                template.channel(),
+                sendMode,
+                common.template().channel(),
                 CampaignStatus.DRAFT,
                 recurringCron,
                 repeatType,
@@ -282,112 +230,33 @@ public class Campaign extends SoftDeletedDomain {
         );
     }
 
-    // 반복+타겟
-    public static Campaign recurringTarget(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription,
-            Long segmentId,
-            RepeatType repeatType,
-            String repeatDayOfWeek,
-            Integer repeatDayOfMonth,
-            LocalTime repeatTime,
-            Integer recurringCount,
-            LocalDateTime nextRunAt
-    ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        validateSegment(segmentId);
-        validateRecurring(repeatType, recurringCount, nextRunAt);
-        String recurringCron = RecurringCronGenerator.toCron(
-                repeatType, repeatDayOfWeek, repeatDayOfMonth, repeatTime);
-        return new Campaign(
-                projectId,
-                template.messageTemplateId(),
-                segmentId,
-                memberId,
-                campaignName,
-                campaignDescription,
-                CampaignType.ONE_TIME,
-                SendMode.RECURRING,
-                template.channel(),
-                CampaignStatus.DRAFT,
-                recurringCron,
-                repeatType,
-                repeatDayOfWeek,
-                repeatDayOfMonth,
-                repeatTime,
-                recurringCount,
-                nextRunAt
-        );
+    private static Long applyTargeting(Targeting targeting) {
+        return switch (targeting) {
+            case Targeting.All ignored -> null;
+            case Targeting.Segment seg -> {
+                if (seg.segmentId() == null) {
+                    throw new BusinessException(CampaignErrorCode.CAMPAIGN_SEGMENT_REQUIRED);
+                }
+                yield seg.segmentId();
+            }
+        };
     }
 
-    // 자동+전체
-    public static Campaign automationAll(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription
-    ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        return new Campaign(
-                projectId, template.messageTemplateId(), null, memberId,
-                campaignName, campaignDescription,
-                CampaignType.AUTOMATION, null,
-                template.channel(), CampaignStatus.DRAFT,
-                null, null, null, null, null, null, null
-        );
-    }
-
-    // 자동+타겟
-    public static Campaign automationTarget(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription,
-            Long segmentId
-    ) {
-        validateCommon(projectId, template, memberId, campaignName, campaignDescription);
-        validateSegment(segmentId);
-        return new Campaign(
-                projectId, template.messageTemplateId(), segmentId, memberId,
-                campaignName, campaignDescription,
-                CampaignType.AUTOMATION, null,
-                template.channel(), CampaignStatus.DRAFT,
-                null, null, null, null, null, null, null
-        );
-    }
-
-    private static void validateCommon(
-            Long projectId,
-            MessageTemplateSnapshot template,
-            Long memberId,
-            String campaignName,
-            String campaignDescription
-    ) {
-        if (projectId == null) {
+    private static void validateCommon(CampaignCommonInputs common) {
+        if (common.projectId() == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_PROJECT_REQUIRED);
         }
-        if (template == null || template.messageTemplateId() == null) {
+        if (common.template() == null || common.template().messageTemplateId() == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_MESSAGE_TEMPLATE_REQUIRED);
         }
-        if (memberId == null) {
+        if (common.memberId() == null) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_MEMBER_REQUIRED);
         }
-        if (campaignName == null || campaignName.isBlank()) {
+        if (common.campaignName() == null || common.campaignName().isBlank()) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_NAME_REQUIRED);
         }
-        if (campaignDescription == null || campaignDescription.isBlank()) {
+        if (common.campaignDescription() == null || common.campaignDescription().isBlank()) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_DESCRIPTION_REQUIRED);
-        }
-    }
-
-    private static void validateSegment(Long segmentId) {
-        if (segmentId == null) {
-            throw new BusinessException(CampaignErrorCode.CAMPAIGN_SEGMENT_REQUIRED);
         }
     }
 
@@ -414,6 +283,16 @@ public class Campaign extends SoftDeletedDomain {
         if (nextRunAt == null) {
             throw new BusinessException(CampaignErrorCode.SCHEDULED_AT_REQUIRED);
         }
+    }
+
+    /** 공통 입력 파라미터 묶음 (record). */
+    public record CampaignCommonInputs(
+            Long projectId,
+            MessageTemplateSnapshot template,
+            Long memberId,
+            String campaignName,
+            String campaignDescription
+    ) {
     }
 
     public void validateTemplateUpdatable() {
