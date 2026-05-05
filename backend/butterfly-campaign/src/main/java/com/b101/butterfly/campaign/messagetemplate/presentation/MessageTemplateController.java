@@ -8,6 +8,7 @@ import com.b101.butterfly.campaign.messagetemplate.presentation.dto.MessageTempl
 import com.b101.butterfly.campaign.messagetemplate.presentation.dto.MessageTemplateDetailResponse;
 import com.b101.butterfly.campaign.messagetemplate.presentation.dto.MessageTemplateListResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,6 +20,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
  * 클라이언트 위조 방지 위해 X-Member-Id 헤더는 더 이상 신뢰하지 않음.
  */
 @Controller
+@Validated
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/projects/{projectId}/templates")
 public class MessageTemplateController {
@@ -45,7 +48,7 @@ public class MessageTemplateController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PostMapping
     public ResponseEntity<MessageTemplateCreateResponse> createMessageTemplate(
-            @PathVariable Long projectId,
+            @PathVariable @Positive Long projectId,
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
         Long messageTemplateId = messageTemplateService.createMessageTemplate(
@@ -58,7 +61,7 @@ public class MessageTemplateController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping
     public ResponseEntity<MessageTemplateListResponse> getMessageTemplates(
-            @PathVariable Long projectId,
+            @PathVariable @Positive Long projectId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         Page<MessageTemplateListResult> resultPage =
@@ -71,8 +74,8 @@ public class MessageTemplateController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/{templateId}")
     public ResponseEntity<MessageTemplateDetailResponse> getMessageTemplateDetail(
-            @PathVariable Long projectId,
-            @PathVariable Long templateId
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long templateId
     ) {
         MessageTemplateDetailResult result = messageTemplateService.getMessageTemplate(projectId, templateId);
         return ResponseEntity
@@ -83,8 +86,8 @@ public class MessageTemplateController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PutMapping("/{templateId}")
     public ResponseEntity<MessageTemplateCreateResponse> updateMessageTemplate(
-            @PathVariable Long projectId,
-            @PathVariable Long templateId,
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long templateId,
             @RequestBody @Valid MessageTemplateCreateRequest request
     ) {
         Long messageTemplateId = messageTemplateService.updateMessageTemplate(
@@ -98,8 +101,8 @@ public class MessageTemplateController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @DeleteMapping("/{templateId}")
     public ResponseEntity<Void> deleteMessageTemplate(
-            @PathVariable Long projectId,
-            @PathVariable Long templateId
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long templateId
     ) {
         messageTemplateService.deleteMessageTemplate(templateId, projectId);
         return ResponseEntity.noContent().build();

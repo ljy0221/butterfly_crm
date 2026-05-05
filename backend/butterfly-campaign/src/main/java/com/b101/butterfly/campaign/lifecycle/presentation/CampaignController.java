@@ -12,6 +12,7 @@ import com.b101.butterfly.campaign.lifecycle.presentation.dto.StatusTransitionRe
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.StatusTransitionResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -49,6 +51,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 클라이언트 위조 방지 위해 X-Member-Id 헤더는 더 이상 신뢰하지 않음.
  */
 @RestController
+@Validated
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/projects/{projectId}/campaigns")
 public class CampaignController {
@@ -58,7 +61,7 @@ public class CampaignController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PostMapping
     public ResponseEntity<CampaignCreateResponse> createCampaign(
-            @PathVariable Long projectId,
+            @PathVariable @Positive Long projectId,
             @RequestBody @Valid CampaignCreateRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
@@ -72,7 +75,7 @@ public class CampaignController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping
     public ResponseEntity<PageResponse<CampaignListResult>> getCampaignList(
-            @PathVariable Long projectId,
+            @PathVariable @Positive Long projectId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable
     ) {
@@ -88,8 +91,8 @@ public class CampaignController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/{campaignId}")
     public ResponseEntity<CampaignDetailResponse> getCampaign(
-            @PathVariable Long projectId,
-            @PathVariable Long campaignId
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long campaignId
     ) {
         CampaignDetailResult result = campaignService.getCampaign(projectId, campaignId);
         return ResponseEntity.ok(CampaignDetailResponse.from(result));
@@ -98,8 +101,8 @@ public class CampaignController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PatchMapping("/{campaignId}")
     public ResponseEntity<CampaignCreateResponse> updateCampaign(
-            @PathVariable Long projectId,
-            @PathVariable Long campaignId,
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long campaignId,
             @RequestBody @Valid CampaignUpdateRequest request
     ) {
         Long updatedId = campaignService.updateCampaign(
@@ -110,8 +113,8 @@ public class CampaignController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @DeleteMapping("/{campaignId}")
     public ResponseEntity<Void> deleteCampaign(
-            @PathVariable Long projectId,
-            @PathVariable Long campaignId
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long campaignId
     ) {
         campaignService.deleteCampaign(campaignId, projectId);
         return ResponseEntity.noContent().build();
@@ -120,8 +123,8 @@ public class CampaignController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PatchMapping("/{campaignId}/status")
     public ResponseEntity<StatusTransitionResponse> transitionStatus(
-            @PathVariable Long projectId,
-            @PathVariable Long campaignId,
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long campaignId,
             @RequestBody @Valid StatusTransitionRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
     ) {
