@@ -122,6 +122,22 @@ public class CampaignExecution extends SoftDeletedDomain {
         this.failReason = reason;
     }
 
+    /**
+     * 발송 완료 후 실제 발송/실패 수를 기록한다.
+     *
+     * <p>상태 전이({@link #markAsSuccess}/{@link #markAsFailed}) 후 호출해야 한다.
+     *
+     * @param sentCount   발송 성공 수 (0 이상)
+     * @param failedCount 발송 실패 수 (0 이상)
+     */
+    public void updateSentCount(int sentCount, int failedCount) {
+        if (sentCount < 0 || failedCount < 0) {
+            throw new BusinessException(CampaignErrorCode.INVALID_TARGET_COUNT);
+        }
+        this.sentCount = sentCount;
+        this.failedCount = failedCount;
+    }
+
     private void requireStatus(CampaignExecutionStatus expected) {
         if (this.campaignExecutionStatus != expected) {
             throw new BusinessException(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
