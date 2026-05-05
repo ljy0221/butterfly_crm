@@ -15,9 +15,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.util.ContentCachingRequestWrapper;
 
 @DisplayName("IdempotencyKeyInterceptor")
 class IdempotencyKeyInterceptorTest {
+
+    private static final int UNPROCESSABLE_ENTITY = 422;
 
     private IdempotencyStore store;
     private IdempotencyKeyInterceptor interceptor;
@@ -55,9 +58,10 @@ class IdempotencyKeyInterceptorTest {
     @Test
     @DisplayName("POST + 헤더 + lock 점유 성공 → 통과")
     void postWithHeaderAcquiresLock() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
-        req.addHeader("Idempotency-Key", "valid-key-12345");
-        given(store.tryLock(anyString(), any())).willReturn(true);
+        ContentCachingRequestWrapper req = withBody("POST", "/api/v1/projects/1/campaigns",
+                "{\"name\":\"foo\"}", "valid-key-12345");
+        given(store.tryLockWithFingerprint(anyString(), anyString(), any()))
+                .willReturn(IdempotencyStore.LockOutcome.ACQUIRED);
 
         boolean ok = interceptor.preHandle(req, response, new Object());
 
@@ -65,17 +69,33 @@ class IdempotencyKeyInterceptorTest {
     }
 
     @Test
-    @DisplayName("PATCH + 같은 키 재시도 → 409 Conflict")
+    @DisplayName("PATCH + 같은 키 + 같은 본문 → 409 Conflict")
     void duplicateKeyConflict() throws Exception {
-        MockHttpServletRequest req = new MockHttpServletRequest(
-                "PATCH", "/api/v1/projects/1/campaigns/2/status");
-        req.addHeader("Idempotency-Key", "valid-key-12345");
-        given(store.tryLock(anyString(), any())).willReturn(false);
+        ContentCachingRequestWrapper req = withBody(
+                "PATCH", "/api/v1/projects/1/campaigns/2/status",
+                "{\"status\":\"ACTIVE\"}", "valid-key-12345");
+        given(store.tryLockWithFingerprint(anyString(), anyString(), any()))
+                .willReturn(IdempotencyStore.LockOutcome.FINGERPRINT_MATCH);
 
         boolean ok = interceptor.preHandle(req, response, new Object());
 
         assertThat(ok).isFalse();
         assertThat(response.getStatus()).isEqualTo(HttpStatus.CONFLICT.value());
+    }
+
+    @Test
+    @DisplayName("PATCH + 같은 키 + 다른 본문 → 422 Unprocessable Entity")
+    void keyReusedWithDifferentBody() throws Exception {
+        ContentCachingRequestWrapper req = withBody(
+                "PATCH", "/api/v1/projects/1/campaigns/2/status",
+                "{\"status\":\"PAUSED\"}", "valid-key-12345");
+        given(store.tryLockWithFingerprint(anyString(), anyString(), any()))
+                .willReturn(IdempotencyStore.LockOutcome.FINGERPRINT_MISMATCH);
+
+        boolean ok = interceptor.preHandle(req, response, new Object());
+
+        assertThat(ok).isFalse();
+        assertThat(response.getStatus()).isEqualTo(UNPROCESSABLE_ENTITY);
     }
 
     @Test
@@ -173,5 +193,14 @@ class IdempotencyKeyInterceptorTest {
         interceptor.afterCompletion(req, response, new Object(), null);
 
         verify(store, never()).release(anyString());
+    }
+
+    private static ContentCachingRequestWrapper withBody(String method, String uri,
+                                                         String body, String idempotencyKey) {
+        MockHttpServletRequest req = new MockHttpServletRequest(method, uri);
+        req.setContentType("application/json");
+        req.setContent(body.getBytes());
+        req.addHeader("Idempotency-Key", idempotencyKey);
+        return new ContentCachingRequestWrapper(req);
     }
 }
