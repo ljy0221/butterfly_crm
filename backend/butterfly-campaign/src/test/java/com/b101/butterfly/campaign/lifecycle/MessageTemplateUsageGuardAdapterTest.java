@@ -1,4 +1,4 @@
-package com.b101.butterfly.campaign.messagetemplate;
+package com.b101.butterfly.campaign.lifecycle;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -6,28 +6,28 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
+import com.b101.butterfly.campaign.lifecycle.application.MessageTemplateUsageGuardAdapter;
 import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateUsageGuard;
 import com.b101.butterfly.global.error.BusinessException;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-@DisplayName("MessageTemplateUsageGuard")
-class MessageTemplateUsageGuardTest {
+@DisplayName("MessageTemplateUsageGuardAdapter")
+class MessageTemplateUsageGuardAdapterTest {
 
     private static final Long TEMPLATE_ID = 50L;
 
     private CampaignRepository campaignRepository;
-    private MessageTemplateUsageGuard guard;
+    private MessageTemplateUsageGuardAdapter guard;
 
     @BeforeEach
     void setUp() {
         campaignRepository = mock(CampaignRepository.class);
-        guard = new MessageTemplateUsageGuard(campaignRepository);
+        guard = new MessageTemplateUsageGuardAdapter(campaignRepository);
     }
 
     @Test

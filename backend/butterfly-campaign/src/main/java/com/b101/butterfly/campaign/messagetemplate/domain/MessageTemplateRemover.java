@@ -1,6 +1,7 @@
 package com.b101.butterfly.campaign.messagetemplate.domain;
 
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateUsageGuardPort;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MessageTemplateRemover {
 
     private final MessageTemplateRepository messageTemplateRepository;
-    private final MessageTemplateUsageGuard messageTemplateUsageGuard;
+    private final MessageTemplateUsageGuardPort messageTemplateUsageGuard;
 
     @Transactional
     public void deleteMessageTemplate(Long messageTemplateId, Long projectId) {

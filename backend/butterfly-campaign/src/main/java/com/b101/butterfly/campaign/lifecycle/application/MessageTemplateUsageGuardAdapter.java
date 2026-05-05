@@ -1,20 +1,23 @@
-package com.b101.butterfly.campaign.messagetemplate.domain;
+package com.b101.butterfly.campaign.lifecycle.application;
 
 import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateUsageGuardPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 메세지 템플릿이 ACTIVE 캠페인에 사용 중이지 않은지를 검증한다.
- * 수정/삭제 양쪽에서 동일한 정책을 적용하기 위한 단일 책임 컴포넌트.
+ * {@link MessageTemplateUsageGuardPort}의 lifecycle-side 구현체.
+ *
+ * <p>messagetemplate BC는 본 어댑터를 모르고 포트만 의존한다 (양방향 BC ACL).
  */
 @Component
 @RequiredArgsConstructor
-public class MessageTemplateUsageGuard {
+public class MessageTemplateUsageGuardAdapter implements MessageTemplateUsageGuardPort {
 
     private final CampaignRepository campaignRepository;
 
+    @Override
     public void assertNotInUseByActiveCampaign(Long messageTemplateId) {
         campaignRepository.findAllByMessageTemplateId(messageTemplateId)
                 .forEach(Campaign::validateTemplateUpdatable);

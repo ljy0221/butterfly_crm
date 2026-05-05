@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/projects/{projectId}/campaigns")
+@RequestMapping("/api/v1/projects/{projectId}/campaigns")
 public class CampaignController {
 
     private final CampaignService campaignService;

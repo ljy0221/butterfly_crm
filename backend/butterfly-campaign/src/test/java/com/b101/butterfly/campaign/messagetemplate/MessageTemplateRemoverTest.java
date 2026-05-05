@@ -15,7 +15,7 @@ import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRemover;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
-import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateUsageGuard;
+import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateUsageGuardPort;
 import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
@@ -32,13 +32,13 @@ class MessageTemplateRemoverTest {
     private static final Long MEMBER_ID = 10L;
 
     private MessageTemplateRepository messageTemplateRepository;
-    private MessageTemplateUsageGuard messageTemplateUsageGuard;
+    private MessageTemplateUsageGuardPort messageTemplateUsageGuard;
     private MessageTemplateRemover remover;
 
     @BeforeEach
     void setUp() {
         messageTemplateRepository = mock(MessageTemplateRepository.class);
-        messageTemplateUsageGuard = mock(MessageTemplateUsageGuard.class);
+        messageTemplateUsageGuard = mock(MessageTemplateUsageGuardPort.class);
         remover = new MessageTemplateRemover(messageTemplateRepository, messageTemplateUsageGuard);
     }
 

@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/project/{projectId}/templates")
+@RequestMapping("/api/v1/projects/{projectId}/templates")
 public class MessageTemplateController {
 
     private final MessageTemplateService messageTemplateService;
