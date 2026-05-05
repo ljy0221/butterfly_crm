@@ -93,11 +93,38 @@ public class CampaignExecution extends SoftDeletedDomain {
         return new CampaignExecution(campaignId, runRound, targetCount);
     }
 
+    /**
+     * READY → SEND. publish 직후 1회만 호출 — 이미 SEND/SUCCESS/FAIL 상태이면
+     * {@link CampaignErrorCode#INVALID_EXECUTION_TRANSITION}.
+     */
     public void markAsSent() {
-        if (this.campaignExecutionStatus != CampaignExecutionStatus.READY) {
-            throw new BusinessException(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
-        }
+        requireStatus(CampaignExecutionStatus.READY);
         this.campaignExecutionStatus = CampaignExecutionStatus.SEND;
         this.sendStartedAt = LocalDateTime.now();
+    }
+
+    /**
+     * SEND → SUCCESS. worker fan-out 결과 통보 시 호출 — 1회만 전이 허용 (멱등 보장 핵심).
+     */
+    public void markAsSuccess() {
+        requireStatus(CampaignExecutionStatus.SEND);
+        this.campaignExecutionStatus = CampaignExecutionStatus.SUCCESS;
+        this.sendCompletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * SEND → FAIL. worker fan-out 실패 통보 시 호출 — 실패 사유를 함께 기록.
+     */
+    public void markAsFailed(String reason) {
+        requireStatus(CampaignExecutionStatus.SEND);
+        this.campaignExecutionStatus = CampaignExecutionStatus.FAIL;
+        this.sendCompletedAt = LocalDateTime.now();
+        this.failReason = reason;
+    }
+
+    private void requireStatus(CampaignExecutionStatus expected) {
+        if (this.campaignExecutionStatus != expected) {
+            throw new BusinessException(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
+        }
     }
 }
