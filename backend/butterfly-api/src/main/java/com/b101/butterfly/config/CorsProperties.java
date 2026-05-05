@@ -23,6 +23,8 @@ public record CorsProperties(
     private static final List<String> DEFAULT_ORIGINS = List.of(
             "http://localhost:3000",
             "http://localhost:5173",
+            "http://localhost:5174",
+            "http://localhost:5175",
             "http://localhost:8080"
     );
     private static final List<String> DEFAULT_METHODS =

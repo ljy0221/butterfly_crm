@@ -2,10 +2,13 @@ package com.b101.butterfly.event.service;
 
 import com.b101.butterfly.event.dto.request.EventCollectRequest;
 import com.b101.butterfly.event.dto.response.EventCollectResponse;
+import com.b101.butterfly.event.entity.Device;
 import com.b101.butterfly.event.entity.EventCategory;
+import com.b101.butterfly.event.entity.User;
 import com.b101.butterfly.event.exception.EventErrorCode;
 import com.b101.butterfly.event.messaging.EventPayload;
 import com.b101.butterfly.event.messaging.EventProducer;
+import com.b101.butterfly.event.repository.DeviceRepository;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -24,12 +27,17 @@ public class EventCollectService {
 
     private final EventProducer eventProducer;
     private final EventCategoryRepository eventCategoryRepository;
+    private final UserDirectory userDirectory;
+    private final DeviceRepository deviceRepository;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public EventCollectResponse collect(Long projectId, EventCollectRequest request) {
         EventCategory category = eventCategoryRepository
                 .findByProjectIdAndName(projectId, request.eventCategory())
                 .orElseThrow(() -> new BusinessException(EventErrorCode.CATEGORY_NOT_FOUND));
+
+        User user = userDirectory.lookupOrCreate(projectId, request.userId());
+        Device device = lookupDevice(projectId, request.deviceId());
 
         String eventUuid = UUID.randomUUID().toString();
         // TODO: event_schemas 도입 시 (categoryId, is_current=true) lookup으로 교체
@@ -40,8 +48,8 @@ public class EventCollectService {
         EventPayload payload = new EventPayload(
                 eventUuid,
                 projectId,
-                request.userId(),
-                request.deviceId(),
+                user.getId(),
+                device.getId(),
                 category.getId(),
                 request.occurredAt(),
                 schemaVersion,
@@ -56,6 +64,11 @@ public class EventCollectService {
         }
 
         return new EventCollectResponse(eventUuid, LocalDateTime.now(), schemaVersion);
+    }
+
+    private Device lookupDevice(Long projectId, String externalDeviceId) {
+        return deviceRepository.findByProjectIdAndExternalId(projectId, externalDeviceId)
+                .orElseThrow(() -> new BusinessException(EventErrorCode.DEVICE_NOT_REGISTERED));
     }
 
     private String serializeEventData(JsonNode eventData) {

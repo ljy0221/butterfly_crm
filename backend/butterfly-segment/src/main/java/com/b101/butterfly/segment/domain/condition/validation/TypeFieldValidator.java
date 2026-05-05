@@ -37,10 +37,10 @@ public class TypeFieldValidator {
     }
 
     private void validateEvent(EventNode event) {
-        if (isBlank(event.category())) {
+        if (event.categoryId() == null || event.categoryId() <= 0) {
             throw new BusinessException(
                     SegmentErrorCode.SEGMENT_400_INVALID_CONDITION_TREE,
-                    "EventNode missing category");
+                    "EventNode categoryId must be > 0");
         }
         if (event.period() == null) {
             throw new BusinessException(

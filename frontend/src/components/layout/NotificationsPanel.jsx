@@ -1,5 +1,5 @@
 import React from "react";
-import { toast } from "../../lib/ui-bus.js";
+import { toast } from "../../lib/ui-bus";
 
 const INITIAL = [
   { id: 1, t: "3분 전", title: "캠페인 발송 완료", desc: "여름 프리오더 사전 안내 · 24,102건 성공", kind: "success", unread: true },

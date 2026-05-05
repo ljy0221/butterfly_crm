@@ -4,8 +4,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -19,7 +19,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  *
  * <p>보안: {@code allowCredentials=true}와 wildcard origin 조합은 RFC 6454 위반이며 prod 사용 금지.
  * Origin은 {@link CorsProperties}로 명시 주입한다 (env: {@code BUTTERFLY_CORS_ALLOWED_ORIGINS},
- * properties: {@code butterfly.cors.allowed-origins}).
+ * properties: {@code butterfly.cors.allowed-origins}). 기본값에 dev SPA 포트 (3000/5173-5175/8080) 포함.
  */
 @Configuration
 @EnableWebSecurity

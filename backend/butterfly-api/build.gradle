@@ -20,12 +20,18 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
-    // Flyway (ADR-0013) — DB 마이그레이션. reporting 모듈만 V*.sql 보유, 다른 모듈은 ddl-auto=update 유지.
+    // Flyway (ADR-0013) — butterfly-api가 베이스라인 V1/V2/V3을 보유한다.
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-mysql'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation project(':butterfly-testsupport')
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
+    testImplementation 'org.springframework:spring-jdbc'
+    runtimeOnly 'com.mysql:mysql-connector-j'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

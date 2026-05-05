@@ -71,11 +71,13 @@ public class AuthController {
     }
 
     // 로그아웃
-    // TODO: 인증 통합 시 Authorization 헤더에서 accessToken 추출
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
-            @RequestHeader("X-Member-Id") Long memberId) {
-        authService.logout(memberId);
+            @RequestHeader("X-Member-Id") Long memberId,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+        String accessToken = (authorizationHeader != null && authorizationHeader.startsWith("Bearer "))
+                ? authorizationHeader.substring(7) : null;
+        authService.logout(memberId, accessToken);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 

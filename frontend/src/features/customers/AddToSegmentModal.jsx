@@ -3,7 +3,7 @@ import {
   Icon, Button, Tag, ChannelBadge, CampaignStatus, Card, StatCard,
   Input, Select, Avatar, Checkbox, Menu, SearchInput, PageHeader,
 } from "../../components/common";
-import { toast, openModal, confirmDialog } from "../../lib/ui-bus.js";
+import { toast, openModal, confirmDialog } from "../../lib/ui-bus";
 import { fmtNum } from "../../utils/fmt.js";
 import { CRM_DATA } from "../../data/mock.js";
 

@@ -39,32 +39,51 @@
 
 ### POST /api/v1/devices
 
+SDK가 다음 시점에 호출하는 멱등 등록/갱신 endpoint:
+1. **앱 첫 실행 (SDK init)** — device 신규 등록 (push_token이 없으면 빈 문자열 sentinel)
+2. **OS가 FCM 토큰 발급/갱신** — 같은 deviceId로 재호출하여 push_token 갱신
+3. **사용자 가입/로그인** — 같은 deviceId로 재호출하여 user_id 갱신 (rebind, ADR-0012)
+4. **사용자 로그아웃** — 같은 deviceId + null userId로 재호출하여 placeholder user로 되돌림
+
+events 수집(API 20)은 본 endpoint로 등록된 device를 참조만 함 — 미등록 시 `DEVICE_NOT_REGISTERED` 4xx.
+
 ```json
 // Request
 {
-  "userId": 1001,
+  "deviceId": "dev_xyz789",
+  "userId": "u_kim_xyz",
   "platform": "ANDROID",
-  "pushToken": "fcm_token_abc123...",
-  "timezone": "Asia/Seoul",
-  "language": "ko",
+  "pushToken": "",
   "appVersion": "2.1.0",
   "osVersion": "14"
 }
 
 // Response
 {
-  "deviceId": 42,
   "tokenValid": true
 }
 ```
+
+| 필드 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| deviceId | String | ✅ | SDK가 생성·보관하는 외부 디바이스 식별자 (255자 이내). 앱 설치 동안 변하지 않음. (projectId, deviceId) 조합은 멱등 |
+| userId | String | — | 외부 유저 식별자. null/공백 시 익명 placeholder user(`__anonymous__`)에 묶임. 가입 후 재호출 시 `user_id` rebind 처리 (ADR-0012) |
+| platform | Enum | ✅ | `ANDROID`, `IOS`, `WEB` |
+| pushToken | String | ✅ | FCM 토큰. **토큰 미발급/푸시 미동의 사용자는 빈 문자열 `""` (sentinel)** — 푸시 발송 로직이 자동으로 발송 대상에서 제외. 토큰 발급/갱신 시 본 endpoint로 재호출 |
+| appVersion | String | ✅ | 앱 버전 (예: `"2.1.0"`) |
+| osVersion | String | ✅ | OS 버전 (예: `"14"`) |
+
+**동작**:
+- 첫 호출 (신규 deviceId): device row 생성 (`token_valid = TRUE`, push_token sentinel 허용)
+- 재호출 (기존 deviceId): `pushToken`, `pushTokenUpdatedAt`, `appVersion`, `osVersion`, `userId` 갱신. `token_valid`은 비어있지 않은 push_token이면 `TRUE`로 복구
 
 ### POST /api/v1/events
 
 ```json
 // Request
 {
-  "userId": 1001,
-  "deviceId": 42,
+  "userId": "u_kim_xyz",
+  "deviceId": "dev_xyz789",
   "eventCategory": "purchase_complete",
   "occurredAt": "2026-04-24T14:32:10.123",
   "eventData": {
@@ -75,7 +94,7 @@
 
 // Response (즉시 응답, 실제 DB 적재는 워커)
 {
-  "eventId": "evt_01HXYZ...",
+  "eventId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "acceptedAt": "2026-04-24T14:32:10.456",
   "schemaVersion": 1
 }
@@ -83,8 +102,8 @@
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| userId | Long | ✅ | 유저 PK (현재 ERD 기준 BIGINT NOT NULL) |
-| deviceId | Long | ✅ | 디바이스 PK |
+| userId | String | — | 외부 유저 식별자 (255자 이내). null/공백 시 익명 placeholder user(`__anonymous__`)에 자동 매핑 (ADR-0012) |
+| deviceId | String | ✅ | 외부 디바이스 식별자 (255자 이내). API 19로 **사전 등록 필수** — 미등록 시 404 |
 | eventCategory | String | ✅ | 카테고리 이름. 서버가 `event_categories.name`으로 lookup → 없으면 404 `CATEGORY_NOT_FOUND` |
 | occurredAt | ISO 8601 | ✅ | 이벤트 발생 시각 |
 | eventData | Object | — | 카테고리별 스키마에 따른 부가 데이터 (JSON object) |
@@ -95,6 +114,7 @@
 |---|---|---|
 | 400 | VALIDATION_FAILED | 필수 필드 누락, 포맷 오류 |
 | 404 | CATEGORY_NOT_FOUND | 등록되지 않은 `eventCategory` |
+| 404 | DEVICE_NOT_REGISTERED | (projectId, deviceId)에 해당하는 디바이스가 미등록. SDK가 API 19를 먼저 호출해야 함 |
 | 500 | INTERNAL_ERROR | Kafka publish 실패 등 서버 오류 |
 
 ---

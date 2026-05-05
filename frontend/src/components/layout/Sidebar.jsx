@@ -2,10 +2,20 @@ import React from "react";
 import { Icon } from "../common/Icon.jsx";
 import Avatar from "../common/Avatar.jsx";
 import { CRM_DATA } from "../../data/mock.js";
+import { useAuthStore } from "@/stores/auth";
+import { useProjectStore } from "@/stores/project";
 
 export default function Sidebar({ active, onNavigate, collapsed }) {
-  const { NAV, PROJECT, USER } = CRM_DATA;
+  // NAV(메뉴 구조)는 mock 그대로, USER/PROJECT는 실 store에서 가져온다.
+  const { NAV } = CRM_DATA;
+  const member = useAuthStore((s) => s.member);
+  const project = useProjectStore((s) => s.current);
   const w = collapsed ? 64 : 240;
+
+  const userName = member?.name ?? "Guest";
+  const userRole = member?.role ?? "";
+  const projectName = project?.name ?? (member?.role === "ADMIN" ? "Butterfly 운영진" : "프로젝트 미선택");
+  const projectPlan = project?.role ?? "—"; // 플랜 정보가 없으면 사용자 role 표시
 
   return (
     <aside
@@ -89,10 +99,10 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
               }}
             >
-              {PROJECT.brand}
+              {projectName}
             </div>
             <div style={{ color: "#94a3b8", fontSize: 10 }}>
-              Production · {PROJECT.plan}
+              {project ? `Production · ${projectPlan}` : "—"}
             </div>
           </div>
           <span style={{ color: "#94a3b8" }}>{Icon.chevronDown(12)}</span>
@@ -164,10 +174,10 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
             display: "flex", alignItems: "center", gap: 10,
           }}
         >
-          <Avatar name={USER.name} size={30} />
+          <Avatar name={userName} size={30} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{USER.name}</div>
-            <div style={{ color: "#94a3b8", fontSize: 10 }}>{USER.role}</div>
+            <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{userName}</div>
+            <div style={{ color: "#94a3b8", fontSize: 10 }}>{userRole || "—"}</div>
           </div>
           <span style={{ color: "#94a3b8" }}>{Icon.chevronDown(12)}</span>
         </div>

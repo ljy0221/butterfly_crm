@@ -40,7 +40,7 @@ public class ConditionNodeSerializer extends JsonSerializer<ConditionNode> {
             throws IOException {
         gen.writeStartObject();
         gen.writeStringField("type", "event");
-        provider.defaultSerializeField("category", event.category(), gen);
+        provider.defaultSerializeField("categoryId", event.categoryId(), gen);
         if (event.filters() != null && !event.filters().isEmpty()) {
             provider.defaultSerializeField("filters", event.filters(), gen);
         }
