@@ -19,6 +19,8 @@ import com.b101.butterfly.campaign.lifecycle.domain.enums.SendMode;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import java.time.LocalDateTime;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,9 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -36,6 +41,7 @@ class CampaignControllerWebMvcTest {
 
     private static final Long PROJECT_ID = 1L;
     private static final Long CAMPAIGN_ID = 100L;
+    private static final Long MEMBER_ID = 1L;
     private static final String BASE_URL = "/api/v1/projects/" + PROJECT_ID + "/campaigns";
 
     @Autowired
@@ -43,6 +49,23 @@ class CampaignControllerWebMvcTest {
 
     @MockitoBean
     CampaignService campaignService;
+
+    /**
+     * 컨트롤러가 {@link org.springframework.security.core.Authentication} 파라미터로 memberId를 추출하므로
+     * SecurityContext에 인증 정보를 미리 주입한다. 토큰 username = String.valueOf(memberId).
+     */
+    @BeforeEach
+    void setUpSecurityContext() {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                String.valueOf(MEMBER_ID), null,
+                List.of(new SimpleGrantedAuthority("ROLE_EDITOR")));
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Nested
     @DisplayName("POST /campaigns — 캠페인 생성")
