@@ -9,8 +9,10 @@ import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateCreator
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateModifier;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRemover;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplateRepository;
+import com.b101.butterfly.campaign.messagetemplate.exception.code.MessageTemplateErrorCode;
 import com.b101.butterfly.campaign.messagetemplate.port.MemberInformationPort;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectInformationPort;
+import com.b101.butterfly.global.error.BusinessException;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -59,9 +61,13 @@ public class MessageTemplateService {
     }
 
     @Transactional(readOnly = true)
-    public MessageTemplateDetailResult getMessageTemplate(Long templateId) {
+    public MessageTemplateDetailResult getMessageTemplate(Long projectId, Long templateId) {
         MessageTemplate messageTemplate =
                 messageTemplateRepository.getByMessageTemplateId(templateId);
+        if (!messageTemplate.getProjectId().equals(projectId)) {
+            // privacy-preserving: 다른 프로젝트 템플릿 존재 여부를 노출하지 않는다
+            throw new BusinessException(MessageTemplateErrorCode.TEMPLATE_NOT_FOUND);
+        }
         String memberName = memberInformationPort.getMemberName(messageTemplate.getMemberId());
         String projectName = projectInformationPort.findProjectName(messageTemplate.getProjectId());
         return MessageTemplateDetailResult.of(messageTemplate, memberName, projectName);

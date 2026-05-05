@@ -66,7 +66,7 @@ public class MessageTemplateController {
             @PathVariable Long projectId,
             @PathVariable Long templateId
     ) {
-        MessageTemplateDetailResult result = messageTemplateService.getMessageTemplate(templateId);
+        MessageTemplateDetailResult result = messageTemplateService.getMessageTemplate(projectId, templateId);
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(MessageTemplateDetailResponse.from(result));
