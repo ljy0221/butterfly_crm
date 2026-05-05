@@ -27,4 +27,9 @@ public class RedisIdempotencyStore implements IdempotencyStore {
     public boolean exists(String key) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(KEY_PREFIX + key));
     }
+
+    @Override
+    public void release(String key) {
+        redisTemplate.delete(KEY_PREFIX + key);
+    }
 }

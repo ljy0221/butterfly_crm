@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
@@ -98,5 +100,78 @@ class IdempotencyKeyInterceptorTest {
 
         assertThat(ok).isFalse();
         assertThat(response.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
+    }
+
+    // ── afterCompletion 테스트 ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("afterCompletion: 200 응답 → release 호출 안 함")
+    void afterCompletion_200_noRelease() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
+        req.addHeader("Idempotency-Key", "valid-key-12345");
+        response.setStatus(HttpStatus.OK.value());
+
+        interceptor.afterCompletion(req, response, new Object(), null);
+
+        verify(store, never()).release(anyString());
+    }
+
+    @Test
+    @DisplayName("afterCompletion: 201 응답 → release 호출 안 함")
+    void afterCompletion_201_noRelease() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
+        req.addHeader("Idempotency-Key", "valid-key-12345");
+        response.setStatus(HttpStatus.CREATED.value());
+
+        interceptor.afterCompletion(req, response, new Object(), null);
+
+        verify(store, never()).release(anyString());
+    }
+
+    @Test
+    @DisplayName("afterCompletion: 400 응답 → release 호출 안 함 (4xx lock 유지)")
+    void afterCompletion_400_noRelease() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
+        req.addHeader("Idempotency-Key", "valid-key-12345");
+        response.setStatus(HttpStatus.BAD_REQUEST.value());
+
+        interceptor.afterCompletion(req, response, new Object(), null);
+
+        verify(store, never()).release(anyString());
+    }
+
+    @Test
+    @DisplayName("afterCompletion: 500 응답 → release 1회 호출")
+    void afterCompletion_500_release() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
+        req.addHeader("Idempotency-Key", "valid-key-12345");
+        response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+        interceptor.afterCompletion(req, response, new Object(), null);
+
+        verify(store).release("valid-key-12345");
+    }
+
+    @Test
+    @DisplayName("afterCompletion: 503 응답 → release 1회 호출")
+    void afterCompletion_503_release() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
+        req.addHeader("Idempotency-Key", "valid-key-12345");
+        response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+
+        interceptor.afterCompletion(req, response, new Object(), null);
+
+        verify(store).release("valid-key-12345");
+    }
+
+    @Test
+    @DisplayName("afterCompletion: Idempotency-Key 헤더 없음 → release 호출 안 함")
+    void afterCompletion_noHeader_noRelease() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/v1/projects/1/campaigns");
+        response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
+
+        interceptor.afterCompletion(req, response, new Object(), null);
+
+        verify(store, never()).release(anyString());
     }
 }

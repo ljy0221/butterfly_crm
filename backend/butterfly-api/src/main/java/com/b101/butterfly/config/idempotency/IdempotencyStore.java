@@ -23,4 +23,11 @@ public interface IdempotencyStore {
      * lock 점유 여부 조회 (조회 전용; 멱등 보장 외 검증용).
      */
     boolean exists(String key);
+
+    /**
+     * lock을 즉시 해제한다. 5xx 서버 에러 시 클라이언트 재시도를 허용하기 위해 사용.
+     *
+     * @param key Idempotency-Key 값
+     */
+    void release(String key);
 }

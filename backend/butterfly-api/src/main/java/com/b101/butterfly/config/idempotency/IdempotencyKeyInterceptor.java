@@ -11,14 +11,17 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
- * Idempotency-Key 헤더 처리 인터셉터 (Stripe 패턴 Phase 1: lock-only).
+ * Idempotency-Key 헤더 처리 인터셉터 (Stripe 패턴 Phase 2: 5xx unlock).
  *
  * <p>POST/PUT/PATCH/DELETE 요청에 {@code Idempotency-Key} 헤더가 있으면 SETNX로 24h lock을
  * 점유한다. 같은 키의 동시/재시도 요청은 409 Conflict로 거부된다.
  *
+ * <p>응답 상태가 5xx (서버 에러)이면 {@code afterCompletion}에서 lock을 즉시 해제해
+ * 클라이언트가 재시도할 수 있도록 한다. 4xx는 lock 유지 — 클라이언트 에러는 재시도해도 동일 결과.
+ *
  * <p>헤더가 없으면 통과 — 기존 동작 보존.
  *
- * <p>Phase 2 (응답 캐시) / Phase 3 (body SHA-256 검증)은 후속 작업에서 확장.
+ * <p>Phase 3 (body SHA-256 검증)은 후속 작업에서 확장.
  */
 @Component
 @RequiredArgsConstructor
@@ -58,6 +61,24 @@ public class IdempotencyKeyInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request,
+                                HttpServletResponse response,
+                                Object handler,
+                                Exception ex) {
+        if (!isMutating(request.getMethod())) {
+            return;
+        }
+        String key = request.getHeader(HEADER);
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        if (response.getStatus() >= 500) {
+            store.release(key);
+            log.info("idempotency lock released on 5xx status={} key={}", response.getStatus(), key);
+        }
     }
 
     private static boolean isMutating(String method) {
