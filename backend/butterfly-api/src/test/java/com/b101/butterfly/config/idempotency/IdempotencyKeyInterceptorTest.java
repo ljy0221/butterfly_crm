@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 @DisplayName("IdempotencyKeyInterceptor")
 class IdempotencyKeyInterceptorTest {
@@ -58,7 +57,8 @@ class IdempotencyKeyInterceptorTest {
     @Test
     @DisplayName("POST + 헤더 + lock 점유 성공 → 통과")
     void postWithHeaderAcquiresLock() throws Exception {
-        ContentCachingRequestWrapper req = withBody("POST", "/api/v1/projects/1/campaigns",
+        CachedBodyHttpServletRequest req = withBody(
+                "POST", "/api/v1/projects/1/campaigns",
                 "{\"name\":\"foo\"}", "valid-key-12345");
         given(store.tryLockWithFingerprint(anyString(), anyString(), any()))
                 .willReturn(IdempotencyStore.LockOutcome.ACQUIRED);
@@ -71,7 +71,7 @@ class IdempotencyKeyInterceptorTest {
     @Test
     @DisplayName("PATCH + 같은 키 + 같은 본문 → 409 Conflict")
     void duplicateKeyConflict() throws Exception {
-        ContentCachingRequestWrapper req = withBody(
+        CachedBodyHttpServletRequest req = withBody(
                 "PATCH", "/api/v1/projects/1/campaigns/2/status",
                 "{\"status\":\"ACTIVE\"}", "valid-key-12345");
         given(store.tryLockWithFingerprint(anyString(), anyString(), any()))
@@ -86,7 +86,7 @@ class IdempotencyKeyInterceptorTest {
     @Test
     @DisplayName("PATCH + 같은 키 + 다른 본문 → 422 Unprocessable Entity")
     void keyReusedWithDifferentBody() throws Exception {
-        ContentCachingRequestWrapper req = withBody(
+        CachedBodyHttpServletRequest req = withBody(
                 "PATCH", "/api/v1/projects/1/campaigns/2/status",
                 "{\"status\":\"PAUSED\"}", "valid-key-12345");
         given(store.tryLockWithFingerprint(anyString(), anyString(), any()))
@@ -195,12 +195,13 @@ class IdempotencyKeyInterceptorTest {
         verify(store, never()).release(anyString());
     }
 
-    private static ContentCachingRequestWrapper withBody(String method, String uri,
-                                                         String body, String idempotencyKey) {
+    private static CachedBodyHttpServletRequest withBody(String method, String uri,
+                                                         String body, String idempotencyKey)
+            throws java.io.IOException {
         MockHttpServletRequest req = new MockHttpServletRequest(method, uri);
         req.setContentType("application/json");
         req.setContent(body.getBytes());
         req.addHeader("Idempotency-Key", idempotencyKey);
-        return new ContentCachingRequestWrapper(req);
+        return new CachedBodyHttpServletRequest(req);
     }
 }

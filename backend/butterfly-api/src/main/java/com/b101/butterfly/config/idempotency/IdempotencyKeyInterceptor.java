@@ -2,8 +2,6 @@ package com.b101.butterfly.config.idempotency;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.InputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
@@ -13,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 /**
  * Idempotency-Key 헤더 처리 인터셉터 (Stripe 패턴 Phase 3: body fingerprint).
@@ -31,8 +28,9 @@ import org.springframework.web.util.ContentCachingRequestWrapper;
  * <p>응답 상태가 5xx (서버 에러)이면 {@code afterCompletion}에서 lock을 즉시 해제해
  * 클라이언트가 재시도할 수 있도록 한다. 4xx는 lock 유지 — 클라이언트 에러는 재시도해도 동일 결과.
  *
- * <p>본문 읽기는 {@link IdempotencyBodyCachingFilter}가 미리 {@link ContentCachingRequestWrapper}로
- * 감싸 stream 두 번 읽기를 안전하게 만든다. 헤더가 없으면 wrap도 안 되므로 cost-zero.
+ * <p>본문 읽기는 {@link IdempotencyBodyCachingFilter}가 미리 {@link CachedBodyHttpServletRequest}로
+ * 감싸 stream 두 번 읽기를 안전하게 만든다 (interceptor → controller 모두 같은 바이트).
+ * 헤더가 없으면 wrap도 안 되므로 cost-zero.
  */
 @Component
 @RequiredArgsConstructor
@@ -129,15 +127,8 @@ public class IdempotencyKeyInterceptor implements HandlerInterceptor {
     }
 
     private byte[] readBody(HttpServletRequest request) {
-        if (request instanceof ContentCachingRequestWrapper wrapper) {
-            // 컨트롤러가 아직 본문을 읽지 않았으므로 한 번 강제 읽고 캐시에 채운다
-            try (InputStream in = wrapper.getInputStream()) {
-                in.readAllBytes();
-            } catch (IOException e) {
-                log.warn("idempotency body read failed; treating as empty", e);
-                return new byte[0];
-            }
-            return wrapper.getContentAsByteArray();
+        if (request instanceof CachedBodyHttpServletRequest wrapper) {
+            return wrapper.getCachedBody();
         }
         // BodyCachingFilter가 wrap하지 않은 경우 (헤더 없음 — 도달 불가)
         return new byte[0];
