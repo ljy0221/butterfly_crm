@@ -1,5 +1,8 @@
 package com.b101.butterfly.reporting.notification.repository;
 
+import com.b101.butterfly.reporting.aggregation.dto.DailyCampaignCountRow;
+import com.b101.butterfly.reporting.aggregation.dto.DailyFailureCountRow;
+import com.b101.butterfly.reporting.aggregation.dto.DailyTemplateCountRow;
 import com.b101.butterfly.reporting.aggregation.dto.HourlyCountRow;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
@@ -82,4 +85,83 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
             GROUP BY n.projectId, n.campaignId, n.channel
             """)
     List<HourlyCountRow> aggregateHourly(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Daily 롤업용 — 하루치 notification_logs를 캠페인×채널 단위로 GROUP BY.
+     * user_action_logs의 open/click/convert는 DailyAggregator가 별도 조회 후 병합한다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyCampaignCountRow(
+                n.projectId,
+                n.campaignId,
+                n.channel,
+                SUM(CASE WHEN n.status IN (
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    ) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
+                    THEN 1 ELSE 0 END),
+                0L, 0L, 0L
+            )
+            FROM NotificationLog n
+            WHERE n.createdAt >= :from
+              AND n.createdAt < :to
+            GROUP BY n.projectId, n.campaignId, n.channel
+            """)
+    List<DailyCampaignCountRow> aggregateDailyCampaign(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Daily 롤업용 — 하루치 notification_logs를 템플릿×채널 단위로 GROUP BY.
+     * messageTemplateId가 null인 row는 제외된다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyTemplateCountRow(
+                n.projectId,
+                n.messageTemplateId,
+                n.channel,
+                COUNT(DISTINCT n.campaignId),
+                SUM(CASE WHEN n.status IN (
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    ) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    THEN 1 ELSE 0 END),
+                0L, 0L, 0L
+            )
+            FROM NotificationLog n
+            WHERE n.createdAt >= :from
+              AND n.createdAt < :to
+              AND n.messageTemplateId IS NOT NULL
+            GROUP BY n.projectId, n.messageTemplateId, n.channel
+            """)
+    List<DailyTemplateCountRow> aggregateDailyTemplate(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Daily 롤업용 — 하루치 FAILED 로그를 프로젝트×채널×에러코드 단위로 GROUP BY.
+     * errorCode가 null인 row는 제외된다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyFailureCountRow(
+                n.projectId,
+                n.channel,
+                n.errorCode,
+                COUNT(n),
+                COUNT(DISTINCT n.campaignId),
+                COUNT(DISTINCT n.userId),
+                MIN(n.createdAt),
+                MAX(n.createdAt)
+            )
+            FROM NotificationLog n
+            WHERE n.createdAt >= :from
+              AND n.createdAt < :to
+              AND n.status = com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
+              AND n.errorCode IS NOT NULL
+            GROUP BY n.projectId, n.channel, n.errorCode
+            """)
+    List<DailyFailureCountRow> aggregateDailyFailure(LocalDateTime from, LocalDateTime to);
 }
