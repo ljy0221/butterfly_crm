@@ -10,8 +10,10 @@ import com.b101.butterfly.event.entity.User;
 import com.b101.butterfly.event.exception.EventErrorCode;
 import com.b101.butterfly.event.messaging.EventPayload;
 import com.b101.butterfly.event.messaging.EventProducer;
+import com.b101.butterfly.event.entity.EventSchema;
 import com.b101.butterfly.event.repository.DeviceRepository;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
+import com.b101.butterfly.event.repository.EventSchemaRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +42,7 @@ class EventCollectServiceTest {
 
     @Mock private EventProducer eventProducer;
     @Mock private EventCategoryRepository eventCategoryRepository;
+    @Mock private EventSchemaRepository eventSchemaRepository;
     @Mock private UserDirectory userDirectory;
     @Mock private DeviceRepository deviceRepository;
 
@@ -228,5 +231,50 @@ class EventCollectServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(EventErrorCode.INTERNAL_ERROR);
+    }
+
+    @Test
+    @DisplayName("collect — 현행 스키마가 등록된 카테고리는 해당 version을 payload에 반영")
+    void collectUsesCurrentSchemaVersion() throws Exception {
+        when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
+                .thenReturn(Optional.of(category()));
+        when(userDirectory.lookupOrCreate(PROJECT_ID, EXTERNAL_USER_ID))
+                .thenReturn(user(INTERNAL_USER_ID, EXTERNAL_USER_ID));
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.of(device()));
+
+        EventSchema schema = EventSchema.builder()
+                .projectId(PROJECT_ID).categoryId(CATEGORY_ID)
+                .version(3).schemaDef("[]")
+                .effectiveFrom(OCCURRED_AT).isCurrent(true).createdBy(0L)
+                .build();
+        ReflectionTestUtils.setField(schema, "id", 300L);
+        when(eventSchemaRepository.findByCategoryIdAndIsCurrentTrue(CATEGORY_ID))
+                .thenReturn(Optional.of(schema));
+
+        eventCollectService.collect(PROJECT_ID, request(EXTERNAL_USER_ID));
+
+        ArgumentCaptor<EventPayload> captor = ArgumentCaptor.forClass(EventPayload.class);
+        verify(eventProducer).send(captor.capture());
+        assertThat(captor.getValue().schemaVersion()).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("collect — 스키마 미등록 카테고리는 schemaVersion=1로 fallback")
+    void collectFallsBackToVersion1WhenNoSchema() throws Exception {
+        when(eventCategoryRepository.findByProjectIdAndName(PROJECT_ID, CATEGORY_NAME))
+                .thenReturn(Optional.of(category()));
+        when(userDirectory.lookupOrCreate(PROJECT_ID, EXTERNAL_USER_ID))
+                .thenReturn(user(INTERNAL_USER_ID, EXTERNAL_USER_ID));
+        when(deviceRepository.findByProjectIdAndExternalId(PROJECT_ID, EXTERNAL_DEVICE_ID))
+                .thenReturn(Optional.of(device()));
+        when(eventSchemaRepository.findByCategoryIdAndIsCurrentTrue(CATEGORY_ID))
+                .thenReturn(Optional.empty());
+
+        eventCollectService.collect(PROJECT_ID, request(EXTERNAL_USER_ID));
+
+        ArgumentCaptor<EventPayload> captor = ArgumentCaptor.forClass(EventPayload.class);
+        verify(eventProducer).send(captor.capture());
+        assertThat(captor.getValue().schemaVersion()).isEqualTo(1);
     }
 }
