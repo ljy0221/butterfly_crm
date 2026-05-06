@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -36,7 +35,9 @@ public interface TemplateStatsDailyRepository extends JpaRepository<TemplateStat
                 (:projectId, :messageTemplateId, :channel, :bucketDate,
                  :usedCampaignCount, :sentCount, :deliveredCount,
                  :openCount, :clickCount, :convertCount,
-                 :openRate, :clickRate, :convertRate,
+                 CASE WHEN :deliveredCount = 0 THEN NULL ELSE ROUND(:openCount * 100.0 / :deliveredCount, 2) END,
+                 CASE WHEN :openCount = 0      THEN NULL ELSE ROUND(:clickCount * 100.0 / :openCount, 2) END,
+                 CASE WHEN :sentCount = 0      THEN NULL ELSE ROUND(:convertCount * 100.0 / :sentCount, 2) END,
                  CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE
                 used_campaign_count = VALUES(used_campaign_count),
@@ -60,9 +61,6 @@ public interface TemplateStatsDailyRepository extends JpaRepository<TemplateStat
             @Param("deliveredCount") int deliveredCount,
             @Param("openCount") int openCount,
             @Param("clickCount") int clickCount,
-            @Param("convertCount") int convertCount,
-            @Param("openRate") BigDecimal openRate,
-            @Param("clickRate") BigDecimal clickRate,
-            @Param("convertRate") BigDecimal convertRate
+            @Param("convertCount") int convertCount
     );
 }

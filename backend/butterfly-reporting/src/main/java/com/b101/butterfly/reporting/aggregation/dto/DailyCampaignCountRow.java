@@ -3,8 +3,9 @@ package com.b101.butterfly.reporting.aggregation.dto;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 
 /**
- * daily 롤업용 캠페인×채널 단위 카운트.
- * notification_logs에서 sent/delivered/failed, user_action_logs에서 open/click/convert를 합산한다.
+ * campaign_stats_hourly를 날짜 단위로 GROUP BY한 집계 결과 한 줄.
+ *
+ * <p>DailyRollupService가 이 결과를 받아 campaign_stats_daily에 UPSERT한다.
  */
 public record DailyCampaignCountRow(
         Long projectId,

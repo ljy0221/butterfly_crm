@@ -1,5 +1,6 @@
 package com.b101.butterfly.reporting.aggregation.repository;
 
+import com.b101.butterfly.reporting.aggregation.dto.DailyCampaignCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsHourly;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -7,7 +8,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -67,4 +70,31 @@ public interface CampaignStatsHourlyRepository extends JpaRepository<CampaignSta
     @Query(value = "DELETE FROM campaign_stats_hourly WHERE bucket_hour = :bucketHour",
             nativeQuery = true)
     int deleteByBucketHour(@Param("bucketHour") LocalDateTime bucketHour);
+
+    /**
+     * daily 롤업용 — 특정 날짜의 hourly row를 캠페인×채널 단위로 합산한다.
+     *
+     * <p>bucket_hour가 해당 날짜(00:00 ~ 다음날 00:00 미만) 범위에 속하는 row들을 GROUP BY.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyCampaignCountRow(
+                h.projectId,
+                h.campaignId,
+                h.channel,
+                SUM(CAST(h.sentCount AS long)),
+                SUM(CAST(h.deliveredCount AS long)),
+                SUM(CAST(h.failedCount AS long)),
+                SUM(CAST(h.openCount AS long)),
+                SUM(CAST(h.clickCount AS long)),
+                SUM(CAST(h.convertCount AS long))
+            )
+            FROM CampaignStatsHourly h
+            WHERE h.bucketHour >= :dayStart
+              AND h.bucketHour < :dayEnd
+            GROUP BY h.projectId, h.campaignId, h.channel
+            """)
+    List<DailyCampaignCountRow> rollupByDate(
+            @Param("dayStart") LocalDateTime dayStart,
+            @Param("dayEnd") LocalDateTime dayEnd
+    );
 }
