@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "443387127079",
+    "project_id": "butterflytest-f25a3",
+    "storage_bucket": "butterflytest-f25a3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:443387127079:android:a1163cd433d7b69b0f3502",
+        "android_client_info": {
+          "package_name": "com.example.notificationtest"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAAYjgvWBYDrigPVu4FkEbdKUxys5bDOT8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
