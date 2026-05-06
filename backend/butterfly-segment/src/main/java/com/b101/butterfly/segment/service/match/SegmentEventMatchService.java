@@ -25,7 +25,7 @@ import java.util.Optional;
  *
  * <p>흐름 (단일 segmentId × 단일 userId):
  * <ol>
- *   <li>Segment 조회 (READY + EVENT-only가 아니면 즉시 reject — 캐시 stale 방어)</li>
+ *   <li>Segment 조회 (READY + filter 없는 EVENT-only가 아니면 즉시 reject — 캐시 stale 방어)</li>
  *   <li>{@link EventAggReader#userMatches} 호출 — 단일 사용자 SUM HAVING 검사</li>
  *   <li>매칭 시 segment_members UPSERT — Period별 expires_at 정책 적용</li>
  * </ol>
@@ -107,6 +107,9 @@ public class SegmentEventMatchService {
             return null;
         }
         ConditionNode child = tree.conditions().get(0);
-        return (child instanceof EventNode e) ? e : null;
+        if (child instanceof EventNode e && (e.filters() == null || e.filters().isEmpty())) {
+            return e;
+        }
+        return null;
     }
 }

@@ -46,3 +46,9 @@ backend/docs/private/
 *.bak
 *.swp
 *~
+backend/butterfly-segment/docs/SEGMENT_DOMAIN.md
+/.codex
+backend/scripts/dev-segment-dummy-data.sql
+backend/scripts/reset-segment-dummy-data.bat
+backend/scripts/run-api-for-migration.bat
+backend/scripts/run-worker-for-segment-build.bat

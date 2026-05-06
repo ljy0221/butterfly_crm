@@ -1,6 +1,5 @@
 package com.b101.butterfly.segment.messaging;
 
-import com.b101.butterfly.segment.domain.condition.ConditionNode;
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.entity.Segment;
@@ -17,6 +16,7 @@ import com.b101.butterfly.segment.service.preview.EventConditionNotReadyExceptio
 import com.b101.butterfly.segment.service.preview.SqlFragment;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -40,7 +40,7 @@ import java.util.stream.Stream;
  *   <li>{@code markBuildingIfPossible} CAS로 점유 — 다른 worker 신선 처리 중이면 ack 후 종료
  *   <li>segment 조회 (Codex 안전장치 b: 빌드 중 soft-delete 시 fail)
  *   <li>conditionTreeHash 비교 (Codex 안전장치 c: 빌드 중 tree 수정 시 fail)
- *   <li>tree 분기 — EVENT-only / TAG·USER·DEVICE-only / mixed (mixed는 fail)
+ *   <li>tree 분기 — filter 없는 EVENT-only는 EventAggReader, 그 외 트리는 SQL 변환
  *   <li>매칭 user_id 조회 — {@link EventAggReader} 또는 {@link UserDirectoryReader}
  *   <li>기존 segment_members 일괄 삭제 → chunk(1000건) 단위 INSERT + chunk 후 heartbeat 갱신
  *   <li>{@code completeBuildIfOwner}로 estimated_count 갱신 + token/heartbeat 정리
@@ -48,13 +48,13 @@ import java.util.stream.Stream;
  *
  * <p><b>v1 한계</b> (PreviewService 동기화):
  * <ul>
- *   <li>EVENT 단독만 EventAggReader 호출, mixed 트리는 거절 (ADR-0006 §3 + Codex 합의)
- *   <li>EVENT 노드 filters는 검증 단계에서 reject되므로 여기까지 안 도달
+ *   <li>filter 없는 EVENT 단독만 EventAggReader 호출, mixed/filtered EVENT는 SQL로 처리
  *   <li>{@code expires_at}은 항상 null (cumulative 의미). Period 기반 만료 정책은 후속 task
  * </ul>
  */
 @Slf4j
 @Component
+@Lazy(false)
 @Profile("worker")
 @RequiredArgsConstructor
 public class SegmentBuildJob {
@@ -152,7 +152,7 @@ public class SegmentBuildJob {
 
         segmentMemberRepository.deleteBySegmentId(segmentId);
 
-        if (isEventOnlyTree(tree)) {
+        if (isFilterlessEventOnlyTree(tree)) {
             EventNode eventNode = (EventNode) tree.conditions().get(0);
             EventQueryContext context =
                     new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
@@ -161,20 +161,13 @@ public class SegmentBuildJob {
             }
         }
 
-        if (containsEventNode(tree)) {
-            // mixed 트리는 v1 미지원 — Validator/Service 단계에서 막혀야 정상이지만 방어.
-            log.warn(
-                    "Segment {} mixed 트리 (EVENT + 기타) 감지 — v1 미지원. failBuild.", segmentId);
-            throw new IllegalStateException(
-                    "Segment " + segmentId + " has mixed EVENT+other tree (v1 unsupported)");
-        }
-
         SqlFragment fragment;
         try {
-            fragment = sqlConverter.convert(tree, projectId);
+            EventQueryContext context =
+                    new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
+            fragment = sqlConverter.convert(tree, context);
         } catch (EventConditionNotReadyException e) {
-            // 방어적 — TAG/USER/DEVICE 분기는 EVENT 미포함이므로 도달 안 함
-            throw new IllegalStateException("Unexpected EVENT in non-EVENT branch", e);
+            throw new IllegalStateException("EVENT 조건 SQL 변환 준비 실패", e);
         }
         List<Long> userIds = userDirectoryReader.queryUserIds(fragment.sql(), fragment.params());
         return insertInChunks(segmentId, token, userIds.stream());
@@ -199,21 +192,9 @@ public class SegmentBuildJob {
         return total;
     }
 
-    private static boolean isEventOnlyTree(GroupNode tree) {
-        return tree.conditions().size() == 1 && tree.conditions().get(0) instanceof EventNode;
-    }
-
-    private static boolean containsEventNode(ConditionNode node) {
-        if (node instanceof EventNode) {
-            return true;
-        }
-        if (node instanceof GroupNode g) {
-            for (ConditionNode child : g.conditions()) {
-                if (containsEventNode(child)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    private static boolean isFilterlessEventOnlyTree(GroupNode tree) {
+        return tree.conditions().size() == 1
+                && tree.conditions().get(0) instanceof EventNode eventNode
+                && (eventNode.filters() == null || eventNode.filters().isEmpty());
     }
 }

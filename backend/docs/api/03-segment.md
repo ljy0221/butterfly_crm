@@ -6,6 +6,7 @@
 > - 2026-04-27: ERD 개정 반영 — `segment_rules` 테이블 폐기, `condition_tree` JSON 단일 소스로 변경 (ADR-0001).
 >   빌드 상태 추적, 즐겨찾기, 캠페인 연결 조회, 모수 재계산 API 추가.
 > - 2026-04-30: API 경로에 `v1` prefix 적용 ([S14P31B101-163]). `/api/projects/...` → `/api/v1/projects/...`.
+> - 2026-05-06: EVENT 노드는 `categoryId`를 사용하고, EVENT + TAG/USER/DEVICE mixed 트리를 지원한다 (ADR-0015, ADR-0016).
 
 ---
 
@@ -40,14 +41,14 @@
 **Request**
 ```json
 {
-  "name": "검정 구두 260 구매 유저",
-  "description": "최근 30일 내 검정색 남성 구두 260 사이즈를 3회 이상 구매한 서울 거주 유저",
+  "name": "최근 구매 3회 이상 서울 유저",
+  "description": "최근 30일 내 구매 이벤트가 3회 이상이고 서울 태그를 가진 유저",
   "conditionTree": {
     "logic": "and",
     "conditions": [
       {
         "type": "event",
-        "category": "purchase",
+        "categoryId": 42,
         "filters": [
           { "key": "color", "op": "eq", "value": "검정" },
           { "key": "size",  "op": "eq", "value": "260" }
@@ -82,7 +83,7 @@
   "estimatedCount": null,
   "estimatedAt": null,
   "lastBuiltAt": null,
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "createdBy": 17,
   "createdAt": "2026-04-27T10:00:00"
 }
@@ -312,10 +313,12 @@ ADR-0001 참조. 단일 진실 소스(JSON).
 
 | `type` | 의미 | 추가 필드 |
 |--------|------|---------|
-| `event`  | 이벤트 발생 조건             | `category`, `filters[]`, `period`, `minCount` |
+| `event`  | 이벤트 발생 조건             | `categoryId`, `filters[]`, `period`, `minCount` |
 | `tag`    | `user_tags` 태그 필터        | `key`, `op`, `value` |
 | `user`   | `users` 컬럼 필터            | `key`, `op`, `value` (예: `birthDate`, `pushOptIn`) |
 | `device` | `devices` 컬럼 필터          | `key`, `op`, `value` (예: `platform`) |
+
+> `EventNode.filters`가 비어 있으면 `event_daily_agg` 집계를 사용하고, 필터가 있으면 raw `events.event_data` JSON 조건으로 평가한다.
 
 ### `period` (이벤트 조건 한정)
 

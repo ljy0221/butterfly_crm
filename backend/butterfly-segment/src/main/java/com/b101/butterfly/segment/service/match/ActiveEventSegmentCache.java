@@ -31,8 +31,9 @@ import java.util.Map;
  *   <li>TTL {@value #TTL_SECONDS}초
  * </ul>
  *
- * <p>"활성 EVENT segment" = {@code BuildStatus=READY} + soft-delete 안 됨 + EVENT-only 트리
- * (단일 EventNode가 root group의 유일한 자식). mixed 트리는 v1 미지원이라 제외.
+ * <p>"활성 EVENT segment" = {@code BuildStatus=READY} + soft-delete 안 됨 + filter 없는
+ * EVENT-only 트리(단일 EventNode가 root group의 유일한 자식). mixed/filtered EVENT는
+ * 실시간 EventAggReader 경로에서 필터를 보장할 수 없으므로 제외한다.
  *
  * <p>무효화: {@link #invalidate(Long)} — segment 변경/삭제/빌드 완료 시 호출자가 명시 호출.
  * TTL 60s만 의존하면 삭제된 segment가 최대 60초 더 매칭되므로 명시 무효화 보강 (Codex 합의 D2).
@@ -100,7 +101,7 @@ public class ActiveEventSegmentCache {
     }
 
     /**
-     * EVENT-only 트리(단일 root EventNode)일 때 categoryId 반환. 아니면 null.
+     * filter 없는 EVENT-only 트리(단일 root EventNode)일 때 categoryId 반환. 아니면 null.
      */
     static Long extractEventOnlyCategoryId(GroupNode tree) {
         if (tree == null || tree.conditions() == null || tree.conditions().size() != 1) {
@@ -108,7 +109,7 @@ public class ActiveEventSegmentCache {
         }
         ConditionNode child = tree.conditions().get(0);
         if (child instanceof EventNode e) {
-            return e.categoryId();
+            return (e.filters() == null || e.filters().isEmpty()) ? e.categoryId() : null;
         }
         return null;
     }

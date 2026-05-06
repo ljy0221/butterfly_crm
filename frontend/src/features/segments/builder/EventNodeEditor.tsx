@@ -1,5 +1,8 @@
+import { useEffect } from "react";
 import { Tag } from "@/components/common";
 import type { EventFilter, EventNode, Operator } from "@/schemas/segment";
+import { useEventCategoriesQuery, useEventSchemaQuery } from "@/hooks/queries/event";
+import { useProjectStore } from "@/stores/project";
 import OperatorSelect from "./OperatorSelect";
 import PeriodEditor from "./PeriodEditor";
 
@@ -7,11 +10,11 @@ import PeriodEditor from "./PeriodEditor";
  * EventNode 편집기.
  *
  * 백엔드 record:
- *   EventNode { category, filters: List<EventFilter>, period: Period, minCount: Integer }
+ *   EventNode { categoryId, filters: List<EventFilter>, period: Period, minCount: Integer }
  *   EventFilter { key, op: Operator, value: JsonNode }
  *
  * UI 전제:
- *  - category: 자유 입력 (purchase/click/view 외에도 확장 가능, 백엔드 실 enum 미정)
+ *  - categoryId: 이벤트 카테고리 목록에서 선택
  *  - filters[]: 추가/삭제 가능한 행
  *  - period: PeriodEditor
  *  - minCount: 정수 input
@@ -23,9 +26,7 @@ export interface EventNodeEditorProps {
   disabled?: boolean;
 }
 
-const COMMON_CATEGORIES = ["purchase", "click", "view", "page_view", "signup", "login", "add_to_cart"];
-
-const FILTER_KEYS = ["productId", "price", "quantity", "category"];
+const FALLBACK_FILTER_KEYS = ["product_id", "price", "quantity", "category"];
 
 const inputStyle: React.CSSProperties = {
   height: 30,
@@ -75,6 +76,25 @@ export default function EventNodeEditor({
   onChange,
   disabled,
 }: EventNodeEditorProps) {
+  const projectId = useProjectStore((s) => s.current?.projectId ?? null);
+  const categoriesQuery = useEventCategoriesQuery(projectId);
+  const categories = categoriesQuery.data ?? [];
+  const selectedCategory = categories.find((c) => c.categoryId === value.categoryId);
+  const schemaQuery = useEventSchemaQuery(
+    projectId,
+    selectedCategory?.categoryName ?? null,
+    value.categoryId > 0,
+  );
+  const filterKeys =
+    schemaQuery.data && schemaQuery.data.length > 0
+      ? schemaQuery.data.map((p) => p.key)
+      : FALLBACK_FILTER_KEYS;
+
+  useEffect(() => {
+    if (disabled || value.categoryId > 0 || categories.length === 0) return;
+    onChange({ ...value, categoryId: categories[0].categoryId });
+  }, [categories, disabled, onChange, value]);
+
   const updateFilter = (idx: number, next: EventFilter): void => {
     const filters = value.filters.map((f, i) => (i === idx ? next : f));
     onChange({ ...value, filters });
@@ -83,7 +103,7 @@ export default function EventNodeEditor({
   const addFilter = (): void => {
     onChange({
       ...value,
-      filters: [...value.filters, { key: "productId", op: "eq", value: "" }],
+      filters: [...value.filters, { key: filterKeys[0], op: "eq", value: "" }],
     });
   };
 
@@ -106,19 +126,23 @@ export default function EventNodeEditor({
       >
         <Tag tone="info" style={{}}>이벤트</Tag>
         <span style={{ fontSize: 11, color: "#64748b" }}>카테고리</span>
-        <input
-          list="event-categories"
-          value={value.category}
-          disabled={disabled}
-          onChange={(e) => onChange({ ...value, category: e.target.value })}
-          placeholder="purchase"
-          style={{ ...inputStyle, minWidth: 140 }}
-        />
-        <datalist id="event-categories">
-          {COMMON_CATEGORIES.map((c) => (
-            <option key={c} value={c} />
+        <select
+          value={value.categoryId > 0 ? String(value.categoryId) : ""}
+          disabled={disabled || categoriesQuery.isLoading || categories.length === 0}
+          onChange={(e) =>
+            onChange({ ...value, categoryId: Number(e.target.value) })
+          }
+          style={{ ...inputStyle, minWidth: 180 }}
+        >
+          <option value="" disabled>
+            {categoriesQuery.isLoading ? "불러오는 중" : "선택"}
+          </option>
+          {categories.map((c) => (
+            <option key={c.categoryId} value={c.categoryId}>
+              {c.displayName} ({c.categoryName})
+            </option>
           ))}
-        </datalist>
+        </select>
         <span style={{ fontSize: 11, color: "#64748b" }}>최소</span>
         <input
           type="number"
@@ -136,7 +160,7 @@ export default function EventNodeEditor({
         <span style={{ fontSize: 11, color: "#64748b" }}>회 발생</span>
       </div>
 
-      {/* Period */}
+      {/* 기간 */}
       <div
         style={{
           display: "flex",
@@ -164,7 +188,7 @@ export default function EventNodeEditor({
         </div>
       </div>
 
-      {/* Filters */}
+      {/* 필터 */}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         <div
           style={{
@@ -218,7 +242,7 @@ export default function EventNodeEditor({
               style={{ ...inputStyle, width: 120, fontFamily: "var(--font-mono)" }}
             />
             <datalist id={`filter-keys-${idx}`}>
-              {FILTER_KEYS.map((k) => (
+              {filterKeys.map((k) => (
                 <option key={k} value={k} />
               ))}
             </datalist>
@@ -229,7 +253,7 @@ export default function EventNodeEditor({
                 updateFilter(idx, {
                   ...f,
                   op,
-                  // op 가 in 으로 바뀌면 value 를 배열로, 아니면 평탄화
+                  // op가 in으로 바뀌면 value를 배열로, 아니면 평탄화
                   value:
                     op === "in"
                       ? Array.isArray(f.value)
