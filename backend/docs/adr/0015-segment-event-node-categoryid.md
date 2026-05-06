@@ -6,7 +6,9 @@ consulted: 역할 2 (event 수집), 역할 5 (frontend)
 amends: ADR-0006
 ---
 
-# ADR-0014: EventNode.category 식별자 — name(string) → categoryId(Long)
+# ADR-0015: EventNode.category 식별자 — name(string) → categoryId(Long)
+
+> 본 ADR은 최초 0014로 발행됐으나, 동시 작성된 이씨 [-21] events.persisted 토픽 ADR과 번호가 겹쳐 0015로 변경됨 (2026-05-06).
 
 ## Context and Problem Statement
 

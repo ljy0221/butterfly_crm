@@ -1,2 +1,6 @@
 # docker-compose-local
 docker-compose-local.yml
+
+# environment variables
+.env
+.env.local

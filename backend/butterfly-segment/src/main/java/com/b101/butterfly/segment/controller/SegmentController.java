@@ -16,11 +16,13 @@ import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
+import com.b101.butterfly.segment.service.SegmentUsersService;
 import com.b101.butterfly.segment.service.preview.PreviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -52,6 +54,7 @@ public class SegmentController {
     private final SegmentService segmentService;
     private final SegmentFavoriteService segmentFavoriteService;
     private final PreviewService previewService;
+    private final SegmentUsersService segmentUsersService;
 
     /**
      * {@link SegmentRebuildService}는 {@code @Profile("api")}로 worker에서는 등록되지 않는다.
@@ -120,10 +123,8 @@ public class SegmentController {
     public ApiResponse<PageResponse<SegmentUserResponse>> users(
             @PathVariable Long projectId,
             @PathVariable Long segmentId,
-            Pageable pageable) {
-        // TODO Phase 8-1 — SegmentMember 페이지 + event.users JOIN
-        return ApiResponse.ok(
-                PageResponse.of(List.of(), pageable.getPageNumber(), pageable.getPageSize(), 0));
+            @PageableDefault(size = 20) Pageable pageable) {
+        return ApiResponse.ok(segmentUsersService.listUsers(projectId, segmentId, pageable));
     }
 
     @PostMapping("/{segmentId}/rebuild")
