@@ -125,15 +125,93 @@ events 수집(API 20)은 본 endpoint로 등록된 device를 참조만 함 — �
 
 | # | Method | URL | 설명 | 최소 권한 |
 |---|--------|-----|------|----------|
-| 22 | GET | `/api/projects/{projectId}/users` | 유저 목록 | VIEWER |
-| 23 | GET | `/api/projects/{projectId}/users/{userId}` | 유저 상세 프로필 | VIEWER |
-| 24 | PUT | `/api/projects/{projectId}/users/{userId}` | 유저 정보 수정 | EDITOR |
-| 25 | DELETE | `/api/projects/{projectId}/users/{userId}` | 유저 삭제 | ADMIN |
-| 26 | GET | `/api/projects/{projectId}/users/{userId}/devices` | 유저 디바이스 목록 | VIEWER |
-| 27 | GET | `/api/projects/{projectId}/users/{userId}/events` | 유저별 이벤트 이력 | VIEWER |
-| 28 | GET | `/api/projects/{projectId}/events` | 이벤트 전체 목록 | VIEWER |
+| 22 | GET | `/api/v1/projects/{projectId}/users` | 유저 목록 | VIEWER |
+| 23 | GET | `/api/v1/projects/{projectId}/users/{userId}` | 유저 상세 프로필 | VIEWER |
+| 24 | PUT | `/api/v1/projects/{projectId}/users/{userId}` | 유저 정보 수정 | EDITOR |
+| 25 | DELETE | `/api/v1/projects/{projectId}/users/{userId}` | 유저 삭제 | ADMIN |
+| 26 | GET | `/api/v1/projects/{projectId}/users/{userId}/devices` | 유저 디바이스 목록 | VIEWER |
+| 27 | GET | `/api/v1/projects/{projectId}/users/{userId}/events` | 유저별 이벤트 이력 | VIEWER |
+| 28 | GET | `/api/v1/projects/{projectId}/events` | 프로젝트 전체 이벤트 목록 | VIEWER |
 
-### GET /api/projects/{projectId}/users/{userId}
+### GET /api/v1/projects/{projectId}/users/{userId}/events
+
+쿼리 파라미터: `page` (기본 0), `size` (기본 20), `sort` (기본 `occurredAt,desc`)
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "eventId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "eventCategory": "purchase_complete",
+        "occurredAt": "2026-05-06T12:00:00",
+        "eventData": { "amount": 35000, "item": "운동화" }
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 5,
+    "totalPages": 1
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| eventId | String (UUID) | 이벤트 고유 식별자 |
+| eventCategory | String | 이벤트 카테고리 이름 |
+| occurredAt | ISO 8601 | 이벤트 발생 시각 |
+| eventData | Object | 이벤트 부가 데이터 (null 가능) |
+
+**에러 응답**
+
+| 상태코드 | 코드 | 설명 |
+|---------|------|------|
+| 404 | USER_NOT_FOUND | 해당 projectId + userId 조합의 사용자 없음 |
+
+---
+
+### GET /api/v1/projects/{projectId}/events
+
+쿼리 파라미터: `page` (기본 0), `size` (기본 20), `sort` (기본 `occurredAt,desc`)
+
+```json
+// Response
+{
+  "success": true,
+  "data": {
+    "content": [
+      {
+        "eventId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "userId": "u_kim_xyz",
+        "eventCategory": "purchase_complete",
+        "occurredAt": "2026-05-06T12:00:00",
+        "eventData": { "amount": 35000, "item": "운동화" }
+      }
+    ],
+    "page": 0,
+    "size": 20,
+    "totalElements": 150,
+    "totalPages": 8
+  },
+  "error": null
+}
+```
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| eventId | String (UUID) | 이벤트 고유 식별자 |
+| userId | String | 사용자 externalId (`__anonymous__`는 익명 사용자) |
+| eventCategory | String | 이벤트 카테고리 이름 |
+| occurredAt | ISO 8601 | 이벤트 발생 시각 |
+| eventData | Object | 이벤트 부가 데이터 (null 가능) |
+
+---
+
+### GET /api/v1/projects/{projectId}/users/{userId}
 
 ```json
 // Response — 유저 상세 프로필 (태그, 디바이스, 최근 이벤트 포함)
