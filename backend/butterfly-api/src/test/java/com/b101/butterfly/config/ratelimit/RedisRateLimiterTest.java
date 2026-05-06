@@ -27,7 +27,7 @@ class RedisRateLimiterTest {
         redisTemplate = mock(StringRedisTemplate.class);
         valueOps = mock(ValueOperations.class);
         given(redisTemplate.opsForValue()).willReturn(valueOps);
-        RateLimitProperties props = new RateLimitProperties(true, 60, 100);
+        RateLimitProperties props = new RateLimitProperties(true, 60, 100, null);
         limiter = new RedisRateLimiter(redisTemplate, props);
     }
 
@@ -75,5 +75,55 @@ class RedisRateLimiterTest {
         assertThat(decision.allowed()).isFalse();
         assertThat(decision.remaining()).isEqualTo(0);
         assertThat(decision.retryAfterSeconds()).isBetween(1L, 60L);
+    }
+
+    @Test
+    @DisplayName("tryAcquire(scope, limit) — 지정한 limit 적용")
+    void tryAcquireWithExplicitLimit() {
+        given(valueOps.increment(anyString())).willReturn(5L);
+
+        RateLimiter.Decision decision = limiter.tryAcquire("ip:1.2.3.4", 10);
+
+        assertThat(decision.allowed()).isTrue();
+        assertThat(decision.limit()).isEqualTo(10);
+        assertThat(decision.remaining()).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("tryAcquire(scope, limit) — limit 10, count=11 → denied")
+    void tryAcquireWithExplicitLimitDenied() {
+        given(valueOps.increment(anyString())).willReturn(11L);
+
+        RateLimiter.Decision decision = limiter.tryAcquire("ip:1.2.3.4", 10);
+
+        assertThat(decision.allowed()).isFalse();
+        assertThat(decision.limit()).isEqualTo(10);
+        assertThat(decision.remaining()).isEqualTo(0);
+        assertThat(decision.retryAfterSeconds()).isBetween(1L, 60L);
+    }
+
+    @Test
+    @DisplayName("tryAcquire(scope, limit) — limit 200, count=1 → remaining=199")
+    void tryAcquireWithHighLimit() {
+        given(valueOps.increment(anyString())).willReturn(1L);
+
+        RateLimiter.Decision decision = limiter.tryAcquire("ip:1.2.3.4", 200);
+
+        assertThat(decision.allowed()).isTrue();
+        assertThat(decision.limit()).isEqualTo(200);
+        assertThat(decision.remaining()).isEqualTo(199);
+        verify(redisTemplate, times(1)).expire(anyString(), any());
+    }
+
+    @Test
+    @DisplayName("tryAcquire(scope) deprecated 오버로드 → properties.burstCapacity(100) 사용")
+    @SuppressWarnings("deprecation")
+    void legacyTryAcquireUsesBurstCapacity() {
+        given(valueOps.increment(anyString())).willReturn(50L);
+
+        RateLimiter.Decision decision = limiter.tryAcquire("ip:1.2.3.4");
+
+        assertThat(decision.limit()).isEqualTo(100);
+        assertThat(decision.remaining()).isEqualTo(50);
     }
 }
