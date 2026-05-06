@@ -1,14 +1,16 @@
 package com.b101.butterfly.campaign.messagetemplate.application.command;
 
-import com.b101.butterfly.campaign.campaign.domain.enums.Channel;
 import com.b101.butterfly.campaign.messagetemplate.domain.MessageTemplate;
 
 public record MessageTemplateCreateCommand(
         Long projectId,
         Long memberId,
         String messageTemplateName,
+        String messageTemplateDescription,
         String channel,
-        String messageTemplateBody
+        String messageTemplateTitle,
+        String messageTemplateBody,
+        String messageTemplateImageUrl
 ) {
 
     public MessageTemplate toMessageTemplate() {
@@ -16,8 +18,11 @@ public record MessageTemplateCreateCommand(
                 projectId,
                 memberId,
                 messageTemplateName,
-                Channel.valueOf(channel),
-                messageTemplateBody
+                messageTemplateDescription,
+                MessageChannelResolver.resolve(channel),
+                messageTemplateTitle,
+                messageTemplateBody,
+                messageTemplateImageUrl
         );
     }
 }

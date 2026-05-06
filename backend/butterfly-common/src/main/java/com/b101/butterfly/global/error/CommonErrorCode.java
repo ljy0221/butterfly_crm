@@ -12,6 +12,8 @@ public enum CommonErrorCode implements ErrorCode {
     FORBIDDEN("COMMON_003", "접근 권한이 없습니다.", HttpStatus.FORBIDDEN),
     NOT_FOUND("COMMON_004", "리소스를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     CONFLICT("COMMON_005", "리소스 상태가 충돌합니다.", HttpStatus.CONFLICT),
+    METHOD_NOT_ALLOWED("COMMON_006", "허용되지 않은 HTTP 메서드입니다.", HttpStatus.METHOD_NOT_ALLOWED),
+    UNSUPPORTED_MEDIA_TYPE("COMMON_007", "지원되지 않는 미디어 타입입니다.", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
     INTERNAL_ERROR("COMMON_999", "서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
