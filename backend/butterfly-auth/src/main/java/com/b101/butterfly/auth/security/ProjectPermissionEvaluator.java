@@ -36,6 +36,13 @@ public class ProjectPermissionEvaluator {
         Long memberId = currentMemberId();
         if (memberId == null) return false;
 
+        // ADMIN은 projectId=null — 모든 프로젝트 접근 허용
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth.getPrincipal() instanceof CustomUserDetails ud
+                && ud.getRoleType() == RoleType.ADMIN) {
+            return true;
+        }
+
         try {
             RoleType actual   = resolveRole(memberId, projectId);
             RoleType required = RoleType.valueOf(requiredRole);
