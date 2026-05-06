@@ -1,29 +1,35 @@
 package com.b101.butterfly.reporting.aggregation.repository;
 
+import com.b101.butterfly.reporting.aggregation.dto.DailyProjectCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsDaily;
-import com.b101.butterfly.reporting.notification.entity.Channel;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * campaign_stats_daily 저장소.
+ *
+ * <p>S14P31B101-191: hourly 집계 결과를 daily로 롤업하는 UPSERT native 쿼리를 노출한다.
+ * 비율 지표(delivery_rate 등)는 분모가 0이면 NULL — SQL NULLIF 활용.
+ */
 public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStatsDaily, Long> {
 
     Optional<CampaignStatsDaily> findByCampaignIdAndChannelAndBucketDate(
-            Long campaignId, Channel channel, LocalDate bucketDate);
+            Long campaignId,
+            com.b101.butterfly.reporting.notification.entity.Channel channel,
+            LocalDate bucketDate);
 
-    List<CampaignStatsDaily> findByBucketDate(LocalDate bucketDate);
-
-    @Modifying
-    @Query(value = "DELETE FROM campaign_stats_daily WHERE bucket_date = :bucketDate",
-            nativeQuery = true)
-    int deleteByBucketDate(@Param("bucketDate") LocalDate bucketDate);
-
+    /**
+     * 자연 키 {@code (campaign_id, channel, bucket_date)} 기반 UPSERT.
+     *
+     * <p>campaign_stats_hourly를 날짜 단위로 합산한 결과를 받아 덮어쓴다.
+     * 비율 지표는 NULLIF로 분모 0 방어 — KPI 정의서 §3.
+     */
     @Modifying
     @Query(value = """
             INSERT INTO campaign_stats_daily
@@ -36,7 +42,10 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
                 (:projectId, :campaignId, :channel, :bucketDate,
                  :sentCount, :deliveredCount, :failedCount,
                  :openCount, :clickCount, :convertCount,
-                 :deliveryRate, :openRate, :clickRate, :convertRate,
+                 CASE WHEN :sentCount = 0      THEN NULL ELSE ROUND(:deliveredCount * 100.0 / :sentCount, 2) END,
+                 CASE WHEN :deliveredCount = 0 THEN NULL ELSE ROUND(:openCount * 100.0 / :deliveredCount, 2) END,
+                 CASE WHEN :openCount = 0      THEN NULL ELSE ROUND(:clickCount * 100.0 / :openCount, 2) END,
+                 CASE WHEN :sentCount = 0      THEN NULL ELSE ROUND(:convertCount * 100.0 / :sentCount, 2) END,
                  CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE
                 sent_count      = VALUES(sent_count),
@@ -61,10 +70,34 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
             @Param("failedCount") int failedCount,
             @Param("openCount") int openCount,
             @Param("clickCount") int clickCount,
-            @Param("convertCount") int convertCount,
-            @Param("deliveryRate") BigDecimal deliveryRate,
-            @Param("openRate") BigDecimal openRate,
-            @Param("clickRate") BigDecimal clickRate,
-            @Param("convertRate") BigDecimal convertRate
+            @Param("convertCount") int convertCount
     );
+
+    /**
+     * force 재집계용 — 특정 날짜의 모든 row 삭제.
+     */
+    @Modifying
+    @Query(value = "DELETE FROM campaign_stats_daily WHERE bucket_date = :bucketDate",
+            nativeQuery = true)
+    int deleteByBucketDate(@Param("bucketDate") LocalDate bucketDate);
+
+    /**
+     * project_stats_daily 롤업용 — 특정 날짜의 campaign_stats_daily를 project 단위로 합산.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyProjectCountRow(
+                c.projectId,
+                SUM(CAST(c.sentCount AS long)),
+                SUM(CAST(c.deliveredCount AS long)),
+                SUM(CAST(c.failedCount AS long)),
+                SUM(CAST(c.openCount AS long)),
+                SUM(CAST(c.clickCount AS long)),
+                SUM(CAST(c.convertCount AS long)),
+                COUNT(DISTINCT c.campaignId)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.bucketDate = :bucketDate
+            GROUP BY c.projectId
+            """)
+    List<DailyProjectCountRow> rollupProjectByDate(@Param("bucketDate") LocalDate bucketDate);
 }

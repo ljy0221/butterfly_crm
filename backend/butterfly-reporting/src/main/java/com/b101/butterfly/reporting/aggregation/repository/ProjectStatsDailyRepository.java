@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -37,20 +36,23 @@ public interface ProjectStatsDailyRepository extends JpaRepository<ProjectStatsD
                  0, 0, 0,
                  :totalSent, :totalDelivered, :totalFailed,
                  :totalOpen, :totalClick, :totalConvert,
-                 :pushOpenRate, :overallClickRate, :overallConvertRate,
-                 0,
+                 CASE WHEN :totalDelivered = 0 THEN NULL ELSE ROUND(:totalOpen * 100.0 / :totalDelivered, 2) END,
+                 CASE WHEN :totalOpen = 0      THEN NULL ELSE ROUND(:totalClick * 100.0 / :totalOpen, 2) END,
+                 CASE WHEN :totalSent = 0      THEN NULL ELSE ROUND(:totalConvert * 100.0 / :totalSent, 2) END,
+                 :activeCampaignCount,
                  CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE
-                total_sent           = VALUES(total_sent),
-                total_delivered      = VALUES(total_delivered),
-                total_failed         = VALUES(total_failed),
-                total_open           = VALUES(total_open),
-                total_click          = VALUES(total_click),
-                total_convert        = VALUES(total_convert),
-                push_open_rate       = VALUES(push_open_rate),
-                overall_click_rate   = VALUES(overall_click_rate),
-                overall_convert_rate = VALUES(overall_convert_rate),
-                updated_at           = CURRENT_TIMESTAMP
+                total_sent             = VALUES(total_sent),
+                total_delivered        = VALUES(total_delivered),
+                total_failed           = VALUES(total_failed),
+                total_open             = VALUES(total_open),
+                total_click            = VALUES(total_click),
+                total_convert          = VALUES(total_convert),
+                push_open_rate         = VALUES(push_open_rate),
+                overall_click_rate     = VALUES(overall_click_rate),
+                overall_convert_rate   = VALUES(overall_convert_rate),
+                active_campaign_count  = VALUES(active_campaign_count),
+                updated_at             = CURRENT_TIMESTAMP
             """, nativeQuery = true)
     int upsert(
             @Param("projectId") Long projectId,
@@ -61,8 +63,6 @@ public interface ProjectStatsDailyRepository extends JpaRepository<ProjectStatsD
             @Param("totalOpen") int totalOpen,
             @Param("totalClick") int totalClick,
             @Param("totalConvert") int totalConvert,
-            @Param("pushOpenRate") BigDecimal pushOpenRate,
-            @Param("overallClickRate") BigDecimal overallClickRate,
-            @Param("overallConvertRate") BigDecimal overallConvertRate
+            @Param("activeCampaignCount") int activeCampaignCount
     );
 }
