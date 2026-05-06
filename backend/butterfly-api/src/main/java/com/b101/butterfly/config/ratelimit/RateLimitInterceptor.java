@@ -3,12 +3,14 @@ package com.b101.butterfly.config.ratelimit;
 import com.b101.butterfly.auth.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 /**
@@ -37,6 +39,7 @@ public class RateLimitInterceptor implements HandlerInterceptor {
     static final String HEADER_REMAINING = "X-RateLimit-Remaining";
     private static final String XFF_HEADER = "X-Forwarded-For";
     private static final int TOO_MANY_REQUESTS = 429;
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final RateLimiter rateLimiter;
     private final RateLimitProperties properties;
@@ -50,7 +53,8 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
 
         String scope = resolveScope(request);
-        RateLimiter.Decision decision = rateLimiter.tryAcquire(scope);
+        int effectiveLimit = resolveLimit(request);
+        RateLimiter.Decision decision = rateLimiter.tryAcquire(scope, effectiveLimit);
 
         response.setHeader(HEADER_LIMIT, String.valueOf(decision.limit()));
         response.setHeader(HEADER_REMAINING, String.valueOf(decision.remaining()));
@@ -63,6 +67,23 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             return false;
         }
         return true;
+    }
+
+    /**
+     * endpoint별 차등 RPM limit 결정.
+     *
+     * <p>{@link RateLimitProperties#endpointLimits()} 의 key 포맷
+     * {@code "<HTTP_METHOD>:<URI_ANT_PATTERN>"} 과 현재 요청을 ant-pattern 매칭한다.
+     * 매칭되는 첫 번째 패턴의 limit을 사용. 매칭 없으면 {@link RateLimitProperties#burstCapacity()} fallback.
+     */
+    private int resolveLimit(HttpServletRequest request) {
+        String endpointKey = request.getMethod() + ":" + request.getRequestURI();
+        for (Map.Entry<String, Integer> entry : properties.endpointLimits().entrySet()) {
+            if (PATH_MATCHER.match(entry.getKey(), endpointKey)) {
+                return entry.getValue();
+            }
+        }
+        return properties.burstCapacity();
     }
 
     /**
