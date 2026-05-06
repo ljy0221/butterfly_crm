@@ -1,19 +1,24 @@
 package com.b101.butterfly.reporting.notification.repository;
 
+import com.b101.butterfly.reporting.aggregation.dto.HourlyCountRow;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * 발송 로그 저장소. 멱등성 키로 기존 row 존재 여부를 빠르게 확인할 수 있도록
  * {@link #findByMessageKey(String)}을 노출한다 — 컨슈머는 이 키로 dedup을 수행한다.
  *
- * <p>S14P31B101-126 정합성 검증을 위해 회차×채널 단위 카운트
- * ({@link #countsForReconciliation}) 도 노출한다 — 한 번의 쿼리로 actual/sent/failed
- * 카운트를 합산해 N+1을 회피한다.
+ * <p>집계 도메인이 사용하는 두 가지 카운트 쿼리도 함께 노출한다:
+ * <ul>
+ *     <li>{@link #countsForReconciliation} — S14P31B101-126 정합성 검증, 회차×채널 단위</li>
+ *     <li>{@link #aggregateHourly} — S14P31B101-124 hourly 집계, 캠페인×채널 단위 시간 윈도우 합산</li>
+ * </ul>
  */
 public interface ReportingNotificationLogRepository extends JpaRepository<NotificationLog, Long> {
 
@@ -41,4 +46,40 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
               AND n.channel = :channel
             """)
     NotificationCountSummary countsForReconciliation(Long executionId, Channel channel);
+
+    /**
+     * Hourly 집계용 — 시간 윈도우 안의 발송 로그를 캠페인×채널 단위로 GROUP BY.
+     *
+     * <p>윈도우는 {@code [from, to)} 반열림 구간으로 처리해 인접 버킷이 중복 카운트되지 않게 한다.
+     * 기준 시각은 `notification_logs.created_at` (적재 시각) — 이는 발송 시점과 가까운 시간이고
+     * 인덱스(`idx_notification_logs_project_time`)가 활용된다.
+     *
+     * <p>같은 캠페인·채널이라도 다른 프로젝트로 들어온 row가 있다면 별개 row로 그룹된다 —
+     * `project_id`도 자연 키의 일부로 묶는다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.HourlyCountRow(
+                n.projectId,
+                n.campaignId,
+                n.channel,
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.PENDING
+                    THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status IN (
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    ) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
+                    THEN 1 ELSE 0 END)
+            )
+            FROM NotificationLog n
+            WHERE n.createdAt >= :from
+              AND n.createdAt < :to
+            GROUP BY n.projectId, n.campaignId, n.channel
+            """)
+    List<HourlyCountRow> aggregateHourly(LocalDateTime from, LocalDateTime to);
 }
