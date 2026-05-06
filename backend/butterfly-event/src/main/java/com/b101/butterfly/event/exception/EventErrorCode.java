@@ -13,6 +13,8 @@ public enum EventErrorCode implements ErrorCode {
             "등록되지 않은 이벤트 카테고리입니다."),
     DEVICE_NOT_REGISTERED(HttpStatus.NOT_FOUND,          "DEVICE_NOT_REGISTERED",
             "등록되지 않은 디바이스입니다. SDK 초기화 시 디바이스 등록이 선행되어야 합니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND,                 "USER_NOT_FOUND",
+            "등록되지 않은 사용자입니다."),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,     "INTERNAL_ERROR",
             "서버 내부 오류가 발생했습니다.");
 

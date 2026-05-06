@@ -1,0 +1,13 @@
+butterfly:
+  ratelimit:
+    # endpoint별 차등 RPM — key 포맷: "HTTP_METHOD:URI_ANT_PATTERN"
+    # 매칭 순서: 설정 파일에 나타난 순서대로 첫 매치 적용. 미매칭 시 burst-capacity(100) fallback.
+    endpoint-limits:
+      "PATCH:/api/v1/projects/*/campaigns/*/status": 10
+      "DELETE:/api/v1/projects/*/campaigns/*": 10
+      "DELETE:/api/v1/projects/*/templates/*": 10
+      "POST:/api/v1/projects/*/campaigns": 30
+      "POST:/api/v1/projects/*/templates": 30
+      "PUT:/api/v1/projects/*/templates/*": 30
+      "GET:/api/v1/projects/*/campaigns/**": 200
+      "GET:/api/v1/projects/*/templates/**": 200

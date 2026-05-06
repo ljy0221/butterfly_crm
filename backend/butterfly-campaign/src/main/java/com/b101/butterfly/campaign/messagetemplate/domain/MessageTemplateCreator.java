@@ -29,8 +29,11 @@ public class MessageTemplateCreator {
                 messageTemplate.getProjectId(),
                 messageTemplate.getMemberId(),
                 messageTemplate.getMessageTemplateName(),
+                messageTemplate.getMessageTemplateDescription(),
                 messageTemplate.getChannel(),
-                messageTemplate.getMessageTemplateBody()
+                messageTemplate.getMessageTemplateTitle(),
+                messageTemplate.getMessageTemplateBody(),
+                messageTemplate.getMessageTemplateImageUrl()
         );
 
         return messageTemplateRepository.save(newMessageTemplate).getMessageTemplateId();

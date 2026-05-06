@@ -1,1 +1,3 @@
 com.b101.butterfly.campaign.config.CampaignJpaAutoConfig
+com.b101.butterfly.campaign.lifecycle.config.CampaignClockConfig
+com.b101.butterfly.campaign.lifecycle.infrastructure.kafka.CampaignKafkaProducerConfig
