@@ -112,26 +112,36 @@ export default function ApiKeyRevealModal({
           alignItems: "stretch",
         }}
       >
-        <input
-          ref={inputRef}
-          readOnly
-          defaultValue={apiKey}
-          onFocus={(e) => e.currentTarget.select()}
+        <div
+          onClick={() => {
+            inputRef.current?.select();
+            window.getSelection()?.selectAllChildren(inputRef.current?.parentElement ?? document.body);
+          }}
           aria-label="발급된 API 키"
           style={{
             flex: 1,
             height: 40,
             padding: "0 12px",
+            display: "flex",
+            alignItems: "center",
             fontFamily: "var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
             fontSize: 14,
+            fontWeight: 600,
             color: "#0f172a",
-            background: "#0f172a08",
+            background: "#f1f5f9",
             border: "1px solid #cbd5e1",
             borderRadius: 8,
-            outline: "none",
             letterSpacing: "0.02em",
+            userSelect: "all",
+            cursor: "text",
+            overflowX: "auto",
+            whiteSpace: "nowrap",
           }}
-        />
+        >
+          {apiKey}
+        </div>
+        {/* 복사용 hidden input */}
+        <input ref={inputRef} readOnly value={apiKey} style={{ position: "absolute", opacity: 0, pointerEvents: "none" }} />
         <button
           type="button"
           onClick={onCopy}

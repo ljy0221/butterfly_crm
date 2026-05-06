@@ -85,19 +85,10 @@ function InfoRows({
   };
 }) {
   const rows: Array<[string, React.ReactNode]> = [
-    ["회원 ID", <code style={monoStyle}>{data.memberId}</code>],
     ["이름", data.name],
     ["이메일", data.email],
     ["전화번호", data.phone],
     ["권한", <Tag tone={roleTone(data.roleType)}>{data.roleType}</Tag>],
-    [
-      "프로젝트 ID",
-      data.projectId == null ? (
-        <span style={{ color: "var(--fg-faint)" }}>—</span>
-      ) : (
-        <code style={monoStyle}>{data.projectId}</code>
-      ),
-    ],
     [
       "가입일",
       data.createdAt ? data.createdAt.replace("T", " ").slice(0, 19) : "—",
@@ -395,14 +386,6 @@ function WithdrawSection({ onWithdrawn }: { onWithdrawn: () => void }) {
 
 // ---------- 공통 ----------
 
-const monoStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  fontSize: 12,
-  background: "var(--bg-subtle)",
-  padding: "2px 8px",
-  borderRadius: 4,
-  color: "var(--fg-strong)",
-};
 
 function SkeletonRows({ rows }: { rows: number }) {
   return (
