@@ -32,7 +32,7 @@ public class RedisRateLimiter implements RateLimiter {
     private final RateLimitProperties properties;
 
     @Override
-    public Decision tryAcquire(String scope) {
+    public Decision tryAcquire(String scope, int limit) {
         long nowEpochSeconds = Instant.now().getEpochSecond();
         long minuteBucket = nowEpochSeconds / SECONDS_PER_MINUTE;
         String redisKey = KEY_PREFIX + scope + ":" + minuteBucket;
@@ -42,7 +42,6 @@ public class RedisRateLimiter implements RateLimiter {
             redisTemplate.expire(redisKey, WINDOW_TTL);
         }
 
-        int limit = properties.burstCapacity();
         int current = count == null ? 1 : count.intValue();
         int remaining = Math.max(0, limit - current);
         long retryAfter = SECONDS_PER_MINUTE - (nowEpochSeconds % SECONDS_PER_MINUTE);
@@ -51,5 +50,14 @@ public class RedisRateLimiter implements RateLimiter {
             return new Decision(false, limit, 0, retryAfter);
         }
         return new Decision(true, limit, remaining, 0L);
+    }
+
+    /**
+     * 하위 호환 오버로드 — properties.burstCapacity()를 limit으로 사용.
+     */
+    @Override
+    @Deprecated
+    public Decision tryAcquire(String scope) {
+        return tryAcquire(scope, properties.burstCapacity());
     }
 }
