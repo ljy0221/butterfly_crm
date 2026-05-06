@@ -2,9 +2,11 @@ package com.b101.butterfly.segment.domain.condition.validation;
 
 import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.segment.domain.condition.ConditionNode;
+import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
 import com.b101.butterfly.segment.domain.condition.Operator;
+import com.b101.butterfly.segment.domain.condition.Period;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.domain.condition.json.ConditionTreeJsonConverter;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
@@ -94,6 +96,34 @@ class ConditionTreeValidatorStructureTest {
                         e ->
                                 assertThat(e.getErrorCode())
                                         .isEqualTo(SegmentErrorCode.SEGMENT_400_EMPTY_CONDITIONS));
+    }
+
+    @Test
+    @DisplayName("EVENT 노드가 5개를 초과하면 SEGMENT_400_INVALID_CONDITION_TREE로 거절된다")
+    void rejectTooManyEventNodes() {
+        GroupNode tree =
+                new GroupNode(
+                        LogicOp.OR,
+                        List.of(
+                                eventNode(1L),
+                                eventNode(2L),
+                                eventNode(3L),
+                                eventNode(4L),
+                                eventNode(5L),
+                                eventNode(6L)));
+
+        assertThatThrownBy(() -> validator.validate(tree))
+                .isInstanceOfSatisfying(
+                        BusinessException.class,
+                        e ->
+                                assertThat(e.getErrorCode())
+                                        .isEqualTo(
+                                                SegmentErrorCode
+                                                        .SEGMENT_400_INVALID_CONDITION_TREE));
+    }
+
+    private static EventNode eventNode(Long categoryId) {
+        return new EventNode(categoryId, List.of(), new Period.Cumulative(), 1);
     }
 
     private static String readResource(String path) throws IOException {

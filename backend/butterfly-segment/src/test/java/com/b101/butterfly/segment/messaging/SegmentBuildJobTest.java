@@ -9,6 +9,7 @@ import com.b101.butterfly.segment.domain.condition.Period;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.port.EventAggReader;
+import com.b101.butterfly.segment.port.EventQueryContext;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
@@ -73,7 +74,7 @@ class SegmentBuildJobTest {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE ...", Map.of());
-        when(sqlConverter.convert(any(), eq(PROJECT_ID))).thenReturn(fragment);
+        when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
         when(userDirectoryReader.queryUserIds(any(), any()))
                 .thenReturn(List.of(101L, 102L, 103L));
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
@@ -104,25 +105,52 @@ class SegmentBuildJobTest {
 
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
         verify(eventAggReader).queryMatchingUserIds(any(), any());
-        verify(sqlConverter, never()).convert(any(), anyLong());
+        verify(sqlConverter, never()).convert(any(), any(EventQueryContext.class));
         verify(userDirectoryReader, never()).queryUserIds(any(), any());
     }
 
     @Test
-    @DisplayName("mixed 트리 (EVENT + TAG) — IllegalStateException + failBuildIfOwner")
-    void mixedTreeRejected() {
+    @DisplayName("필터가 있는 EVENT-only 트리 — SQL 변환 + segment_members INSERT")
+    void filteredEventOnlyTreeUsesSqlConverter() {
+        Segment segment = sampleSegment(filteredEventTree());
+        stubClaimAndHash(segment);
+        SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE filtered_event", Map.of());
+        when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
+        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(List.of(211L, 212L));
+        when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
+                .thenReturn(1);
+
+        segmentBuildJob.consume(message(HASH));
+
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
+        verify(userDirectoryReader).queryUserIds(eq(fragment.sql()), eq(fragment.params()));
+        ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(segmentRepository)
+                .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
+        assertThat(countCaptor.getValue()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("mixed 트리 (EVENT + TAG) — SQL 변환 + segment_members INSERT")
+    void mixedTreeUsesSqlConverter() {
         Segment segment = sampleSegment(mixedTree());
         stubClaimAndHash(segment);
+        SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE mixed", Map.of());
+        when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
+        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(List.of(301L, 302L));
+        when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
+                .thenReturn(1);
 
-        // mixed 트리 빌드 시도 → IllegalStateException 던지면 catch + failBuild
-        try {
-            segmentBuildJob.consume(message(HASH));
-        } catch (IllegalStateException expected) {
-            // 정상 (Kafka retry 위임)
-        }
+        segmentBuildJob.consume(message(HASH));
 
-        verify(segmentRepository).failBuildIfOwner(eq(SEGMENT_ID), any());
-        verify(segmentRepository, never()).completeBuildIfOwner(anyLong(), any(), anyInt(), any());
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
+        verify(userDirectoryReader).queryUserIds(eq(fragment.sql()), eq(fragment.params()));
+        ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(segmentRepository)
+                .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
+        assertThat(countCaptor.getValue()).isEqualTo(2);
     }
 
     @Test
@@ -130,7 +158,7 @@ class SegmentBuildJobTest {
     void chunkBoundary() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
-        when(sqlConverter.convert(any(), eq(PROJECT_ID)))
+        when(sqlConverter.convert(any(), any(EventQueryContext.class)))
                 .thenReturn(new SqlFragment("SELECT ...", Map.of()));
         // 1500건 user_id (CHUNK_SIZE=1000)
         List<Long> userIds = LongStream.range(1, 1501).boxed().toList();
@@ -158,7 +186,7 @@ class SegmentBuildJobTest {
     void zeroResults() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
-        when(sqlConverter.convert(any(), eq(PROJECT_ID)))
+        when(sqlConverter.convert(any(), any(EventQueryContext.class)))
                 .thenReturn(new SqlFragment("SELECT ...", Map.of()));
         when(userDirectoryReader.queryUserIds(any(), any())).thenReturn(Collections.emptyList());
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
@@ -241,6 +269,20 @@ class SegmentBuildJobTest {
         EventNode event =
                 new EventNode(
                         42L, new ArrayList<EventFilter>(), new Period.Cumulative(), 1);
+        return new GroupNode(LogicOp.AND, List.of(event));
+    }
+
+    private static GroupNode filteredEventTree() {
+        EventNode event =
+                new EventNode(
+                        42L,
+                        List.of(
+                                new EventFilter(
+                                        "productId",
+                                        Operator.EQ,
+                                        JsonNodeFactory.instance.textNode("SKU-1"))),
+                        new Period.Cumulative(),
+                        1);
         return new GroupNode(LogicOp.AND, List.of(event));
     }
 

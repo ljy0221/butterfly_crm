@@ -19,6 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ConditionTreeValidator {
 
+    static final int MAX_EVENT_NODE_COUNT = 5;
+
     private final StructureValidator structureValidator;
     private final TypeFieldValidator typeFieldValidator;
     private final OperatorCompatibilityValidator operatorCompatibilityValidator;
@@ -39,6 +41,12 @@ public class ConditionTreeValidator {
     }
 
     public void validate(GroupNode root) {
+        int eventCount = countEventNodes(root);
+        if (eventCount > MAX_EVENT_NODE_COUNT) {
+            throw new BusinessException(
+                    SegmentErrorCode.SEGMENT_400_INVALID_CONDITION_TREE,
+                    "EVENT node count must be <= " + MAX_EVENT_NODE_COUNT);
+        }
         walk(root, 1);
     }
 
@@ -62,9 +70,25 @@ public class ConditionTreeValidator {
 
     private void validateEvent(EventNode event) {
         periodValidator.validate(event.period());
-        // v1: filters 미지원 — 명시적 reject (ignore 시 사용자가 적용된 줄 알고 결과 받을 위험)
-        if (event.filters() != null && !event.filters().isEmpty()) {
-            throw new BusinessException(SegmentErrorCode.SEGMENT_400_EVENT_FILTER_NOT_SUPPORTED_V1);
+        if (event.filters() != null) {
+            for (var filter : event.filters()) {
+                typeFieldValidator.validate(filter);
+                operatorCompatibilityValidator.validate(filter);
+            }
         }
+    }
+
+    private static int countEventNodes(ConditionNode node) {
+        if (node instanceof EventNode) {
+            return 1;
+        }
+        if (node instanceof GroupNode g && g.conditions() != null) {
+            int count = 0;
+            for (ConditionNode child : g.conditions()) {
+                count += countEventNodes(child);
+            }
+            return count;
+        }
+        return 0;
     }
 }
