@@ -18,6 +18,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // CampaignExecutionPort 어댑터 (config/wiring) — EntityManager + @Transactional 사용.
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
     // Flyway (ADR-0013) — butterfly-api가 베이스라인 V1/V2/V3을 보유한다.
     implementation 'org.flywaydb:flyway-core'
