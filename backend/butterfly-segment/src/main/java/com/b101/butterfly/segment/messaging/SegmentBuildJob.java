@@ -145,6 +145,10 @@ public class SegmentBuildJob {
     /**
      * 매칭 user_id를 조회해 chunk INSERT. 기존 멤버는 일괄 삭제 후 재구성.
      * chunk 사이마다 heartbeat 갱신해 cron 의 stale 판정 회피.
+     *
+     * <p>S14P31B101-199 — filter 없는 EVENT 단독 트리는 단일 native {@code INSERT ... SELECT}로
+     * 처리해 Stream + JPA saveAll 경로를 우회한다 (1M row 기준 ~67분 → ~48초). 단일 statement는
+     * stale timeout(30분)에 한참 못 미치므로 chunk-사이 heartbeat가 필요 없다.
      */
     private int buildMembers(Segment segment, Long projectId, String token) {
         Long segmentId = segment.getId();
@@ -156,9 +160,10 @@ public class SegmentBuildJob {
             EventNode eventNode = (EventNode) tree.conditions().get(0);
             EventQueryContext context =
                     new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
-            try (Stream<Long> stream = eventAggReader.queryMatchingUserIds(eventNode, context)) {
-                return insertInChunks(segmentId, token, stream);
-            }
+            long inserted =
+                    eventAggReader.materializeEventMatchesIntoSegment(
+                            segmentId, eventNode, context);
+            return Math.toIntExact(inserted);
         }
 
         SqlFragment fragment;
