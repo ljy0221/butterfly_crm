@@ -51,7 +51,6 @@ unit-test:
         - "backend/*/build/test-results/test/TEST-*.xml"
     paths:
       - "backend/*/build/reports/tests/test/"
-  allow_failure: true
 
 integration-test:
   stage: test
@@ -73,7 +72,21 @@ integration-test:
   before_script:
     - cd $BACKEND_DIR
     - chmod +x ./gradlew
-    - 'sleep 10'
+    # docker daemon readiness 폴링 (기존 'sleep 10' 시간 기반 wait 대체)
+    # eclipse-temurin:21-jdk 이미지는 docker CLI를 포함하지 않으므로 HTTP _ping 엔드포인트로 직접 폴링
+    - |
+      echo "Waiting for docker daemon at $DOCKER_HOST/_ping ..."
+      for i in $(seq 1 60); do
+        if wget -q -O- "http://docker:2375/_ping" 2>/dev/null | grep -q OK; then
+          echo "docker daemon ready (took ${i}s)"
+          break
+        fi
+        if [ "$i" = "60" ]; then
+          echo "docker daemon did not become ready within 60s" >&2
+          exit 1
+        fi
+        sleep 1
+      done
   script:
     - ./gradlew integrationTest --build-cache --no-daemon
   artifacts:
@@ -85,7 +98,6 @@ integration-test:
         - "backend/*/build/test-results/integrationTest/TEST-*.xml"
     paths:
       - "backend/*/build/reports/tests/integrationTest/"
-  allow_failure: true
 
 checkstyle:
   stage: test

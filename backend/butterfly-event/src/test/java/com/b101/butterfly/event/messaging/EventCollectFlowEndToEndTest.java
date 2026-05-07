@@ -15,6 +15,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -36,6 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <p>잡으려는 회귀: Kafka JSON 직렬화/역직렬화 깨짐, {@code @KafkaListener} containerFactory 빈 이름 오타,
  * {@code @Profile} 라벨 오타, partition key 포맷 변경, AFTER_COMMIT 리스너 미발화 (ADR-0014).
  */
+@Tag("integration")
 @SpringBootTest(classes = EventTestApplication.class)
 @ActiveProfiles({"api", "worker"})
 @EmbeddedKafka(partitions = 1, topics = {EventProducer.TOPIC, EventPersistedProducer.TOPIC})

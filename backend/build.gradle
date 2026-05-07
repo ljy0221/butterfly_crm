@@ -115,7 +115,11 @@ subprojects {
                 }
                 to {
                     image = "${registryNamespace}/${project.name}"
-                    tags = [gitSha, branch, 'latest']
+                    def imageTags = [gitSha, branch]
+                    if (branch == 'develop' || branch == 'main') {
+                        imageTags << 'latest'
+                    }
+                    tags = imageTags
                     auth {
                         username = registryUsername
                         password = registryToken
