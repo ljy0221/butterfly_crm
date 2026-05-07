@@ -2,9 +2,12 @@ package com.b101.butterfly.reporting.aggregation.repository;
 
 import com.b101.butterfly.reporting.aggregation.dto.DailyProjectCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsDaily;
+import com.b101.butterfly.reporting.dto.CampaignMetricRow;
+import com.b101.butterfly.reporting.dto.ChannelMetricRow;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow;
 import com.b101.butterfly.reporting.report.dto.FunnelCountRow;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -161,5 +164,88 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
             @Param("to") LocalDate to,
             @Param("campaignId") Long campaignId,
             @Param("channel") Channel channel
+    );
+
+    /**
+     * S14P31B101-202 — API 60 channel metrics. project + 기간 + (channel) GROUP BY.
+     *
+     * <p>모든 채널을 한 번에 반환 — 보통 응답 row 수가 4~5개 정도라 페이지네이션 불필요.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.dto.ChannelMetricRow(
+                c.channel,
+                CAST(SUM(c.sentCount) AS long),
+                CAST(SUM(c.deliveredCount) AS long),
+                CAST(SUM(c.openCount) AS long),
+                CAST(SUM(c.clickCount) AS long),
+                CAST(SUM(c.convertCount) AS long),
+                CAST(SUM(c.failedCount) AS long)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+            GROUP BY c.channel
+            ORDER BY SUM(c.sentCount) DESC
+            """)
+    List<ChannelMetricRow> aggregateByChannel(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
+
+    /**
+     * S14P31B101-202 — API 59 캠페인 비교 페이지. (campaignId, channel) GROUP BY.
+     *
+     * <p>{@code channelFilter}/{@code campaignIdsFilter}가 null이면 해당 차원 미적용.
+     * 페이지네이션은 호출자가 {@link Pageable}로 제어 — sentCount DESC 정렬.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.dto.CampaignMetricRow(
+                c.campaignId,
+                CAST(c.channel AS string),
+                CAST(SUM(c.sentCount) AS long),
+                CAST(SUM(c.deliveredCount) AS long),
+                CAST(SUM(c.openCount) AS long),
+                CAST(SUM(c.clickCount) AS long),
+                CAST(SUM(c.convertCount) AS long),
+                CAST(SUM(c.failedCount) AS long)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+              AND (:channelFilter IS NULL OR c.channel = :channelFilter)
+              AND (:campaignIdsFilter IS NULL OR c.campaignId IN :campaignIdsFilter)
+            GROUP BY c.campaignId, c.channel
+            ORDER BY SUM(c.sentCount) DESC
+            """)
+    List<CampaignMetricRow> aggregateByCampaign(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("channelFilter") Channel channelFilter,
+            @Param("campaignIdsFilter") List<Long> campaignIdsFilter,
+            Pageable pageable
+    );
+
+    /**
+     * S14P31B101-202 — API 59 페이지네이션 totalCount 계산용. (campaignId, channel) 쌍 수.
+     */
+    @Query("""
+            SELECT COUNT(DISTINCT CONCAT(c.campaignId, '-', c.channel))
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+              AND (:channelFilter IS NULL OR c.channel = :channelFilter)
+              AND (:campaignIdsFilter IS NULL OR c.campaignId IN :campaignIdsFilter)
+            """)
+    long countCampaignChannelPairs(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("channelFilter") Channel channelFilter,
+            @Param("campaignIdsFilter") List<Long> campaignIdsFilter
     );
 }
