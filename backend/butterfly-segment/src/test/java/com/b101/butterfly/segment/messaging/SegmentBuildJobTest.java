@@ -92,21 +92,29 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("EVENT-only 트리 — eventAggReader 호출, sqlConverter 미호출")
+    @DisplayName("EVENT-only 트리 — materializeEventMatchesIntoSegment 단일 호출, saveAll 미호출")
     void eventOnlyTree() {
         Segment segment = sampleSegment(eventTree());
         stubClaimAndHash(segment);
-        when(eventAggReader.queryMatchingUserIds(any(), any()))
-                .thenReturn(LongStream.of(201L, 202L).boxed());
+        when(eventAggReader.materializeEventMatchesIntoSegment(eq(SEGMENT_ID), any(), any()))
+                .thenReturn(2L);
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
                 .thenReturn(1);
 
         segmentBuildJob.consume(message(HASH));
 
+        // S14P31B101-199 — filter 없는 EVENT 단독은 native INSERT-SELECT 단일 statement.
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
-        verify(eventAggReader).queryMatchingUserIds(any(), any());
+        verify(eventAggReader).materializeEventMatchesIntoSegment(eq(SEGMENT_ID), any(), any());
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
+        verify(segmentMemberRepository, never()).saveAll(any());
         verify(sqlConverter, never()).convert(any(), any(EventQueryContext.class));
         verify(userDirectoryReader, never()).queryUserIds(any(), any());
+
+        ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
+        verify(segmentRepository)
+                .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
+        assertThat(countCaptor.getValue()).isEqualTo(2);
     }
 
     @Test
