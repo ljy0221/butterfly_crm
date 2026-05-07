@@ -1,0 +1,70 @@
+package com.b101.butterfly.worker.config;
+
+import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
+import com.b101.butterfly.notification.dto.request.DeliveryCommand;
+import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.core.ProducerFactory;
+
+/**
+ * Worker 프로세스의 Kafka Consumer/Producer 설정.
+ *
+ * <p>Consumer: {@code campaign.send.requested} 토픽 (CampaignSendInstruction)
+ * <p>Producer: {@code delivery-requests} 토픽 (DeliveryCommand)
+ */
+@Configuration
+@Profile("worker")
+public class WorkerKafkaConfig {
+
+    /**
+     * CampaignSendInstruction 메시지 Consumer Factory.
+     */
+    @Bean
+    public ConsumerFactory<String, CampaignSendInstruction> campaignSendInstructionConsumerFactory(
+            KafkaProperties properties
+    ) {
+        return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(null));
+    }
+
+    /**
+     * CampaignSendInstruction 메시지 Listener Container Factory.
+     */
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, CampaignSendInstruction>
+    campaignSendInstructionListenerContainerFactory(
+            ConsumerFactory<String, CampaignSendInstruction> consumerFactory
+    ) {
+        ConcurrentKafkaListenerContainerFactory<String, CampaignSendInstruction> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory);
+        // TODO: 동시성, 재시도, 에러 핸들링 설정
+        return factory;
+    }
+
+    /**
+     * DeliveryCommand 메시지 Producer Factory.
+     */
+    @Bean
+    public ProducerFactory<String, DeliveryCommand> deliveryCommandProducerFactory(
+            KafkaProperties properties
+    ) {
+        return new DefaultKafkaProducerFactory<>(properties.buildProducerProperties(null));
+    }
+
+    /**
+     * DeliveryCommand 메시지 KafkaTemplate.
+     */
+    @Bean
+    public KafkaTemplate<String, DeliveryCommand> deliveryCommandKafkaTemplate(
+            ProducerFactory<String, DeliveryCommand> producerFactory
+    ) {
+        return new KafkaTemplate<>(producerFactory);
+    }
+}
