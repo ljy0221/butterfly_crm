@@ -1,6 +1,7 @@
 package com.b101.butterfly.api.baseline;
 
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
@@ -35,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
  * DataSource + Flyway + JdbcTemplate만 구성하며 JPA 자동설정은 로드하지 않는다.
  */
+@Tag("integration")
 @SpringBootTest(
         classes = {
                 DataSourceAutoConfiguration.class,
