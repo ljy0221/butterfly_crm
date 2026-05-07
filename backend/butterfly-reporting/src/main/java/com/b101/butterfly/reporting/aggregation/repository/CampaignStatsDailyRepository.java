@@ -2,6 +2,7 @@ package com.b101.butterfly.reporting.aggregation.repository;
 
 import com.b101.butterfly.reporting.aggregation.dto.DailyProjectCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsDaily;
+import com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -100,4 +101,34 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
             GROUP BY c.projectId
             """)
     List<DailyProjectCountRow> rollupProjectByDate(@Param("bucketDate") LocalDate bucketDate);
+
+    /**
+     * S14P31B101-92 — 기간 내 (campaignId, channel) 단위로 카운트 합산.
+     *
+     * <p>segment-channel 매트릭스가 본 결과를 받아 캠페인 ID를 세그먼트로 환원하고
+     * 다시 (segmentId, channel) 단위로 재합산한다. DB에서는 segment_id를 모르므로
+     * 캠페인 단위까지만 집계 후 메모리에서 그룹화하는 책임을 서비스에 둔다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow(
+                c.campaignId,
+                c.channel,
+                SUM(CAST(c.sentCount AS long)),
+                SUM(CAST(c.deliveredCount AS long)),
+                SUM(CAST(c.failedCount AS long)),
+                SUM(CAST(c.openCount AS long)),
+                SUM(CAST(c.clickCount AS long)),
+                SUM(CAST(c.convertCount AS long))
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+            GROUP BY c.campaignId, c.channel
+            """)
+    List<CampaignChannelStatsRow> aggregateByProjectAndDateRange(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
 }
