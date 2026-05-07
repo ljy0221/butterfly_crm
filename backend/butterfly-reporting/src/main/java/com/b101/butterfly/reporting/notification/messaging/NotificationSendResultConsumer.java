@@ -19,6 +19,11 @@ import org.springframework.transaction.annotation.Transactional;
  * <p><b>멱등성</b>: {@code message_key} UNIQUE 제약(V13)으로 1차 보장.
  * 동일 키 재수신 시 {@link DataIntegrityViolationException}을 잡아 no-op 처리한다.
  *
+ * <p><b>S14P31B101-180</b>: Redis SETNX(TTL 7일)로 1차 차단을 추가했다. DB 도달 전에
+ * 멱등 hit을 걸러 재시도 폭주 시 부하를 낮춘다. Redis 장애 시에는 fail-open되어 DB
+ * UNIQUE에 위임한다. 적재 도중 예외 발생 시 키를 release하여 재시도가 다시 진입할
+ * 수 있도록 한다.
+ *
  * <p>{@code @Profile("worker")} — butterfly-worker 프로세스에서만 활성화.
  */
 @Slf4j
@@ -27,10 +32,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class NotificationSendResultConsumer {
 
-    static final String TOPIC = "notification-send-result";
+    public static final String TOPIC = "notification-send-result";
     static final String GROUP_ID = "butterfly-analytics-notification-logs";
 
     private final ReportingNotificationLogRepository notificationLogRepository;
+    private final RedisMessageKeyGuard messageKeyGuard;
 
     @KafkaListener(
             topics = TOPIC,
@@ -44,9 +50,16 @@ public class NotificationSendResultConsumer {
             return;
         }
 
+        String messageKey = payload.messageKey();
+
+        if (!messageKeyGuard.tryAcquire(messageKey)) {
+            log.debug("Redis guard hit (already processed) messageKey={}", messageKey);
+            return;
+        }
+
         try {
             NotificationLog log = NotificationLog.create()
-                    .messageKey(payload.messageKey())
+                    .messageKey(messageKey)
                     .projectId(payload.projectId())
                     .campaignId(payload.campaignId())
                     .campaignExecutionId(payload.campaignExecutionId())
@@ -64,9 +77,14 @@ public class NotificationSendResultConsumer {
             notificationLogRepository.save(log);
 
         } catch (DataIntegrityViolationException e) {
-            // message_key UNIQUE 중복 — 멱등 처리, no-op
+            // message_key UNIQUE 중복 — 멱등 처리, no-op. Redis 가드를 우회한 경합 케이스이므로
+            // 키는 그대로 남겨둔다 (다른 트랜잭션이 INSERT 성공 → 후속 요청도 같은 결과).
             NotificationSendResultConsumer.log.debug(
-                    "Duplicate messageKey skipped: {}", payload.messageKey());
+                    "Duplicate messageKey skipped: {}", messageKey);
+        } catch (RuntimeException e) {
+            // DB 일시 장애 등 재시도 가능 예외 — Redis 키를 풀어 재시도가 가드를 통과할 수 있게 한다.
+            messageKeyGuard.release(messageKey);
+            throw e;
         }
     }
 }

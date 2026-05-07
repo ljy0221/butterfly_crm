@@ -18,6 +18,8 @@ dependencies {
     testImplementation 'org.springframework.security:spring-security-test'
     testImplementation project(':butterfly-testsupport')
     implementation 'org.springframework.kafka:spring-kafka'
+    // S14P31B101-180: Kafka 컨슈머의 보조 멱등성(SETNX TTL 7일) 1차 차단용.
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:junit-jupiter'
