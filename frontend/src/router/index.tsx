@@ -21,6 +21,7 @@ import CampaignDetail from "@/features/campaigns/CampaignDetail";
 import Events from "@/features/events/Events";
 import EventDetail from "@/features/events/EventDetail";
 import AdminAuditLogs from "@/features/audit/AdminAuditLogs";
+import SegmentChannelMatrix from "@/features/analytics/SegmentChannelMatrix";
 import DemoLogin from "@/pages/DemoLogin";
 
 /**
@@ -158,6 +159,11 @@ export const router = createBrowserRouter([
       {
         path: "analytics",
         element: <Placeholder title="분석" domain="analytics" sprint="Sprint 4" />,
+      },
+      {
+        // S14P31B101-92 — 세그먼트 × 채널 성과 매트릭스. 컴포넌트 내부에서 OWNER 가드.
+        path: "analytics/segment-channel",
+        element: <SegmentChannelMatrix />,
       },
       {
         path: "settings",
