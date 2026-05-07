@@ -37,10 +37,16 @@ import { fmtNum } from "@/utils/fmt.js";
  * 기존 mock Dashboard.jsx의 레이아웃·SVG 골격을 보존하고 실 API에 연결한다.
  *  - GET /api/projects/{projectId}/analytics/dashboard       (summary + dailyTrend)
  *  - GET /api/projects/{projectId}/analytics/channels        (채널별 비중)
- *  - GET /api/projects/{projectId}/analytics/campaigns?p&s  (최근 5건)
+ *  - GET /api/projects/{projectId}/analytics/campaigns?p&s&sort  (최근 5건)
  *
- * KPI는 ui.md 권장 4종(기간 캠페인 / 총 발송 / 평균 전달률 / 평균 오픈률).
- * delta·이전 기간 비교는 1차 출시에서 생략.
+ * KPI 4종 (기간 캠페인 / 총 발송 / 평균 전달률 / 평균 클릭률):
+ *  - avgDeliveryRate: delivered / sent
+ *  - avgClickRate: ADR-0007 supersede 기준 click / open. 단 백엔드 v1 record(double)가
+ *    아직 nullable로 갱신되지 않아 분모 0이면 0이 들어올 수도 있다 — formatRate가 null과
+ *    NaN을 모두 "—"로 처리하므로 사용자에게 NaN%/0%가 잘못 노출되는 일은 없다.
+ *  - delta·이전 기간 비교는 1차 출시에서 생략.
+ *
+ * 비율 표시는 모두 formatRate(value: number | null) — 분모 0 ⇒ "—" + 툴팁 (KPI 정의서 §3).
  */
 
 type PeriodKey = "7" | "30" | "90";

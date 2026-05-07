@@ -9,9 +9,27 @@
  *   export async function listTemplates(): Promise<Template[]> {
  *     return ifMock("template", () => mockTemplates(), () => api.get("/api/v1/templates").then((r) => r.data));
  *   }
+ *
+ * ⚠️ 5/15 Code Freeze 점검 체크리스트 (분석/리포트 도메인 영향 위주):
+ *   1. VITE_USE_MOCK=true가 .env.production / CI 빌드에 섞이지 않는지 확인
+ *   2. campaign 플래그: 캠페인 도메인 구현 시 false 전환. 분석 화면(Dashboard, AnalyticsHome,
+ *      CampaignFunnel, SegmentChannelMatrix)은 mock 의존도가 없지만, getCampaignStats만
+ *      campaign 플래그를 본다. Sprint 7에 분석 시연이 시작되면 false 권장.
+ *   3. mock 응답 record 신규 필드 추가 시 zod 스키마(schemas/analytics.ts, schemas/report.ts,
+ *      schemas/funnel.ts) 동기화 필요 — 미동기화 시 zod parse 단계에서 throw.
+ *   4. 발표 dry-run(5/22) 직전 dev console에서 "[mock]" prefix 로그가 분석 화면에 출력되지
+ *      않는지 확인.
  */
 
 const GLOBAL_FLAG = import.meta.env.VITE_USE_MOCK === "true";
+
+if (GLOBAL_FLAG && import.meta.env.PROD) {
+  // PROD 빌드에서 글로벌 mock이 켜져 있는 건 사고 — 발표 환경 보호.
+  // eslint-disable-next-line no-console
+  console.error(
+    "[mock] VITE_USE_MOCK=true on PROD build. This is almost certainly a deploy mistake.",
+  );
+}
 
 const DOMAIN_FLAGS: Record<string, boolean> = {
   // 도메인별 강제 mock. 백엔드 구현되면 false로 바꾸거나 키 자체를 제거.
