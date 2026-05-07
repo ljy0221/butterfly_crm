@@ -60,18 +60,33 @@ export type {
 
 // ---------- DTO 타입 — schemas 미정 (campaign 도메인 mock-fallback에 쓰임) ----------
 
-/** API 58: GET /api/projects/{projectId}/campaigns/{campaignId}/stats */
+/**
+ * API 58: GET /api/projects/{projectId}/campaigns/{campaignId}/stats
+ *
+ * ADR-0007 supersede 적용 (2026-05-07):
+ *  - openCount / convertCount 추가
+ *  - 비율 4종 모두 nullable (분모 0 ⇒ null)
+ *  - clickRate 분모 의미: clicked/delivered → click/open
+ */
 export interface CampaignStatsResponse {
   campaignId: number;
   totalTarget: number;
   sentCount: number;
   deliveredCount: number;
+  /** ADR-0007 신규 (open_count). */
+  openCount: number;
   clickedCount: number;
+  /** ADR-0007 신규 (convert_count). */
+  convertCount: number;
   failedCount: number;
-  /** 분모 0이면 null (KPI 정의서 §3) */
+  /** delivered/sent. 분모 0이면 null. */
   deliveryRate: number | null;
-  /** 분모 0이면 null (KPI 정의서 §3) */
+  /** open/delivered. 분모 0이면 null. ADR-0007 신규. */
+  openRate: number | null;
+  /** click/open (ADR-0007). 분모 0이면 null. */
   clickRate: number | null;
+  /** convert/sent. 분모 0이면 null. ADR-0007 신규. */
+  convertRate: number | null;
   executions: ExecutionSummary[];
   metricsComputedAt: string;
 }
@@ -83,12 +98,18 @@ export interface ExecutionSummary {
   sendStartedAt: string;
   sentCount: number;
   deliveredCount: number;
+  /** ADR-0007 신규. */
+  openCount: number;
   clickedCount: number;
+  /** ADR-0007 신규. */
+  convertCount: number;
 }
 
 /**
  * 신규 API: GET /api/projects/{projectId}/campaigns/{campaignId}/executions/{executionId}/stats
  * 회차별 상세 통계 (ADR-0002, ADR-0003 → ADR-0007 supersede).
+ *
+ * openCount / convertCount + 비율 4종 nullable.
  */
 export interface ExecutionStatsResponse {
   campaignId: number;
@@ -99,12 +120,20 @@ export interface ExecutionStatsResponse {
   totalTarget: number;
   sentCount: number;
   deliveredCount: number;
+  /** ADR-0007 신규. */
+  openCount: number;
   clickedCount: number;
+  /** ADR-0007 신규. */
+  convertCount: number;
   failedCount: number;
   /** 분모 0이면 null */
   deliveryRate: number | null;
-  /** 분모 0이면 null */
+  /** ADR-0007 신규. 분모 0이면 null. */
+  openRate: number | null;
+  /** click/open (ADR-0007). 분모 0이면 null. */
   clickRate: number | null;
+  /** ADR-0007 신규. 분모 0이면 null. */
+  convertRate: number | null;
   sendStartedAt: string | null;
   sendCompletedAt: string | null;
   metricsComputedAt: string;
@@ -230,11 +259,15 @@ export async function getExecutionStats(
       totalTarget: 0,
       sentCount: 0,
       deliveredCount: 0,
+      openCount: 0,
       clickedCount: 0,
+      convertCount: 0,
       failedCount: 0,
       // 분모 0이라 비율 정의 불가 — KPI 정의서 §3.
       deliveryRate: null,
+      openRate: null,
       clickRate: null,
+      convertRate: null,
       sendStartedAt: null,
       sendCompletedAt: null,
       metricsComputedAt: new Date().toISOString(),

@@ -10,17 +10,26 @@ import java.util.List;
  * <p>회차별 드릴다운은 {@code executions} 요약으로 제공하며, 상세는
  * {@link ExecutionStatsResponse} (회차별 stats API)에서 얻는다.
  *
- * <p>{@code clickRate} 분모는 {@code deliveredCount} (ADR-0003).
+ * <p><b>ADR-0007 supersede 적용 (2026-05-07):</b>
+ * <ul>
+ *   <li>OPEN/CONVERT 카운트 + 비율 4종 추가</li>
+ *   <li>비율 4종 모두 {@code Double} — 분모 0이면 {@code null}</li>
+ *   <li>{@code clickRate} 분모: ADR-0003 {@code clicked/delivered} → ADR-0007 {@code click/open}</li>
+ * </ul>
  */
 public record CampaignStatsResponse(
         Long campaignId,
         long totalTarget,
         long sentCount,
         long deliveredCount,
+        long openCount,
         long clickedCount,
+        long convertCount,
         long failedCount,
-        double deliveryRate,
-        double clickRate,
+        Double deliveryRate,
+        Double openRate,
+        Double clickRate,
+        Double convertRate,
         List<ExecutionSummary> executions,
         LocalDateTime metricsComputedAt
 ) {
@@ -32,7 +41,9 @@ public record CampaignStatsResponse(
             LocalDateTime sendStartedAt,
             long sentCount,
             long deliveredCount,
-            long clickedCount
+            long openCount,
+            long clickedCount,
+            long convertCount
     ) {
     }
 }

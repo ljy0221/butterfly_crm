@@ -4,6 +4,8 @@
 > **작성 일시**: 2026-05-02  
 > **백엔드 버전**: Spring Boot 3.5.13 (butterfly-reporting)  
 > **상태**: 권한 검증 완료 (클래스 레벨 @PreAuthorize 적용)
+> **2026-05-07 갱신**: ADR-0007 supersede 적용. 본 문서 §부록 "ADR-0007 적용" 참조.
+> 자세한 변경 이력은 [`docs/changes/2026-05-07-adr0007-application.md`](../../../../docs/changes/2026-05-07-adr0007-application.md).
 
 ---
 
@@ -498,5 +500,53 @@ GET /api/projects/{projectId}/campaigns/{campaignId}/executions/{executionId}/st
 - **백엔드 구현**: butterfly-reporting (AnalyticsController, AnalyticsService)
 - **백엔드 API 규약**: backend/docs/api/06-analytics.md
 - **ADR-0002**: 회차(execution) 누적 합산 정책
-- **ADR-0003**: 클릭률 분모는 deliveredCount (sentCount 아님)
+- ~~**ADR-0003**: 클릭률 분모는 deliveredCount~~ — 2026-04-28 ADR-0007이 supersede
+- **ADR-0007**: 분석 집계 테이블 v2 (현재 정의)
+
+---
+
+## 부록 A. ADR-0007 적용 (2026-05-07 갱신)
+
+본 문서의 응답 스키마는 **ADR-0007 supersede 후 정의**를 따른다. 변경 요약:
+
+### A.1 카운트 필드 추가
+
+모든 응답 record에 OPEN/CONVERT 카운트가 추가됐다:
+
+| 응답 | 추가 필드 |
+| --- | --- |
+| `DashboardResponse.Summary` | `totalOpen`, `totalConvert` |
+| `DashboardResponse.DailyPoint` | `opened`, `converted` |
+| `CampaignMetricItem` / `ChannelMetricItem` / `SegmentMetricItem` | `openCount`, `convertCount` |
+| `CampaignStatsResponse` / `ExecutionSummary` / `ExecutionStatsResponse` | `openCount`, `convertCount` |
+
+### A.2 비율 필드 4종 + nullable
+
+기존 `deliveryRate`, `clickRate` 2종 → **4종으로 확장**:
+
+```text
+delivery_rate = delivered / sent
+open_rate     = open / delivered      ← 신규
+click_rate    = click / open          ← 분모 변경 (delivered → open)
+convert_rate  = convert / sent        ← 신규
+```
+
+**모든 비율은 분모 0이면 `null`** (백엔드: `Double` Wrapper 직렬화 / 프론트: `number | null`).
+KPI 정의서 §3 정책 적용. 화면에서는 `formatRate(value)` 유틸로 일관 `"—"` 표기.
+
+### A.3 ADR-0003 호환성
+
+ADR-0003 시점의 `clickRate = clicked / delivered` 의미를 사용하던 외부 호출자가 있다면 그 정의는 **사라졌다**. 동일 필드명(`clickRate`)을 유지하되 의미만 변경됐으므로 wire-format 차원에서는 깨지지 않지만, 절대값은 다르게 나온다(분모가 작아져 비율이 높아짐).
+
+### A.4 미구현 부분
+
+응답 record 시그니처는 ADR-0007 정합되었지만 `AnalyticsServiceImpl`이 **여전히 Stub**이라 실제 응답은 모든 카운트 0, 모든 비율 null. 진짜 데이터를 채우는 native SQL 작업은 후속 PR(`AnalyticsServiceImpl` 구현 — 5/19 대상).
+
+### A.5 frontend 측 후속
+
+- `Dashboard.tsx` KPI 카드: 4 → 6 (`평균 오픈률`, `평균 전환률` 추가)
+- recent campaigns 테이블 컬럼: 5 → 7 (오픈률/전환률 추가)
+- `schemas/analytics.ts`: 6종 zod 스키마에 OPEN/CONVERT + nullable rate 적용
+
+자세한 변경 이력은 [`docs/changes/2026-05-07-adr0007-application.md`](../../../../docs/changes/2026-05-07-adr0007-application.md).
 

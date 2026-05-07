@@ -17,6 +17,8 @@ import org.springframework.stereotype.Service;
  *
  * <p>빈 값을 반환하여 다른 팀원의 API 서버 구동을 막지 않기 위한 것이며,
  * 실제 데이터가 필요한 경우 제안서 1-1의 집계 테이블이 먼저 머지되어야 함.
+ *
+ * <p><b>ADR-0007 supersede 적용:</b> 카운트는 0L, 비율은 {@code null} (분모 0 ⇒ NULL 정책 §3).
  */
 @Service
 public class AnalyticsServiceStub implements AnalyticsService {
@@ -25,7 +27,11 @@ public class AnalyticsServiceStub implements AnalyticsService {
     public DashboardResponse getDashboard(Long projectId, AnalyticsQuery query) {
         return new DashboardResponse(
                 new DashboardResponse.Period(query.from(), query.to()),
-                new DashboardResponse.Summary(0, 0, 0, 0, 0, 0.0, 0.0),
+                new DashboardResponse.Summary(
+                        0L,        // campaignsSentInPeriod
+                        0L, 0L, 0L, 0L, 0L, 0L,        // sent/delivered/open/clicked/convert/failed
+                        null, null, null, null         // delivery/open/click/convert rate
+                ),
                 List.of(),
                 LocalDateTime.now()
         );
@@ -34,7 +40,10 @@ public class AnalyticsServiceStub implements AnalyticsService {
     @Override
     public CampaignStatsResponse getCampaignStats(Long projectId, Long campaignId) {
         return new CampaignStatsResponse(
-                campaignId, 0L, 0L, 0L, 0L, 0L, 0.0, 0.0,
+                campaignId,
+                0L,                                    // totalTarget
+                0L, 0L, 0L, 0L, 0L, 0L,                // sent/delivered/open/clicked/convert/failed
+                null, null, null, null,                // delivery/open/click/convert rate
                 List.of(),
                 LocalDateTime.now()
         );
@@ -44,8 +53,10 @@ public class AnalyticsServiceStub implements AnalyticsService {
     public ExecutionStatsResponse getExecutionStats(Long projectId, Long campaignId, Long executionId) {
         return new ExecutionStatsResponse(
                 campaignId, executionId, "SCHEDULED",
-                0L, 0L, 0L, 0L, 0L, 0.0, 0.0,
-                null, null,
+                0L,                                    // totalTarget
+                0L, 0L, 0L, 0L, 0L, 0L,                // sent/delivered/open/clicked/convert/failed
+                null, null, null, null,                // delivery/open/click/convert rate
+                null, null,                            // sendStartedAt/sendCompletedAt
                 LocalDateTime.now()
         );
     }
