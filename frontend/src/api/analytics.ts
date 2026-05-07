@@ -128,6 +128,12 @@ export interface CampaignMetricsParams extends DashboardParams {
   /** PUSH | EMAIL ... */
   channel?: string;
   segmentId?: number;
+  /**
+   * Spring Data 스타일 정렬: "field,asc" | "field,desc".
+   * 백엔드 합의 전이라 default는 createdAt,desc (최근 발송 5건의 의도된 의미).
+   * 백엔드가 받지 않으면 무시됨 — 일단 결정성 확보.
+   */
+  sort?: string;
 }
 
 // ---------- 엔드포인트 ----------
@@ -159,6 +165,8 @@ export async function getCampaignMetrics(
         size: params.size ?? 10,
         channel: params.channel,
         segmentId: params.segmentId,
+        // 백엔드 합의 전 임시 default — "최근 캠페인 5건" 의미를 결정성 있게 만들기 위함.
+        sort: params.sort ?? "createdAt,desc",
       },
     },
   );

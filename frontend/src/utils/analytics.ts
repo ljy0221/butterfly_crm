@@ -7,25 +7,32 @@
 
 import type { DailyPoint } from "@/api/analytics";
 
-/** Date → "yyyy-MM-dd" (UTC 기준이지만 날짜만 쓰므로 무방) */
+/**
+ * Date → "yyyy-MM-dd" (Asia/Seoul 기준).
+ *
+ * 백엔드는 Asia/Seoul 서버 고정(backend/CLAUDE.md §6)이라 프론트가 사용자 로컬 타임존에 맞춰
+ * UTC 환산하면 자정 근처에서 하루 밀려 from/to가 어긋난다. Intl을 사용해 KST 날짜 부분만 추출.
+ */
 function toYmd(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  // sv-SE 로케일은 ISO yyyy-MM-dd 형태로 출력하므로 split 가공 불필요.
+  return d.toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 }
 
 /**
- * 오늘부터 N일 전 ~ 오늘 범위 (yyyy-MM-dd).
+ * 오늘부터 N일 전 ~ 오늘 범위 (yyyy-MM-dd, Asia/Seoul 기준).
  * 기본 30일.
+ *
+ * 사용자 브라우저가 UTC/PST 등 다른 타임존이어도 KST 자정 기준으로 결정성 있게 동작.
  */
 export function getDefaultPeriod(days: number = 30): {
   from: string;
   to: string;
 } {
   const today = new Date();
-  const from = new Date(today);
-  from.setDate(today.getDate() - days);
+  // KST 자정 기준 N일 차감 — 단순히 ms를 빼서 다른 Date 인스턴스를 만들고
+  // 다시 toYmd(KST)로 변환. 브라우저 로컬 타임존이 무엇이든 결과가 KST 날짜로 결정됨.
+  const fromMs = today.getTime() - days * 86_400_000;
+  const from = new Date(fromMs);
   return { from: toYmd(from), to: toYmd(today) };
 }
 

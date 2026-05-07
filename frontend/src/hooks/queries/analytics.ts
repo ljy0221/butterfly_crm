@@ -33,6 +33,7 @@ export const analyticsKeys = {
     size: number,
     channel?: string,
     segmentId?: number,
+    sort?: string,
   ) =>
     [
       "analytics",
@@ -44,6 +45,7 @@ export const analyticsKeys = {
       size,
       channel ?? null,
       segmentId ?? null,
+      sort ?? null,
     ] as const,
 };
 
@@ -75,26 +77,45 @@ export function useChannelMetricsQuery({ projectId, from, to }: PeriodArgs) {
 
 interface RecentCampaignsArgs extends PeriodArgs {
   size?: number;
+  /**
+   * Spring Data 스타일 정렬 — "field,asc"|"field,desc".
+   * 미지정 시 api/analytics.ts의 default(createdAt,desc) 사용.
+   */
+  sort?: string;
 }
 
 /**
- * 대시보드 "최근 캠페인 5건" 카드 전용. /analytics/campaigns?page=0&size=N.
- * 백엔드 정렬 기본값은 명시 미합의 — Backend Liaison follow-up 항목.
+ * 대시보드 "최근 캠페인 5건" 카드 전용. /analytics/campaigns?page=0&size=N&sort=...
+ *
+ * 정렬 default는 createdAt,desc — "최근 발송"의 의도를 결정성 있게 만들기 위해 프론트가
+ * 명시적으로 전달한다. Backend Liaison와 합의되면 default 키를 한 곳(api/analytics.ts)에서
+ * 변경하면 모든 호출에 반영된다.
  */
 export function useRecentCampaignsQuery({
   projectId,
   from,
   to,
   size = 5,
+  sort,
 }: RecentCampaignsArgs) {
   return useQuery<SpringPage<CampaignMetricItem>>({
-    queryKey: analyticsKeys.campaigns(projectId ?? -1, from, to, 0, size),
+    queryKey: analyticsKeys.campaigns(
+      projectId ?? -1,
+      from,
+      to,
+      0,
+      size,
+      undefined,
+      undefined,
+      sort,
+    ),
     queryFn: () =>
       analyticsApi.getCampaignMetrics(projectId as number, {
         from,
         to,
         page: 0,
         size,
+        sort,
       }),
     enabled: projectId != null && !!from && !!to,
     staleTime: STALE_TIME,
