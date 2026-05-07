@@ -2,7 +2,9 @@ package com.b101.butterfly.reporting.aggregation.repository;
 
 import com.b101.butterfly.reporting.aggregation.dto.DailyProjectCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsDaily;
+import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow;
+import com.b101.butterfly.reporting.report.dto.FunnelCountRow;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -130,5 +132,34 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
             @Param("projectId") Long projectId,
             @Param("from") LocalDate from,
             @Param("to") LocalDate to
+    );
+
+    /**
+     * S14P31B101-90 — 캠페인 단계 펀널용 합산 카운트.
+     *
+     * <p>{@code campaignId} / {@code channel}이 null이면 해당 차원 필터 미적용.
+     * COALESCE로 데이터 0건 시 SUM이 NULL이 되는 것을 방지 (record 생성자가 long 받음).
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.report.dto.FunnelCountRow(
+                COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.convertCount AS long)), 0L)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+              AND (:campaignId IS NULL OR c.campaignId = :campaignId)
+              AND (:channel IS NULL OR c.channel = :channel)
+            """)
+    FunnelCountRow aggregateFunnel(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("campaignId") Long campaignId,
+            @Param("channel") Channel channel
     );
 }
