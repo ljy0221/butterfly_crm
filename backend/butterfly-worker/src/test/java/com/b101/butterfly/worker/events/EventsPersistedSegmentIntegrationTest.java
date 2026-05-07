@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.b101.butterfly.event.messaging.EventPayload;
+import com.b101.butterfly.event.messaging.EventPersistedProducer;
 import com.b101.butterfly.event.messaging.EventProducer;
 import com.b101.butterfly.event.repository.EventRepository;
 import com.b101.butterfly.segment.domain.condition.EventNode;
@@ -15,6 +16,7 @@ import com.b101.butterfly.segment.entity.SegmentMember;
 import com.b101.butterfly.segment.entity.SegmentMemberId;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
+import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -23,20 +25,18 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -67,32 +67,24 @@ import org.testcontainers.utility.DockerImageName;
       "spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer"
     })
 @ActiveProfiles({"api", "worker"})
+@EmbeddedKafka(partitions = 1, topics = {EventProducer.TOPIC, EventPersistedProducer.TOPIC})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Tag("integration")
-class EventsPersistedSegmentIntegrationTest {
+class EventsPersistedSegmentIntegrationTest extends AbstractMySqlContainerTest {
 
   private static final int REDIS_PORT = 6379;
 
-  private static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0");
-  private static final KafkaContainer KAFKA =
-      new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.0"));
   private static final GenericContainer<?> REDIS =
       new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
           .withExposedPorts(REDIS_PORT);
 
   static {
-    MYSQL.start();
-    KAFKA.start();
     REDIS.start();
   }
 
   @DynamicPropertySource
-  static void registerContainers(DynamicPropertyRegistry registry) {
-    registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
-    registry.add("spring.datasource.username", MYSQL::getUsername);
-    registry.add("spring.datasource.password", MYSQL::getPassword);
-    registry.add("spring.datasource.driver-class-name", MYSQL::getDriverClassName);
-    registry.add("spring.kafka.bootstrap-servers", KAFKA::getBootstrapServers);
+  static void registerInfra(DynamicPropertyRegistry registry) {
+    registry.add("spring.kafka.bootstrap-servers",
+        () -> System.getProperty("spring.embedded.kafka.brokers"));
     registry.add("spring.data.redis.host", REDIS::getHost);
     registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(REDIS_PORT));
   }
