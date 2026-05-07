@@ -28,7 +28,9 @@ public class MessageTemplateLookupAdapter implements MessageTemplateLookupPort {
                 template.getMessageTemplateId(),
                 template.getProjectId(),
                 template.getChannel(),
-                template.getMessageTemplateBody()
+                template.getMessageTemplateTitle(),
+                template.getMessageTemplateBody(),
+                template.getMessageTemplateImageUrl()
         );
     }
 }
