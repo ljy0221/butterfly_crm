@@ -92,3 +92,16 @@ export function pct(numerator: number, denominator: number): number {
   if (!Number.isFinite(numerator)) return 0;
   return (numerator / denominator) * 100;
 }
+
+/**
+ * 0.0 ~ 1.0 비율(분모 0이면 null) → "12.3%" 또는 "—".
+ * KPI 정의서 §3 분모 0 표기 정책에 맞춤 — null/NaN/Infinity는 모두 "—".
+ */
+export function formatRate(
+  value: number | null | undefined,
+  fractionDigits = 1,
+): string {
+  if (value === null || value === undefined) return "—";
+  if (!Number.isFinite(value)) return "—";
+  return `${(value * 100).toFixed(fractionDigits)}%`;
+}
