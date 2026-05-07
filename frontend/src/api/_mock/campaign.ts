@@ -839,8 +839,10 @@ export function getCampaignStatsMock(campaignId: number): {
   deliveredCount: number;
   clickedCount: number;
   failedCount: number;
-  deliveryRate: number;
-  clickRate: number;
+  /** 분모 0이면 null — KPI 정의서 §3 */
+  deliveryRate: number | null;
+  /** 분모 0이면 null — KPI 정의서 §3 */
+  clickRate: number | null;
   executions: Array<{
     executionId: number;
     status: string;
@@ -861,8 +863,8 @@ export function getCampaignStatsMock(campaignId: number): {
       deliveredCount: 0,
       clickedCount: 0,
       failedCount: 0,
-      deliveryRate: 0,
-      clickRate: 0,
+      deliveryRate: null,
+      clickRate: null,
       executions: [],
       metricsComputedAt: new Date().toISOString(),
     };
@@ -872,8 +874,8 @@ export function getCampaignStatsMock(campaignId: number): {
   const deliveredCount = Math.floor(sentCount * 0.95);
   const clickedCount = Math.floor(deliveredCount * (c.openRate / 100));
   const failedCount = sentCount - deliveredCount;
-  const deliveryRate = sentCount > 0 ? deliveredCount / sentCount : 0;
-  const clickRate = deliveredCount > 0 ? clickedCount / deliveredCount : 0;
+  const deliveryRate = sentCount > 0 ? deliveredCount / sentCount : null;
+  const clickRate = deliveredCount > 0 ? clickedCount / deliveredCount : null;
   return {
     campaignId,
     totalTarget: sentCount,

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import * as reportApi from "@/api/report";
 import type {
+  CampaignFunnelResponse,
   Channel,
   SegmentChannelMatrixResponse,
   SegmentChannelMatrixSortBy,
@@ -38,6 +39,22 @@ export const reportKeys = {
       [...(segmentIds ?? [])].sort((a, b) => a - b),
       sortBy ?? null,
       ascending,
+    ] as const,
+  campaignFunnel: (
+    projectId: number,
+    from: string,
+    to: string,
+    campaignId: number | undefined,
+    channel: Channel | undefined,
+  ) =>
+    [
+      "report",
+      "campaign-funnel",
+      projectId,
+      from,
+      to,
+      campaignId ?? null,
+      channel ?? null,
     ] as const,
 };
 
@@ -81,6 +98,44 @@ export function useSegmentChannelMatrixQuery({
         segmentIds,
         sortBy,
         ascending,
+      }),
+    enabled: enabled && projectId != null && !!from && !!to,
+    staleTime: STALE_TIME,
+  });
+}
+
+export interface UseCampaignFunnelArgs {
+  projectId: number | null;
+  from: string;
+  to: string;
+  campaignId?: number;
+  channel?: Channel;
+  /** OWNER 권한 미달이면 호출 자체를 막아 403 토스트를 피한다. */
+  enabled?: boolean;
+}
+
+export function useCampaignFunnelQuery({
+  projectId,
+  from,
+  to,
+  campaignId,
+  channel,
+  enabled = true,
+}: UseCampaignFunnelArgs) {
+  return useQuery<CampaignFunnelResponse>({
+    queryKey: reportKeys.campaignFunnel(
+      projectId ?? -1,
+      from,
+      to,
+      campaignId,
+      channel,
+    ),
+    queryFn: () =>
+      reportApi.getCampaignFunnel(projectId as number, {
+        from,
+        to,
+        campaignId,
+        channel,
       }),
     enabled: enabled && projectId != null && !!from && !!to,
     staleTime: STALE_TIME,

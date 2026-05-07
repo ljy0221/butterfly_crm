@@ -25,6 +25,7 @@ import type {
 import {
   dailyTrendToPath,
   formatPeriod,
+  formatRate,
   getDefaultPeriod,
   pct,
 } from "@/utils/analytics";
@@ -268,9 +269,6 @@ function KpiBlock({ summary, isLoading, isError }: KpiBlockProps) {
     );
   }
 
-  const dr = (summary.avgDeliveryRate * 100).toFixed(1);
-  const cr = (summary.avgClickRate * 100).toFixed(1);
-
   return (
     <>
       <StatCard
@@ -278,8 +276,13 @@ function KpiBlock({ summary, isLoading, isError }: KpiBlockProps) {
         value={fmtNum(summary.campaignsSentInPeriod) as string}
       />
       <StatCard label="총 발송" value={fmtNum(summary.totalSent) as string} />
-      <StatCard label="평균 전달률" value={`${dr}%`} />
-      <StatCard label="평균 오픈률" value={`${cr}%`} />
+      <StatCard label="평균 전달률" value={formatRate(summary.avgDeliveryRate)} />
+      {/*
+        avgClickRate 의미는 ADR-0007 supersede 후 click/open으로 정의됨.
+        백엔드 v1 응답이 옛 정의(click/delivered)와 섞여 있을 수 있어 라벨은
+        중립적인 "평균 클릭률"로 통일 — KPI 정의서 §2.
+      */}
+      <StatCard label="평균 클릭률" value={formatRate(summary.avgClickRate)} />
     </>
   );
 }
@@ -696,22 +699,24 @@ function RecentCampaignTable({
           <div
             role="cell"
             style={{
-              color: "#16a34a",
+              color: c.deliveryRate === null ? "#94a3b8" : "#16a34a",
               fontVariantNumeric: "tabular-nums",
-              fontWeight: 600,
+              fontWeight: c.deliveryRate === null ? 400 : 600,
             }}
+            title={c.deliveryRate === null ? "분모가 0이라 비율을 계산할 수 없습니다" : undefined}
           >
-            {(c.deliveryRate * 100).toFixed(1)}%
+            {formatRate(c.deliveryRate)}
           </div>
           <div
             role="cell"
             style={{
-              color: "#f59e0b",
+              color: c.clickRate === null ? "#94a3b8" : "#f59e0b",
               fontVariantNumeric: "tabular-nums",
-              fontWeight: 600,
+              fontWeight: c.clickRate === null ? 400 : 600,
             }}
+            title={c.clickRate === null ? "분모가 0이라 비율을 계산할 수 없습니다" : undefined}
           >
-            {(c.clickRate * 100).toFixed(1)}%
+            {formatRate(c.clickRate)}
           </div>
         </div>
       ))}
