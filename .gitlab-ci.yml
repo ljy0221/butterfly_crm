@@ -84,7 +84,6 @@ integration-test:
         - "backend/*/build/test-results/integrationTest/TEST-*.xml"
     paths:
       - "backend/*/build/reports/tests/integrationTest/"
-  allow_failure: true
 
 checkstyle:
   stage: test
