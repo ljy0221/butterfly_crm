@@ -1,7 +1,8 @@
 package com.b101.butterfly.reporting.aggregation.repository;
 
 import com.b101.butterfly.reporting.aggregation.entity.FailureStatsDaily;
-import com.b101.butterfly.reporting.notification.entity.Channel;
+import com.b101.butterfly.reporting.report.dto.FailureCountRow;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,32 @@ import java.util.List;
 public interface FailureStatsDailyRepository extends JpaRepository<FailureStatsDaily, Long> {
 
     List<FailureStatsDaily> findByBucketDate(LocalDate bucketDate);
+
+    /**
+     * S14P31B101-33 — 특정 프로젝트·일자의 실패 원인을 (channel, error_code) 단위로
+     * 합산하여 failed_count DESC 순으로 반환. 대시보드 "실패 원인 TOP N" 카드용.
+     *
+     * <p>호출자는 {@link Pageable}로 PageRequest.of(0, limit)을 넘긴다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.report.dto.FailureCountRow(
+                f.channel,
+                f.errorCode,
+                CAST(SUM(f.failedCount) AS long),
+                CAST(SUM(f.affectedCampaignCnt) AS integer),
+                CAST(SUM(f.affectedUserCnt) AS integer)
+            )
+            FROM FailureStatsDaily f
+            WHERE f.projectId = :projectId
+              AND f.bucketDate = :bucketDate
+            GROUP BY f.channel, f.errorCode
+            ORDER BY SUM(f.failedCount) DESC
+            """)
+    List<FailureCountRow> findTopByProjectAndDate(
+            @Param("projectId") Long projectId,
+            @Param("bucketDate") LocalDate bucketDate,
+            Pageable pageable
+    );
 
     @Modifying
     @Query(value = "DELETE FROM failure_stats_daily WHERE bucket_date = :bucketDate",
