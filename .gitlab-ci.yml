@@ -172,26 +172,12 @@ package:
 # 프론트엔드(React 18 + Vite + TypeScript)는 frontend/ 변경 시에만 트리거.
 # 백엔드 변경에서는 자원 절약을 위해 미실행. 단 .gitlab-ci.yml 변경은 양쪽 모두 트리거.
 # package 잡(이미지 빌드/배포)은 향후 별도 PR에서 추가 예정.
-
-frontend-type-check:
-  stage: test
-  image: node:22-alpine
-  rules:
-    - changes:
-        - frontend/**/*
-        - .gitlab-ci.yml
-  <<: *npm-cache
-  before_script:
-    - cd $FRONTEND_DIR
-    - npm ci --prefer-offline --no-audit
-  script:
-    - npm run type-check
-  artifacts:
-    name: "fe-type-check-$CI_COMMIT_SHORT_SHA"
-    when: on_failure
-    expire_in: 1 week
-    paths:
-      - "frontend/tsconfig.tsbuildinfo"
+#
+# type-check와 build를 한 잡으로 통합:
+#   - npm run build가 내부적으로 'tsc -b --noEmit && vite build'를 수행
+#     (package.json의 build 스크립트). 별도 type-check 잡은 동일 검증을 중복 수행
+#   - 동일 이미지/캐시/의존성이라 잡 분리 시 npm ci 오버헤드 ~30~60s × 2,
+#     pod 스케줄링 ~10~20s × 2의 비용만 추가되고 가시성 이득은 미미
 
 frontend-build:
   stage: test
@@ -205,6 +191,7 @@ frontend-build:
     - cd $FRONTEND_DIR
     - npm ci --prefer-offline --no-audit
   script:
+    # tsc -b --noEmit + vite build (package.json의 build 스크립트 정의)
     - npm run build
   artifacts:
     name: "fe-build-$CI_COMMIT_SHORT_SHA"
