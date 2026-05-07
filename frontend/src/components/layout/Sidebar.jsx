@@ -26,15 +26,6 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
         transition: "width 180ms var(--ease-standard)",
       }}
     >
-      {/* Ambient blue wash (from design system — faint primary glow behind dark surfaces) */}
-      <div
-        style={{
-          position: "absolute", left: -40, top: 720,
-          width: 180, height: 180, borderRadius: "50%",
-          background: "rgba(59,91,219,.06)",
-          pointerEvents: "none",
-        }}
-      />
 
       {/* Brand mark */}
       <div

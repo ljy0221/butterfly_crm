@@ -1,1 +1,2 @@
 com.b101.butterfly.reporting.config.ReportingJpaAutoConfig
+com.b101.butterfly.reporting.notification.config.NotificationKafkaConsumerConfig

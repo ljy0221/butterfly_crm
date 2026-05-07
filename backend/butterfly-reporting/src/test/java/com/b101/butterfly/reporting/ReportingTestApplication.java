@@ -1,6 +1,7 @@
 package com.b101.butterfly.reporting;
 
 import com.b101.butterfly.reporting.reconciliation.port.StubCampaignExecutionPortConfig;
+import com.b101.butterfly.reporting.report.port.StubCampaignSegmentPortConfig;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Import;
@@ -18,6 +19,6 @@ import org.springframework.context.annotation.Import;
  */
 @SpringBootApplication
 @EntityScan("com.b101.butterfly.reporting")
-@Import(StubCampaignExecutionPortConfig.class)
+@Import({StubCampaignExecutionPortConfig.class, StubCampaignSegmentPortConfig.class})
 public class ReportingTestApplication {
 }

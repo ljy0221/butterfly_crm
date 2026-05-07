@@ -21,6 +21,9 @@ import CampaignDetail from "@/features/campaigns/CampaignDetail";
 import Events from "@/features/events/Events";
 import EventDetail from "@/features/events/EventDetail";
 import AdminAuditLogs from "@/features/audit/AdminAuditLogs";
+import AnalyticsHome from "@/features/analytics/AnalyticsHome";
+import SegmentChannelMatrix from "@/features/analytics/SegmentChannelMatrix";
+import CampaignFunnel from "@/features/analytics/CampaignFunnel";
 import DemoLogin from "@/pages/DemoLogin";
 
 /**
@@ -156,8 +159,19 @@ export const router = createBrowserRouter([
         element: <Templates />,
       },
       {
+        // 분석 도메인 허브 — 대시보드/펀널/매트릭스/감사 로그 진입점.
         path: "analytics",
-        element: <Placeholder title="분석" domain="analytics" sprint="Sprint 4" />,
+        element: <AnalyticsHome />,
+      },
+      {
+        // S14P31B101-90 — 캠페인 단계 펀널. 컴포넌트 내부에서 OWNER 가드.
+        path: "analytics/funnel",
+        element: <CampaignFunnel />,
+      },
+      {
+        // S14P31B101-92 — 세그먼트 × 채널 성과 매트릭스. 컴포넌트 내부에서 OWNER 가드.
+        path: "analytics/segment-channel",
+        element: <SegmentChannelMatrix />,
       },
       {
         path: "settings",
