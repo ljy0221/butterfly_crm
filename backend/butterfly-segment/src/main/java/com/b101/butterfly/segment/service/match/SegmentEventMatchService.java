@@ -13,6 +13,7 @@ import com.b101.butterfly.segment.service.preview.EventConditionNotReadyExceptio
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -57,6 +58,7 @@ public class SegmentEventMatchService {
      *
      * @return true = 매칭되어 UPSERT 수행, false = 미매칭/segment stale
      */
+    @Transactional
     public boolean evaluateAndUpsert(
             Long projectId, Long segmentId, Long userId, LocalDateTime matchedAt) {
         Optional<Segment> opt = segmentRepository.findById(segmentId);
