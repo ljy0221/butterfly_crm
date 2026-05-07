@@ -5,6 +5,10 @@ import {
   type SegmentChannelMatrixResponse,
   type SegmentChannelMatrixSortBy,
 } from "@/schemas/report";
+import {
+  CampaignFunnelResponseSchema,
+  type CampaignFunnelResponse,
+} from "@/schemas/funnel";
 
 /**
  * S14P31B101-92 — Reporting (Segment × Channel Matrix) API.
@@ -75,4 +79,44 @@ export async function getSegmentChannelMatrix(
   );
   // BigDecimal 비율은 number | string | null 모두 가능 — Zod에서 number | null로 정규화.
   return SegmentChannelMatrixResponseSchema.parse(res.data);
+}
+
+// ============================================================
+// S14P31B101-90 — Campaign Funnel
+// ============================================================
+
+export type { CampaignFunnelResponse, CampaignFunnelStageRow, FunnelStage } from "@/schemas/funnel";
+
+export interface CampaignFunnelParams {
+  /** yyyy-MM-dd */
+  from: string;
+  /** yyyy-MM-dd */
+  to: string;
+  /** 미지정 시 프로젝트 전체 캠페인 합산. */
+  campaignId?: number;
+  /** 미지정 시 모든 채널. */
+  channel?: Channel;
+}
+
+/**
+ * 캠페인 단계 펀널 조회 (S14P31B101-90).
+ * GET /api/v1/projects/{projectId}/reports/campaign-funnel
+ * 권한: OWNER 전용.
+ */
+export async function getCampaignFunnel(
+  projectId: number,
+  params: CampaignFunnelParams,
+): Promise<CampaignFunnelResponse> {
+  const res = await api.get(
+    `/api/v1/projects/${projectId}/reports/campaign-funnel`,
+    {
+      params: {
+        from: params.from,
+        to: params.to,
+        campaignId: params.campaignId,
+        channel: params.channel,
+      },
+    },
+  );
+  return CampaignFunnelResponseSchema.parse(res.data);
 }
