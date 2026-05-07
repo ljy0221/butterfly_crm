@@ -101,7 +101,13 @@ export function pct(numerator: number, denominator: number): number {
 }
 
 /**
- * 0.0 ~ 1.0 비율(분모 0이면 null) → "12.3%" 또는 "—".
+ * 백엔드 비율(0~100 퍼센트, 분모 0이면 null) → "12.3%" 또는 "—".
+ *
+ * 단위 정합 (2026-05-07 갱신): 백엔드는 DB DDL의 DECIMAL(5,2) 퍼센트 단위 그대로 응답한다
+ * (예: 38.50 = 38.5%). 이는 SegmentChannelMatrixService / AnalyticsServiceImpl /
+ * campaign_stats_daily 모두 일관된 정책. 이전 0.0~1.0 가정은 ADR-0003 시점 잔재였으며
+ * 실제 백엔드 응답과 어긋났음.
+ *
  * KPI 정의서 §3 분모 0 표기 정책에 맞춤 — null/NaN/Infinity는 모두 "—".
  */
 export function formatRate(
@@ -110,5 +116,5 @@ export function formatRate(
 ): string {
   if (value === null || value === undefined) return "—";
   if (!Number.isFinite(value)) return "—";
-  return `${(value * 100).toFixed(fractionDigits)}%`;
+  return `${value.toFixed(fractionDigits)}%`;
 }

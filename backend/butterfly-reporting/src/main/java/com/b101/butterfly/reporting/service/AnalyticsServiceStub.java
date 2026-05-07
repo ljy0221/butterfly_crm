@@ -13,10 +13,10 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 /**
- * 임시 스텁 구현. 집계 테이블 ERD가 확정되면 {@code AnalyticsServiceImpl}로 대체한다.
+ * 분석 서비스 스텁 — 기본 빈으로 항상 등록되며, {@code butterfly.analytics.impl=real} property가
+ * 설정되면 {@link AnalyticsServiceImpl}이 {@code @Primary}로 override한다 (S14P31B101-34 점진 전환).
  *
- * <p>빈 값을 반환하여 다른 팀원의 API 서버 구동을 막지 않기 위한 것이며,
- * 실제 데이터가 필요한 경우 제안서 1-1의 집계 테이블이 먼저 머지되어야 함.
+ * <p>빈 DB 환경(테스트/로컬)에서 다른 팀원의 API 서버 구동을 막지 않기 위해 빈 응답을 반환한다.
  *
  * <p><b>ADR-0007 supersede 적용:</b> 카운트는 0L, 비율은 {@code null} (분모 0 ⇒ NULL 정책 §3).
  */

@@ -3,6 +3,7 @@ package com.b101.butterfly.reporting.service;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
 import com.b101.butterfly.reporting.dto.CampaignStatsResponse;
 import com.b101.butterfly.reporting.report.dto.FunnelCountRow;
+import com.b101.butterfly.reporting.report.port.CampaignSegmentPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,18 +16,20 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
-@DisplayName("AnalyticsServiceImpl — getCampaignStats 누적 통계 (S14P31B101-34)")
+@DisplayName("AnalyticsServiceImpl — getCampaignStats 누적 통계 (S14P31B101-34, S14P31B101-201 정합)")
 class AnalyticsServiceImplTest {
 
     private CampaignStatsDailyRepository repository;
-    private AnalyticsServiceStub stub;
+    private CampaignSegmentPort campaignSegmentPort;
     private AnalyticsServiceImpl service;
 
     @BeforeEach
     void setUp() {
         repository = mock(CampaignStatsDailyRepository.class);
-        stub = mock(AnalyticsServiceStub.class);
-        service = new AnalyticsServiceImpl(repository, stub);
+        // S14P31B101-201부터 생성자가 (repository, CampaignSegmentPort)로 변경됨.
+        // 본 테스트는 getCampaignStats만 검증하므로 SPI는 mock 인스턴스만 주입.
+        campaignSegmentPort = mock(CampaignSegmentPort.class);
+        service = new AnalyticsServiceImpl(repository, campaignSegmentPort);
     }
 
     @Test

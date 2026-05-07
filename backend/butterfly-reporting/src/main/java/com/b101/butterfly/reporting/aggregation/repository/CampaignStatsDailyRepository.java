@@ -1,5 +1,9 @@
 package com.b101.butterfly.reporting.aggregation.repository;
 
+import com.b101.butterfly.reporting.aggregation.dto.AnalyticsCampaignStatsRow;
+import com.b101.butterfly.reporting.aggregation.dto.AnalyticsChannelStatsRow;
+import com.b101.butterfly.reporting.aggregation.dto.AnalyticsDailyTrendRow;
+import com.b101.butterfly.reporting.aggregation.dto.AnalyticsSummaryRow;
 import com.b101.butterfly.reporting.aggregation.dto.DailyProjectCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsDaily;
 import com.b101.butterfly.reporting.notification.entity.Channel;
@@ -161,5 +165,148 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
             @Param("to") LocalDate to,
             @Param("campaignId") Long campaignId,
             @Param("channel") Channel channel
+    );
+
+    // ============================================================
+    // S14P31B101-76 — AnalyticsServiceImpl 전용 쿼리 (ADR-0007 정합)
+    // ============================================================
+
+    /**
+     * Dashboard summary (API 57) — 기간 내 프로젝트 합산 + 캠페인 distinct count.
+     *
+     * <p>{@code campaign_stats_daily}만 SELECT — hourly 카드는 별도 API에서 조회.
+     * 비율 4종은 서비스 단계에서 계산 (분모 0 ⇒ null).
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.AnalyticsSummaryRow(
+                COUNT(DISTINCT c.campaignId),
+                COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.convertCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.failedCount AS long)), 0L)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+            """)
+    AnalyticsSummaryRow aggregateSummaryByProjectAndDateRange(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
+
+    /**
+     * Dashboard dailyTrend (API 57) — 기간 내 일자별 합산.
+     *
+     * <p>날짜는 응답에서 오름차순 — bucket_date ASC.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.AnalyticsDailyTrendRow(
+                c.bucketDate,
+                COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.convertCount AS long)), 0L)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+            GROUP BY c.bucketDate
+            ORDER BY c.bucketDate ASC
+            """)
+    List<AnalyticsDailyTrendRow> aggregateDailyTrendByProjectAndDateRange(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
+
+    /**
+     * Channel metrics (API 60) — 기간 내 채널 단위 합산.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.AnalyticsChannelStatsRow(
+                c.channel,
+                COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.convertCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.failedCount AS long)), 0L)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+            GROUP BY c.channel
+            ORDER BY SUM(c.sentCount) DESC
+            """)
+    List<AnalyticsChannelStatsRow> aggregateChannelStatsByProjectAndDateRange(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to
+    );
+
+    /**
+     * Campaign metrics (API 59) — 기간 내 (campaignId, channel) 단위 합산 + 채널 필터.
+     *
+     * <p>{@code channel}이 null이면 채널 필터 미적용. AnalyticsServiceImpl가 본 결과에
+     * SPI를 통해 캠페인 메타(이름)와 segmentId 필터를 적용한 후 페이지네이션을 수행한다.
+     *
+     * <p>segmentId 필터는 SPI 의존이라 DB에서 처리할 수 없다 — 메모리에서 필터링.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.AnalyticsCampaignStatsRow(
+                c.campaignId,
+                c.channel,
+                COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.convertCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.failedCount AS long)), 0L)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.bucketDate >= :from
+              AND c.bucketDate <= :to
+              AND (:channel IS NULL OR c.channel = :channel)
+            GROUP BY c.campaignId, c.channel
+            ORDER BY SUM(c.sentCount) DESC
+            """)
+    List<AnalyticsCampaignStatsRow> aggregateCampaignStatsByProjectAndDateRange(
+            @Param("projectId") Long projectId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("channel") Channel channel
+    );
+
+    /**
+     * Campaign stats (API 58) — 단일 캠페인의 전체 회차 합산 (모든 날짜 / 모든 채널).
+     *
+     * <p>{@code campaign_stats_daily}는 회차를 분리하지 않으므로 본 쿼리는 회차별 분해 없이
+     * 누적 합산만 반환. 회차별 상세는 hourly + executions JOIN으로 별도 처리.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.AnalyticsSummaryRow(
+                COUNT(DISTINCT c.campaignId),
+                COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.convertCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.failedCount AS long)), 0L)
+            )
+            FROM CampaignStatsDaily c
+            WHERE c.projectId = :projectId
+              AND c.campaignId = :campaignId
+            """)
+    AnalyticsSummaryRow aggregateCampaignTotal(
+            @Param("projectId") Long projectId,
+            @Param("campaignId") Long campaignId
     );
 }
