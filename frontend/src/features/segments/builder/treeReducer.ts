@@ -44,7 +44,7 @@ export function defaultPeriod(): Period {
 export function defaultEventNode(): EventNode {
   return {
     type: "event",
-    category: "purchase",
+    categoryId: 0,
     filters: [],
     period: defaultPeriod(),
     minCount: 1,

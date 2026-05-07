@@ -1,5 +1,6 @@
 package com.b101.butterfly.segment.service.match;
 
+import com.b101.butterfly.segment.domain.condition.EventFilter;
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
@@ -128,6 +129,29 @@ class SegmentEventMatchServiceTest {
         EventNode event = new EventNode(CATEGORY_ID, List.of(), new Period.Cumulative(), 1);
         TagNode tag = new TagNode("region", Operator.EQ, JsonNodeFactory.instance.textNode("서울"));
         GroupNode tree = new GroupNode(LogicOp.AND, List.of(event, tag));
+        Segment seg = sampleSegment(tree);
+        when(segmentRepository.findById(SEGMENT_ID)).thenReturn(Optional.of(seg));
+
+        boolean result = service.evaluateAndUpsert(PROJECT_ID, SEGMENT_ID, USER_ID, MATCHED_AT);
+
+        assertThat(result).isFalse();
+        verify(eventAggReader, never()).userMatches(any(), anyLong(), any());
+    }
+
+    @Test
+    @DisplayName("필터가 있는 EVENT-only 트리 (캐시 stale 방어) → false + EventAggReader 미호출")
+    void filteredEventOnlyReturnsFalse() {
+        EventNode event =
+                new EventNode(
+                        CATEGORY_ID,
+                        List.of(
+                                new EventFilter(
+                                        "productId",
+                                        Operator.EQ,
+                                        JsonNodeFactory.instance.textNode("SKU-1"))),
+                        new Period.Cumulative(),
+                        1);
+        GroupNode tree = new GroupNode(LogicOp.AND, List.of(event));
         Segment seg = sampleSegment(tree);
         when(segmentRepository.findById(SEGMENT_ID)).thenReturn(Optional.of(seg));
 

@@ -111,8 +111,8 @@ export type EventFilter = z.infer<typeof EventFilterSchema>;
 
 export const EventNodeSchema = z.object({
   type: z.literal("event"),
-  /** 백엔드 EventNode.category — purchase | click | view (확장 가능). */
-  category: z.string().min(1),
+  /** 백엔드 EventNode.categoryId — event_categories PK. */
+  categoryId: z.number().int().positive("이벤트 카테고리를 선택해야 합니다"),
   filters: z.array(EventFilterSchema),
   period: PeriodSchema,
   /** 최소 발생 횟수 (백엔드 기본값 1). */

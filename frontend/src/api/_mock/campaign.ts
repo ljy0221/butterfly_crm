@@ -832,22 +832,36 @@ export function getCampaignsBySegmentId(segmentId: number): {
  * analytics getCampaignStats mock-fallback.
  * mock-store 의 sendCount/openRate + executions 통계로 가짜 stats 생성.
  */
+/**
+ * analytics getCampaignStats mock-fallback.
+ *
+ * ADR-0007 supersede 적용:
+ *  - openCount/convertCount + 비율 4종 (delivery/open/click/convert).
+ *  - clickRate 분모: open (ADR-0003 delivered → ADR-0007 open).
+ *  - openRate = delivered 기준 70%, convertRate = open 기준 8% 가정 (시연용 합성).
+ */
 export function getCampaignStatsMock(campaignId: number): {
   campaignId: number;
   totalTarget: number;
   sentCount: number;
   deliveredCount: number;
+  openCount: number;
   clickedCount: number;
+  convertCount: number;
   failedCount: number;
-  deliveryRate: number;
-  clickRate: number;
+  deliveryRate: number | null;
+  openRate: number | null;
+  clickRate: number | null;
+  convertRate: number | null;
   executions: Array<{
     executionId: number;
     status: string;
     sendStartedAt: string;
     sentCount: number;
     deliveredCount: number;
+    openCount: number;
     clickedCount: number;
+    convertCount: number;
   }>;
   metricsComputedAt: string;
 } {
@@ -859,10 +873,14 @@ export function getCampaignStatsMock(campaignId: number): {
       totalTarget: 0,
       sentCount: 0,
       deliveredCount: 0,
+      openCount: 0,
       clickedCount: 0,
+      convertCount: 0,
       failedCount: 0,
-      deliveryRate: 0,
-      clickRate: 0,
+      deliveryRate: null,
+      openRate: null,
+      clickRate: null,
+      convertRate: null,
       executions: [],
       metricsComputedAt: new Date().toISOString(),
     };
@@ -870,27 +888,47 @@ export function getCampaignStatsMock(campaignId: number): {
   const exes = executionsByCampaign.get(campaignId) ?? [];
   const sentCount = c.sendCount;
   const deliveredCount = Math.floor(sentCount * 0.95);
-  const clickedCount = Math.floor(deliveredCount * (c.openRate / 100));
+  // mock-store openRate(0~100) → openCount = delivered * (openRate/100).
+  const openCount = Math.floor(deliveredCount * (c.openRate / 100));
+  // ADR-0007: clickCount는 open 기준으로 합성 — 평균 30%가 클릭.
+  const clickedCount = Math.floor(openCount * 0.3);
+  // 평균 8%가 전환 (sent 기준) — 시연용 합성치.
+  const convertCount = Math.floor(sentCount * 0.08);
   const failedCount = sentCount - deliveredCount;
-  const deliveryRate = sentCount > 0 ? deliveredCount / sentCount : 0;
-  const clickRate = deliveredCount > 0 ? clickedCount / deliveredCount : 0;
+  const deliveryRate = sentCount > 0 ? deliveredCount / sentCount : null;
+  const openRate = deliveredCount > 0 ? openCount / deliveredCount : null;
+  // ADR-0007: 분모 = open.
+  const clickRate = openCount > 0 ? clickedCount / openCount : null;
+  const convertRate = sentCount > 0 ? convertCount / sentCount : null;
   return {
     campaignId,
     totalTarget: sentCount,
     sentCount,
     deliveredCount,
+    openCount,
     clickedCount,
+    convertCount,
     failedCount,
     deliveryRate,
+    openRate,
     clickRate,
-    executions: exes.map((e) => ({
-      executionId: e.campaignExecutionId,
-      status: e.campaignExecutionStatus,
-      sendStartedAt: e.sendStartedAt ?? c.createdAt,
-      sentCount: e.sentCount,
-      deliveredCount: Math.floor(e.sentCount * 0.95),
-      clickedCount: Math.floor(e.sentCount * 0.95 * (c.openRate / 100)),
-    })),
+    convertRate,
+    executions: exes.map((e) => {
+      const exDelivered = Math.floor(e.sentCount * 0.95);
+      const exOpen = Math.floor(exDelivered * (c.openRate / 100));
+      const exClicked = Math.floor(exOpen * 0.3);
+      const exConvert = Math.floor(e.sentCount * 0.08);
+      return {
+        executionId: e.campaignExecutionId,
+        status: e.campaignExecutionStatus,
+        sendStartedAt: e.sendStartedAt ?? c.createdAt,
+        sentCount: e.sentCount,
+        deliveredCount: exDelivered,
+        openCount: exOpen,
+        clickedCount: exClicked,
+        convertCount: exConvert,
+      };
+    }),
     metricsComputedAt: new Date().toISOString(),
   };
 }

@@ -1,6 +1,16 @@
 import { api } from "./client";
 import { ifMock } from "./_mock";
 import { getCampaignStatsMock } from "./_mock/campaign";
+import {
+  CampaignMetricsPageSchema,
+  ChannelMetricsResponseSchema,
+  DashboardResponseSchema,
+  SegmentMetricsResponseSchema,
+  type CampaignMetricItem,
+  type ChannelMetricsResponse,
+  type DashboardResponse,
+  type SegmentMetricsResponse,
+} from "@/schemas/analytics";
 
 /**
  * Sprint 3 — Analytics(대시보드/메트릭) API.
@@ -11,8 +21,8 @@ import { getCampaignStatsMock } from "./_mock/campaign";
  *        ChannelMetricItem, CampaignStatsResponse, ExecutionStatsResponse,
  *        SegmentMetricsResponse, SegmentMetricItem}.java
  *
- * 응답은 client.ts 인터셉터가 ApiResponse<T> 래퍼를 자동 unwrap 하므로
- * 호출 측은 `res.data`로 곧바로 도메인 페이로드(T)를 받는다.
+ * 응답은 client.ts 인터셉터가 ApiResponse<T> 래퍼를 자동 unwrap 하고,
+ * 본 모듈에서 한 번 더 zod parse를 통과시켜 nullable rate(분모 0 ⇒ null) 정책을 강제한다.
  *
  * 모든 엔드포인트는 클래스 레벨 @PreAuthorize("VIEWER 이상") 적용.
  */
@@ -34,76 +44,49 @@ export interface SpringPage<T> {
   totalPages: number;
 }
 
-// ---------- DTO 타입 (백엔드 record 필드명 그대로) ----------
+// ---------- DTO 타입 — schemas/analytics.ts에서 zod 추론 ----------
 
-/** API 57: GET /api/projects/{projectId}/analytics/dashboard */
-export interface DashboardResponse {
-  period: { from: string; to: string };
-  summary: DashboardSummary;
-  dailyTrend: DailyPoint[];
-  /** LocalDateTime — 집계 기준 시각 */
-  metricsComputedAt: string;
-}
+export type {
+  CampaignMetricItem,
+  CampaignMetricsPage,
+  ChannelMetricItem,
+  ChannelMetricsResponse,
+  DailyPoint,
+  DashboardResponse,
+  DashboardSummary,
+  SegmentMetricItem,
+  SegmentMetricsResponse,
+} from "@/schemas/analytics";
 
-export interface DashboardSummary {
-  campaignsSentInPeriod: number;
-  totalSent: number;
-  totalDelivered: number;
-  totalClicked: number;
-  totalFailed: number;
-  /** 0.0 ~ 1.0 (소수 비율) */
-  avgDeliveryRate: number;
-  /** 0.0 ~ 1.0 (소수 비율) */
-  avgClickRate: number;
-}
+// ---------- DTO 타입 — schemas 미정 (campaign 도메인 mock-fallback에 쓰임) ----------
 
-export interface DailyPoint {
-  /** yyyy-MM-dd */
-  date: string;
-  sent: number;
-  delivered: number;
-  clicked: number;
-}
-
-/** API 59 응답의 content 항목 */
-export interface CampaignMetricItem {
-  campaignId: number;
-  campaignName: string;
-  /** PUSH, EMAIL ... */
-  channel: string;
-  sentCount: number;
-  deliveredCount: number;
-  clickedCount: number;
-  failedCount: number;
-  deliveryRate: number;
-  clickRate: number;
-}
-
-/** API 60: GET /api/projects/{projectId}/analytics/channels */
-export interface ChannelMetricsResponse {
-  channels: ChannelMetricItem[];
-}
-
-export interface ChannelMetricItem {
-  channel: string;
-  sentCount: number;
-  deliveredCount: number;
-  clickedCount: number;
-  failedCount: number;
-  deliveryRate: number;
-  clickRate: number;
-}
-
-/** API 58: GET /api/projects/{projectId}/campaigns/{campaignId}/stats */
+/**
+ * API 58: GET /api/projects/{projectId}/campaigns/{campaignId}/stats
+ *
+ * ADR-0007 supersede 적용 (2026-05-07):
+ *  - openCount / convertCount 추가
+ *  - 비율 4종 모두 nullable (분모 0 ⇒ null)
+ *  - clickRate 분모 의미: clicked/delivered → click/open
+ */
 export interface CampaignStatsResponse {
   campaignId: number;
   totalTarget: number;
   sentCount: number;
   deliveredCount: number;
+  /** ADR-0007 신규 (open_count). */
+  openCount: number;
   clickedCount: number;
+  /** ADR-0007 신규 (convert_count). */
+  convertCount: number;
   failedCount: number;
-  deliveryRate: number;
-  clickRate: number;
+  /** delivered/sent. 분모 0이면 null. */
+  deliveryRate: number | null;
+  /** open/delivered. 분모 0이면 null. ADR-0007 신규. */
+  openRate: number | null;
+  /** click/open (ADR-0007). 분모 0이면 null. */
+  clickRate: number | null;
+  /** convert/sent. 분모 0이면 null. ADR-0007 신규. */
+  convertRate: number | null;
   executions: ExecutionSummary[];
   metricsComputedAt: string;
 }
@@ -115,13 +98,18 @@ export interface ExecutionSummary {
   sendStartedAt: string;
   sentCount: number;
   deliveredCount: number;
+  /** ADR-0007 신규. */
+  openCount: number;
   clickedCount: number;
+  /** ADR-0007 신규. */
+  convertCount: number;
 }
 
 /**
  * 신규 API: GET /api/projects/{projectId}/campaigns/{campaignId}/executions/{executionId}/stats
- * 회차별 상세 통계 (ADR-0002, ADR-0003).
- * API 58은 회차 누적 합산을, 본 응답은 단일 회차의 상세 집계를 반환.
+ * 회차별 상세 통계 (ADR-0002, ADR-0003 → ADR-0007 supersede).
+ *
+ * openCount / convertCount + 비율 4종 nullable.
  */
 export interface ExecutionStatsResponse {
   campaignId: number;
@@ -132,34 +120,25 @@ export interface ExecutionStatsResponse {
   totalTarget: number;
   sentCount: number;
   deliveredCount: number;
+  /** ADR-0007 신규. */
+  openCount: number;
   clickedCount: number;
+  /** ADR-0007 신규. */
+  convertCount: number;
   failedCount: number;
-  /** 0.0 ~ 1.0 */
-  deliveryRate: number;
-  /** 0.0 ~ 1.0 (분모 = deliveredCount) */
-  clickRate: number;
+  /** 분모 0이면 null */
+  deliveryRate: number | null;
+  /** ADR-0007 신규. 분모 0이면 null. */
+  openRate: number | null;
+  /** click/open (ADR-0007). 분모 0이면 null. */
+  clickRate: number | null;
+  /** ADR-0007 신규. 분모 0이면 null. */
+  convertRate: number | null;
   sendStartedAt: string | null;
   sendCompletedAt: string | null;
   metricsComputedAt: string;
 }
 
-/** API 61: GET /api/projects/{projectId}/analytics/segments */
-export interface SegmentMetricsResponse {
-  segments: SegmentMetricItem[];
-}
-
-export interface SegmentMetricItem {
-  segmentId: number;
-  segmentName: string;
-  campaignCount: number;
-  sentCount: number;
-  deliveredCount: number;
-  clickedCount: number;
-  /** 0.0 ~ 1.0 */
-  deliveryRate: number;
-  /** 0.0 ~ 1.0 */
-  clickRate: number;
-}
 
 // ---------- 요청 파라미터 ----------
 
@@ -178,6 +157,12 @@ export interface CampaignMetricsParams extends DashboardParams {
   /** PUSH | EMAIL ... */
   channel?: string;
   segmentId?: number;
+  /**
+   * Spring Data 스타일 정렬: "field,asc" | "field,desc".
+   * 백엔드 합의 전이라 default는 createdAt,desc (최근 발송 5건의 의도된 의미).
+   * 백엔드가 받지 않으면 무시됨 — 일단 결정성 확보.
+   */
+  sort?: string;
 }
 
 // ---------- 엔드포인트 ----------
@@ -187,11 +172,11 @@ export async function getDashboard(
   projectId: number,
   params: DashboardParams,
 ): Promise<DashboardResponse> {
-  const res = await api.get<DashboardResponse>(
+  const res = await api.get(
     `/api/projects/${projectId}/analytics/dashboard`,
     { params },
   );
-  return res.data;
+  return DashboardResponseSchema.parse(res.data);
 }
 
 /** API 59. VIEWER 이상. */
@@ -199,7 +184,7 @@ export async function getCampaignMetrics(
   projectId: number,
   params: CampaignMetricsParams,
 ): Promise<SpringPage<CampaignMetricItem>> {
-  const res = await api.get<SpringPage<CampaignMetricItem>>(
+  const res = await api.get(
     `/api/projects/${projectId}/analytics/campaigns`,
     {
       params: {
@@ -209,10 +194,12 @@ export async function getCampaignMetrics(
         size: params.size ?? 10,
         channel: params.channel,
         segmentId: params.segmentId,
+        // 백엔드 합의 전 임시 default — "최근 캠페인 5건" 의미를 결정성 있게 만들기 위함.
+        sort: params.sort ?? "createdAt,desc",
       },
     },
   );
-  return res.data;
+  return CampaignMetricsPageSchema.parse(res.data);
 }
 
 /** API 60. VIEWER 이상. */
@@ -220,11 +207,11 @@ export async function getChannelMetrics(
   projectId: number,
   params: DashboardParams,
 ): Promise<ChannelMetricsResponse> {
-  const res = await api.get<ChannelMetricsResponse>(
+  const res = await api.get(
     `/api/projects/${projectId}/analytics/channels`,
     { params },
   );
-  return res.data;
+  return ChannelMetricsResponseSchema.parse(res.data);
 }
 
 /**
@@ -272,10 +259,15 @@ export async function getExecutionStats(
       totalTarget: 0,
       sentCount: 0,
       deliveredCount: 0,
+      openCount: 0,
       clickedCount: 0,
+      convertCount: 0,
       failedCount: 0,
-      deliveryRate: 0,
-      clickRate: 0,
+      // 분모 0이라 비율 정의 불가 — KPI 정의서 §3.
+      deliveryRate: null,
+      openRate: null,
+      clickRate: null,
+      convertRate: null,
       sendStartedAt: null,
       sendCompletedAt: null,
       metricsComputedAt: new Date().toISOString(),
@@ -297,9 +289,9 @@ export async function getSegmentMetrics(
   projectId: number,
   params: DashboardParams,
 ): Promise<SegmentMetricsResponse> {
-  const res = await api.get<SegmentMetricsResponse>(
+  const res = await api.get(
     `/api/projects/${projectId}/analytics/segments`,
     { params },
   );
-  return res.data;
+  return SegmentMetricsResponseSchema.parse(res.data);
 }

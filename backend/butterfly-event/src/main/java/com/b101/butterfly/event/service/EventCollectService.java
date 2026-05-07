@@ -10,6 +10,7 @@ import com.b101.butterfly.event.messaging.EventPayload;
 import com.b101.butterfly.event.messaging.EventProducer;
 import com.b101.butterfly.event.repository.DeviceRepository;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
+import com.b101.butterfly.event.repository.EventSchemaRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class EventCollectService {
 
     private final EventProducer eventProducer;
     private final EventCategoryRepository eventCategoryRepository;
+    private final EventSchemaRepository eventSchemaRepository;
     private final UserDirectory userDirectory;
     private final DeviceRepository deviceRepository;
 
@@ -40,8 +42,10 @@ public class EventCollectService {
         Device device = lookupDevice(projectId, request.deviceId());
 
         String eventUuid = UUID.randomUUID().toString();
-        // TODO: event_schemas 도입 시 (categoryId, is_current=true) lookup으로 교체
-        int schemaVersion = 1;
+        int schemaVersion = eventSchemaRepository
+                .findByCategoryIdAndIsCurrentTrue(category.getId())
+                .map(s -> s.getVersion())
+                .orElse(1);
 
         String eventDataJson = serializeEventData(request.eventData());
 

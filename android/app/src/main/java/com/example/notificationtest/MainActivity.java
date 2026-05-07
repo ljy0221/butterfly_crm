@@ -10,7 +10,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.example.notificationtest.butterfly.EventTrigger;
+import com.example.notificationtest.butterfly.device.DeviceManager;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -71,6 +75,29 @@ public class MainActivity extends AppCompatActivity {
             sendTestNotification();
             Toast.makeText(this, "테스트 알림을 보냈습니다. 알림을 클릭해보세요!", Toast.LENGTH_SHORT).show();
         });
+
+        // deviceId 표시
+        TextView tvDeviceId = findViewById(R.id.tvDeviceId);
+        tvDeviceId.setText("deviceId: " + DeviceManager.INSTANCE.getOrCreateDeviceId(this));
+
+        // 이벤트 수집: 디바이스 등록 (FCM 토큰 받아서 호출)
+        Button btnRegisterDevice = findViewById(R.id.btnRegisterDevice);
+        btnRegisterDevice.setOnClickListener(v -> {
+            FirebaseMessaging.getInstance().getToken().addOnCompleteListener(task -> {
+                String token = task.isSuccessful() && task.getResult() != null
+                        ? task.getResult()
+                        : "no_token";
+                EventTrigger.registerDevice(this, token);
+            });
+        });
+
+        // 이벤트 수집: 이벤트 3종
+        findViewById(R.id.btnEventAppOpen)
+                .setOnClickListener(v -> EventTrigger.fireAppOpen(this));
+        findViewById(R.id.btnEventProductView)
+                .setOnClickListener(v -> EventTrigger.fireProductView(this));
+        findViewById(R.id.btnEventPurchase)
+                .setOnClickListener(v -> EventTrigger.firePurchase(this));
     }
 
     @Override

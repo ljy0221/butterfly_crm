@@ -1,6 +1,6 @@
 package com.b101.butterfly.segment.service.preview;
 
-import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.segment.domain.condition.EventFilter;
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.LogicOp;
@@ -9,7 +9,6 @@ import com.b101.butterfly.segment.domain.condition.Period;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.domain.condition.validation.ConditionTreeValidator;
 import com.b101.butterfly.segment.dto.response.PreviewResponse;
-import com.b101.butterfly.segment.exception.SegmentErrorCode;
 import com.b101.butterfly.segment.port.EventAggReader;
 import com.b101.butterfly.segment.port.EventQueryContext;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
@@ -30,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -67,8 +65,24 @@ class PreviewServiceTest {
         return new EventNode(99L, List.of(), new Period.Relative(7), 5);
     }
 
+    private static EventNode filteredEventNode() {
+        return new EventNode(
+                99L,
+                List.of(
+                        new EventFilter(
+                                "productId",
+                                Operator.EQ,
+                                JsonNodeFactory.instance.textNode("SKU-1"))),
+                new Period.Relative(7),
+                5);
+    }
+
     private static GroupNode eventOnlyTree() {
         return new GroupNode(LogicOp.AND, List.of(eventNode()));
+    }
+
+    private static GroupNode filteredEventOnlyTree() {
+        return new GroupNode(LogicOp.AND, List.of(filteredEventNode()));
     }
 
     private static GroupNode mixedTree() {
@@ -89,7 +103,7 @@ class PreviewServiceTest {
 
         assertThat(response.estimatedCount()).isEqualTo(1820);
         assertThat(response.method()).isEqualTo("HLL");
-        verify(sqlConverter, never()).convert(any(), anyLong());
+        verify(sqlConverter, never()).convert(any(), any(EventQueryContext.class));
         verify(userDirectoryReader, never()).queryUserIds(anyString(), anyMap());
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
         verify(hllPreviewExecutor, never()).computeAndCache(anyString(), anyList(), any());
@@ -102,7 +116,7 @@ class PreviewServiceTest {
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u", Map.of());
-        when(sqlConverter.convert(any(), eq(PROJECT_ID))).thenReturn(fragment);
+        when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
         when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
                 .thenReturn(List.of(1L, 2L, 3L));
         when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(1L, 2L, 3L)), any()))
@@ -129,8 +143,28 @@ class PreviewServiceTest {
         PreviewResponse response = previewService.preview(PROJECT_ID, tree);
 
         assertThat(response.estimatedCount()).isEqualTo(2);
-        verify(sqlConverter, never()).convert(any(), anyLong());
+        verify(sqlConverter, never()).convert(any(), any(EventQueryContext.class));
         verify(userDirectoryReader, never()).queryUserIds(anyString(), anyMap());
+    }
+
+    @Test
+    @DisplayName("필터가 있는 EVENT 단독 트리: SQL 변환 경로로 처리")
+    void filteredEventOnlyTreeUsesSqlConverter() {
+        GroupNode tree = filteredEventOnlyTree();
+        when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
+        when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
+        SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE filtered_event", Map.of());
+        when(sqlConverter.convert(eq(tree), any(EventQueryContext.class))).thenReturn(fragment);
+        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(List.of(31L, 32L));
+        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(31L, 32L)), any()))
+                .thenReturn(2L);
+
+        PreviewResponse response = previewService.preview(PROJECT_ID, tree);
+
+        assertThat(response.estimatedCount()).isEqualTo(2);
+        verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
+        verify(sqlConverter).convert(eq(tree), any(EventQueryContext.class));
     }
 
     @Test
@@ -144,26 +178,31 @@ class PreviewServiceTest {
 
         assertThatThrownBy(() -> previewService.preview(PROJECT_ID, tree))
                 .isInstanceOfSatisfying(
-                        BusinessException.class,
+                        com.b101.butterfly.global.error.BusinessException.class,
                         e -> assertThat(e.getErrorCode())
-                                .isEqualTo(SegmentErrorCode.SEGMENT_501_EVENT_NOT_READY));
+                                .isEqualTo(
+                                        com.b101.butterfly.segment.exception.SegmentErrorCode
+                                                .SEGMENT_501_EVENT_NOT_READY));
     }
 
     @Test
-    @DisplayName("EVENT가 다른 노드와 결합된 mixed 트리: SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1로 reject")
-    void mixedTreeRejectedV1() {
+    @DisplayName("mixed 트리: SQL 변환 → reader 조회 → HLL 캐시")
+    void mixedTreeUsesSqlConverter() {
         GroupNode tree = mixedTree();
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
+        SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE mixed", Map.of());
+        when(sqlConverter.convert(eq(tree), any(EventQueryContext.class))).thenReturn(fragment);
+        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(List.of(11L, 12L));
+        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(11L, 12L)), any()))
+                .thenReturn(2L);
 
-        assertThatThrownBy(() -> previewService.preview(PROJECT_ID, tree))
-                .isInstanceOfSatisfying(
-                        BusinessException.class,
-                        e -> assertThat(e.getErrorCode())
-                                .isEqualTo(SegmentErrorCode.SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1));
+        PreviewResponse response = previewService.preview(PROJECT_ID, tree);
 
+        assertThat(response.estimatedCount()).isEqualTo(2);
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
-        verify(sqlConverter, never()).convert(any(), anyLong());
+        verify(sqlConverter).convert(eq(tree), any(EventQueryContext.class));
     }
 
     @Test
@@ -171,7 +210,7 @@ class PreviewServiceTest {
     void emptyResultReturnsZero() {
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
-        when(sqlConverter.convert(any(), eq(PROJECT_ID)))
+        when(sqlConverter.convert(any(), any(EventQueryContext.class)))
                 .thenReturn(new SqlFragment("SELECT u.user_id FROM users u", Map.of()));
         when(userDirectoryReader.queryUserIds(anyString(), anyMap())).thenReturn(List.of());
         when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of()), any())).thenReturn(0L);

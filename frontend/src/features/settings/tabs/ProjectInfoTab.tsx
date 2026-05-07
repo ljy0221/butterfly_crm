@@ -40,7 +40,6 @@ export default function ProjectInfoTab({ projectId }: { projectId: number }) {
           <KvSkeleton rows={6} />
         ) : (
           <dl style={{ margin: 0 }}>
-            <KvRow label="프로젝트 ID" value={`#${projectQ.data.projectId}`} mono />
             <KvRow label="프로젝트명" value={projectQ.data.name} />
             <KvRow
               label="사업자번호"
@@ -120,16 +119,6 @@ export default function ProjectInfoTab({ projectId }: { projectId: number }) {
                 }}
               >
                 {owner.email}
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "#94a3b8",
-                  marginTop: 2,
-                  fontFamily: "var(--font-mono)",
-                }}
-              >
-                memberId #{owner.memberId}
               </div>
             </div>
           </div>

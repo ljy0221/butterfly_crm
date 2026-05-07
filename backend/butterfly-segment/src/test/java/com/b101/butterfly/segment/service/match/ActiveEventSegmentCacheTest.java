@@ -124,6 +124,24 @@ class ActiveEventSegmentCacheTest {
         assertThat(ActiveEventSegmentCache.extractEventOnlyCategoryId(tree)).isNull();
     }
 
+    @Test
+    @DisplayName("extractEventOnlyCategoryId — 필터가 있으면 실시간 캐시에서 제외")
+    void filteredEventOnlyReturnsNull() {
+        EventNode event =
+                new EventNode(
+                        99L,
+                        List.of(
+                                new EventFilter(
+                                        "productId",
+                                        Operator.EQ,
+                                        JsonNodeFactory.instance.textNode("SKU-1"))),
+                        new Period.Cumulative(),
+                        1);
+        GroupNode tree = new GroupNode(LogicOp.AND, List.of(event));
+
+        assertThat(ActiveEventSegmentCache.extractEventOnlyCategoryId(tree)).isNull();
+    }
+
     private static Segment eventOnly(long id, long categoryId) {
         EventNode event = new EventNode(categoryId, List.<EventFilter>of(), new Period.Cumulative(), 1);
         GroupNode tree = new GroupNode(LogicOp.AND, List.of(event));

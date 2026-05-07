@@ -1,10 +1,13 @@
 package com.b101.butterfly.reporting.notification.repository;
 
+import com.b101.butterfly.reporting.aggregation.dto.DailyFailureCountRow;
+import com.b101.butterfly.reporting.aggregation.dto.DailyTemplateCountRow;
 import com.b101.butterfly.reporting.aggregation.dto.HourlyCountRow;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,10 +17,12 @@ import java.util.Optional;
  * 발송 로그 저장소. 멱등성 키로 기존 row 존재 여부를 빠르게 확인할 수 있도록
  * {@link #findByMessageKey(String)}을 노출한다 — 컨슈머는 이 키로 dedup을 수행한다.
  *
- * <p>집계 도메인이 사용하는 두 가지 카운트 쿼리도 함께 노출한다:
+ * <p>집계 도메인이 사용하는 카운트 쿼리들:
  * <ul>
  *     <li>{@link #countsForReconciliation} — S14P31B101-126 정합성 검증, 회차×채널 단위</li>
  *     <li>{@link #aggregateHourly} — S14P31B101-124 hourly 집계, 캠페인×채널 단위 시간 윈도우 합산</li>
+ *     <li>{@link #aggregateTemplateDaily} — S14P31B101-191 daily 템플릿 집계</li>
+ *     <li>{@link #aggregateFailureDaily} — S14P31B101-191 daily 실패 원인 집계</li>
  * </ul>
  */
 public interface ReportingNotificationLogRepository extends JpaRepository<NotificationLog, Long> {
@@ -82,4 +87,64 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
             GROUP BY n.projectId, n.campaignId, n.channel
             """)
     List<HourlyCountRow> aggregateHourly(LocalDateTime from, LocalDateTime to);
+
+    /**
+     * Daily 템플릿 집계 — 날짜 범위 안의 발송 로그를 message_template_id×channel 단위로 GROUP BY.
+     *
+     * <p>message_template_id가 null인 row(템플릿 없이 발송된 경우)는 제외한다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyTemplateCountRow(
+                n.projectId,
+                n.messageTemplateId,
+                n.channel,
+                COUNT(DISTINCT n.campaignId),
+                SUM(CASE WHEN n.status IN (
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    ) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status =
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                    THEN 1 ELSE 0 END),
+                0L,
+                0L,
+                0L
+            )
+            FROM NotificationLog n
+            WHERE n.createdAt >= :from
+              AND n.createdAt < :to
+              AND n.messageTemplateId IS NOT NULL
+            GROUP BY n.projectId, n.messageTemplateId, n.channel
+            """)
+    List<DailyTemplateCountRow> aggregateTemplateDaily(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    /**
+     * Daily 실패 원인 집계 — 날짜 범위 안의 FAILED row를 project×channel×error_code 단위로 GROUP BY.
+     *
+     * <p>error_code가 null인 row는 'UNKNOWN'으로 대체한다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.aggregation.dto.DailyFailureCountRow(
+                n.projectId,
+                n.channel,
+                COALESCE(n.errorCode, 'UNKNOWN'),
+                COUNT(n),
+                COUNT(DISTINCT n.campaignId),
+                COUNT(DISTINCT n.userId),
+                MIN(n.createdAt),
+                MAX(n.createdAt)
+            )
+            FROM NotificationLog n
+            WHERE n.createdAt >= :from
+              AND n.createdAt < :to
+              AND n.status = com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
+            GROUP BY n.projectId, n.channel, COALESCE(n.errorCode, 'UNKNOWN')
+            """)
+    List<DailyFailureCountRow> aggregateFailureDaily(
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
 }

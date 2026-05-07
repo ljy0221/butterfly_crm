@@ -1,7 +1,6 @@
 package com.b101.butterfly.segment.service.preview;
 
 import com.b101.butterfly.global.error.BusinessException;
-import com.b101.butterfly.segment.domain.condition.ConditionNode;
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.domain.condition.validation.ConditionTreeValidator;
@@ -24,8 +23,8 @@ import java.util.stream.Stream;
 /**
  * 미리보기 서비스 (#42).
  *
- * <p>v1 EVENT 정책: 단독 트리(GroupNode 안에 EventNode 1개)만 지원. mixed(다른 노드와 결합)는 reject.
- * EVENT 단독 트리는 EventAggReader port 호출, 그 외 트리는 ConditionTreeToSqlConverter SQL 흐름.
+ * <p>filter 없는 EVENT 단독 트리는 EventAggReader port 호출, 그 외 트리는
+ * ConditionTreeToSqlConverter가 event_daily_agg/events EXISTS 서브쿼리를 포함한 SQL로 처리한다.
  *
  * <p>흐름:
  * <ul>
@@ -64,18 +63,15 @@ public class PreviewService {
     }
 
     private List<Long> resolveUserIds(Long projectId, GroupNode tree) {
-        if (isEventOnlyTree(tree)) {
-            return resolveByEventPort(projectId, (EventNode) tree.conditions().get(0));
-        }
-        if (containsEventNode(tree)) {
-            throw new BusinessException(SegmentErrorCode.SEGMENT_400_EVENT_MIXED_NOT_SUPPORTED_V1);
-        }
-        return resolveBySql(projectId, tree);
-    }
-
-    private List<Long> resolveByEventPort(Long projectId, EventNode eventNode) {
         EventQueryContext context = new EventQueryContext(
                 projectId, LocalDate.now(SEOUL), SEOUL);
+        if (isFilterlessEventOnlyTree(tree)) {
+            return resolveByEventPort((EventNode) tree.conditions().get(0), context);
+        }
+        return resolveBySql(tree, context);
+    }
+
+    private List<Long> resolveByEventPort(EventNode eventNode, EventQueryContext context) {
         try (Stream<Long> stream = eventAggReader.queryMatchingUserIds(eventNode, context)) {
             return stream.toList();
         } catch (EventConditionNotReadyException e) {
@@ -83,33 +79,19 @@ public class PreviewService {
         }
     }
 
-    private List<Long> resolveBySql(Long projectId, GroupNode tree) {
+    private List<Long> resolveBySql(GroupNode tree, EventQueryContext context) {
         SqlFragment fragment;
         try {
-            fragment = sqlConverter.convert(tree, projectId);
+            fragment = sqlConverter.convert(tree, context);
         } catch (EventConditionNotReadyException e) {
-            // 방어적 — 트리 분기로 이미 EVENT 노드는 SQL converter에 도달하지 않음
             throw new BusinessException(SegmentErrorCode.SEGMENT_501_EVENT_NOT_READY);
         }
         return userDirectoryReader.queryUserIds(fragment.sql(), fragment.params());
     }
 
-    private static boolean isEventOnlyTree(GroupNode tree) {
+    private static boolean isFilterlessEventOnlyTree(GroupNode tree) {
         return tree.conditions().size() == 1
-                && tree.conditions().get(0) instanceof EventNode;
-    }
-
-    private static boolean containsEventNode(ConditionNode node) {
-        if (node instanceof EventNode) {
-            return true;
-        }
-        if (node instanceof GroupNode g) {
-            for (ConditionNode child : g.conditions()) {
-                if (containsEventNode(child)) {
-                    return true;
-                }
-            }
-        }
-        return false;
+                && tree.conditions().get(0) instanceof EventNode eventNode
+                && (eventNode.filters() == null || eventNode.filters().isEmpty());
     }
 }

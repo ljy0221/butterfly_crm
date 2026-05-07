@@ -11,10 +11,13 @@ import com.b101.butterfly.segment.domain.condition.Period;
 import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.domain.condition.UserNode;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
+import com.b101.butterfly.segment.port.EventQueryContext;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ConditionTreeToSqlConverterTest {
 
     private static final JsonNodeFactory NODE = JsonNodeFactory.instance;
+    private static final EventQueryContext EVENT_CONTEXT =
+            new EventQueryContext(1L, LocalDate.of(2026, 5, 6), ZoneId.of("Asia/Seoul"));
     private final ConditionTreeToSqlConverter converter = new ConditionTreeToSqlConverter();
 
     @Test
@@ -38,8 +43,9 @@ class ConditionTreeToSqlConverterTest {
         assertThat(fragment.sql())
                 .startsWith("SELECT u.user_id FROM users u WHERE u.project_id = :projectId")
                 .contains("EXISTS (SELECT 1 FROM user_tags ut")
-                .contains("ut.`key` = :tagKey0")
-                .contains("ut.value = :tagVal0");
+                .contains("ut.project_id = :projectId")
+                .contains("ut.tag_key = :tagKey0")
+                .contains("ut.tag_value = :tagVal0");
         assertThat(fragment.params()).containsEntry("projectId", 1L);
         assertThat(fragment.params()).containsEntry("tagKey0", "region");
         assertThat(fragment.params()).containsEntry("tagVal0", "서울");
@@ -106,7 +112,7 @@ class ConditionTreeToSqlConverterTest {
 
         SqlFragment fragment = converter.convert(tree, 1L);
 
-        assertThat(fragment.sql()).contains("ut.value IN (:tagVal0)");
+        assertThat(fragment.sql()).contains("ut.tag_value IN (:tagVal0)");
         assertThat(fragment.params().get("tagVal0")).isInstanceOf(List.class);
         @SuppressWarnings("unchecked")
         List<Object> bound = (List<Object>) fragment.params().get("tagVal0");
@@ -123,7 +129,7 @@ class ConditionTreeToSqlConverterTest {
 
         SqlFragment fragment = converter.convert(tree, 1L);
 
-        assertThat(fragment.sql()).contains("ut.value LIKE :tagVal0");
+        assertThat(fragment.sql()).contains("ut.tag_value LIKE :tagVal0");
         assertThat(fragment.params()).containsEntry("tagVal0", "%foo%");
     }
 
@@ -151,8 +157,8 @@ class ConditionTreeToSqlConverterTest {
     }
 
     @Test
-    @DisplayName("EVENT 노드를 만나면 EventConditionNotReadyException을 던진다")
-    void eventNotReady() {
+    @DisplayName("EVENT relative 노드 → event_daily_agg EXISTS 서브쿼리")
+    void eventRelativeExists() {
         GroupNode tree =
                 new GroupNode(
                         LogicOp.AND,
@@ -163,13 +169,25 @@ class ConditionTreeToSqlConverterTest {
                                         new Period.Relative(30),
                                         3)));
 
-        assertThatThrownBy(() -> converter.convert(tree, 1L))
-                .isInstanceOf(EventConditionNotReadyException.class);
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql())
+                .contains("EXISTS (SELECT 1 FROM event_daily_agg e")
+                .contains("e.user_id = u.user_id")
+                .contains("e.project_id = :projectId")
+                .contains("e.category_id = :eventCategoryId0")
+                .contains("e.log_date >= :eventFromDate0")
+                .contains("GROUP BY e.user_id")
+                .contains("HAVING SUM(e.event_count) >= :eventMinCount0");
+        assertThat(fragment.params()).containsEntry("projectId", 1L);
+        assertThat(fragment.params()).containsEntry("eventCategoryId0", 42L);
+        assertThat(fragment.params()).containsEntry("eventFromDate0", LocalDate.of(2026, 4, 6));
+        assertThat(fragment.params()).containsEntry("eventMinCount0", 3);
     }
 
     @Test
-    @DisplayName("중첩 EVENT도 동일하게 EventConditionNotReadyException")
-    void nestedEventNotReady() {
+    @DisplayName("중첩 mixed OR 트리도 EVENT와 TAG를 같은 SQL 트리로 변환한다")
+    void nestedMixedOrTree() {
         GroupNode tree =
                 new GroupNode(
                         LogicOp.OR,
@@ -177,15 +195,124 @@ class ConditionTreeToSqlConverterTest {
                                 new TagNode("region", Operator.EQ, NODE.textNode("서울")),
                                 new EventNode(
                                         42L,
-                                        List.of(
-                                                new EventFilter(
-                                                        "color",
-                                                        Operator.EQ,
-                                                        NODE.textNode("검정"))),
+                                        List.of(),
                                         new Period.Relative(7),
                                         1)));
 
-        assertThatThrownBy(() -> converter.convert(tree, 1L))
-                .isInstanceOf(EventConditionNotReadyException.class);
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql())
+                .contains("ut.tag_key = :tagKey0")
+                .contains(" OR ")
+                .contains("e.category_id = :eventCategoryId1")
+                .contains("e.log_date >= :eventFromDate1");
+        assertThat(fragment.params()).containsEntry("eventFromDate1", LocalDate.of(2026, 4, 29));
+    }
+
+    @Test
+    @DisplayName("EVENT absolute 기간은 BETWEEN으로 변환한다")
+    void eventAbsolutePeriod() {
+        GroupNode tree =
+                new GroupNode(
+                        LogicOp.AND,
+                        List.of(
+                                new EventNode(
+                                        42L,
+                                        List.of(),
+                                        new Period.Absolute(
+                                                LocalDate.of(2026, 5, 1),
+                                                LocalDate.of(2026, 5, 5)),
+                                        2)));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql())
+                .contains("e.log_date BETWEEN :eventStartDate0 AND :eventEndDate0");
+        assertThat(fragment.params()).containsEntry("eventStartDate0", LocalDate.of(2026, 5, 1));
+        assertThat(fragment.params()).containsEntry("eventEndDate0", LocalDate.of(2026, 5, 5));
+    }
+
+    @Test
+    @DisplayName("EVENT cumulative 기간은 log_date 조건을 붙이지 않는다")
+    void eventCumulativePeriod() {
+        GroupNode tree =
+                new GroupNode(
+                        LogicOp.AND,
+                        List.of(new EventNode(42L, List.of(), new Period.Cumulative(), 1)));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql()).doesNotContain("e.log_date");
+        assertThat(fragment.params()).containsEntry("eventCategoryId0", 42L);
+    }
+
+    @Test
+    @DisplayName("필터가 있는 EVENT는 raw events.event_data JSON 조건으로 변환한다")
+    void eventWithFiltersUsesRawEvents() {
+        GroupNode tree =
+                new GroupNode(
+                        LogicOp.AND,
+                        List.of(
+                                new EventNode(
+                                        42L,
+                                        List.of(
+                                                new EventFilter(
+                                                        "productId",
+                                                        Operator.EQ,
+                                                        NODE.textNode("SKU-1")),
+                                                new EventFilter(
+                                                        "price",
+                                                        Operator.GTE,
+                                                        NODE.numberNode(30000))),
+                                        new Period.Relative(30),
+                                        2)));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql())
+                .contains("EXISTS (SELECT 1 FROM events ev")
+                .contains("ev.user_id = u.user_id")
+                .contains("ev.project_id = :projectId")
+                .contains("ev.category_id = :eventCategoryId0")
+                .contains("ev.occurred_at >= :eventFromDate0")
+                .contains("JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterPath0_0)) = :eventFilterVal0_0")
+                .contains("CAST(JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterPath0_1)) AS DECIMAL(30, 10)) >= :eventFilterVal0_1")
+                .contains("GROUP BY ev.user_id")
+                .contains("HAVING COUNT(*) >= :eventMinCount0");
+        assertThat(fragment.params()).containsEntry("eventFilterPath0_0", "$.\"productId\"");
+        assertThat(fragment.params()).containsEntry("eventFilterVal0_0", "SKU-1");
+        assertThat(fragment.params()).containsEntry("eventFilterPath0_1", "$.\"price\"");
+        assertThat(fragment.params()).containsEntry("eventFilterVal0_1", 30000);
+    }
+
+    @Test
+    @DisplayName("필터가 있는 EVENT absolute 기간은 occurred_at 반개구간으로 변환한다")
+    void eventWithFiltersAbsolutePeriodUsesOccurredAtRange() {
+        GroupNode tree =
+                new GroupNode(
+                        LogicOp.AND,
+                        List.of(
+                                new EventNode(
+                                        42L,
+                                        List.of(
+                                                new EventFilter(
+                                                        "color",
+                                                        Operator.CONTAINS,
+                                                        NODE.textNode("검정"))),
+                                        new Period.Absolute(
+                                                LocalDate.of(2026, 5, 1),
+                                                LocalDate.of(2026, 5, 5)),
+                                        1)));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql())
+                .contains("ev.occurred_at >= :eventStartDate0")
+                .contains("ev.occurred_at < :eventEndExclusiveDate0")
+                .contains("JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterPath0_0)) LIKE :eventFilterVal0_0");
+        assertThat(fragment.params()).containsEntry("eventStartDate0", LocalDate.of(2026, 5, 1));
+        assertThat(fragment.params())
+                .containsEntry("eventEndExclusiveDate0", LocalDate.of(2026, 5, 6));
+        assertThat(fragment.params()).containsEntry("eventFilterVal0_0", "%검정%");
     }
 }
