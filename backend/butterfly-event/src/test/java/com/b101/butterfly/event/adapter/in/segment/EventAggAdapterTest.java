@@ -148,6 +148,64 @@ class EventAggAdapterTest {
 
     @SuppressWarnings("unchecked")
     @Test
+    @DisplayName("materializeEventMatchesIntoSegment: INSERT INTO segment_members + 적절한 SQL/params + 리턴 row 수")
+    void materializeBuildsInsertSelectStatement() {
+        when(jdbcTemplate.update(anyString(), anyMap())).thenReturn(1234);
+
+        EventNode node = new EventNode(CATEGORY_ID, List.of(), new Period.Relative(7), 5);
+        long inserted = adapter.materializeEventMatchesIntoSegment(990002L, node, CONTEXT);
+
+        assertThat(inserted).isEqualTo(1234L);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> paramsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(jdbcTemplate).update(sqlCaptor.capture(), paramsCaptor.capture());
+
+        String sql = sqlCaptor.getValue();
+        Map<String, Object> params = paramsCaptor.getValue();
+
+        assertThat(sql)
+                .contains("INSERT INTO segment_members")
+                .contains("SELECT :segmentId, user_id, NOW(3), NULL")
+                .contains("FROM event_daily_agg")
+                .contains("WHERE project_id = :projectId")
+                .contains("AND category_id = :categoryId")
+                .contains("AND log_date >= :fromDate")
+                .contains("GROUP BY user_id")
+                .contains("HAVING SUM(event_count) >= :minCount");
+
+        assertThat(params)
+                .containsEntry("segmentId", 990002L)
+                .containsEntry("projectId", PROJECT_ID)
+                .containsEntry("categoryId", CATEGORY_ID)
+                .containsEntry("minCount", 5)
+                .containsEntry("fromDate", AS_OF.minusDays(7));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    @DisplayName("materializeEventMatchesIntoSegment Cumulative — log_date 절 없음")
+    void materializeWithCumulativePeriodOmitsDateClause() {
+        when(jdbcTemplate.update(anyString(), anyMap())).thenReturn(0);
+
+        EventNode node = new EventNode(CATEGORY_ID, List.of(), new Period.Cumulative(), 1);
+        adapter.materializeEventMatchesIntoSegment(42L, node, CONTEXT);
+
+        ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        ArgumentCaptor<Map<String, Object>> paramsCaptor = ArgumentCaptor.forClass(Map.class);
+        verify(jdbcTemplate).update(sqlCaptor.capture(), paramsCaptor.capture());
+
+        String sql = sqlCaptor.getValue();
+        assertThat(sql).contains("INSERT INTO segment_members");
+        assertThat(sql).doesNotContain("log_date >=").doesNotContain("BETWEEN");
+
+        assertThat(paramsCaptor.getValue())
+                .containsKeys("segmentId", "projectId", "categoryId", "minCount")
+                .doesNotContainKeys("fromDate", "startDate", "endDate");
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
     @DisplayName("userMatches: WHERE에 user_id 조건 + 적절한 params")
     void userMatchesBuildsCorrectQuery() {
         when(jdbcTemplate.queryForObject(anyString(), anyMap(), any(RowMapper.class)))

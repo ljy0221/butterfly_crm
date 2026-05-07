@@ -27,4 +27,10 @@ public class StubEventAggReader implements EventAggReader {
     public boolean userMatches(EventNode node, Long userId, EventQueryContext context) {
         throw new EventConditionNotReadyException();
     }
+
+    @Override
+    public long materializeEventMatchesIntoSegment(
+            Long segmentId, EventNode node, EventQueryContext context) {
+        throw new EventConditionNotReadyException();
+    }
 }
