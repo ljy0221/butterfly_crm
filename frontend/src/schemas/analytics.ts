@@ -8,9 +8,12 @@ import { ChannelSchema } from "./report";
  *  - DashboardResponse, CampaignMetricItem, ChannelMetricsResponse,
  *    ChannelMetricItem, SegmentMetricsResponse, SegmentMetricItem
  *
- * 비율 지표(deliveryRate/clickRate)는 백엔드 v1 record에서 `double` non-null로 직렬화되지만,
- * ADR-0007 supersede 후 nullable로 전환될 수 있으므로 미리 nullable로 받아 둔다.
- * 분모 0이면 null — formatRate 유틸이 "—"로 표기.
+ * ADR-0007 supersede 적용 (2026-05-07):
+ *  - OPEN / CONVERT 카운트 + 비율 4종 추가
+ *  - 모든 비율 필드 nullable (분모 0 ⇒ null) — KPI 정의서 §3
+ *  - clickRate 분모 의미: ADR-0003 clicked/delivered → ADR-0007 click/open
+ *
+ * 화면에서는 formatRate(value: number | null) 유틸로 "—" 표기.
  */
 
 const rateSchema = z
@@ -26,7 +29,9 @@ export const DailyPointSchema = z.object({
   date: z.string(),
   sent: z.number(),
   delivered: z.number(),
+  opened: z.number(),
   clicked: z.number(),
+  converted: z.number(),
 });
 export type DailyPoint = z.infer<typeof DailyPointSchema>;
 
@@ -34,10 +39,14 @@ export const DashboardSummarySchema = z.object({
   campaignsSentInPeriod: z.number(),
   totalSent: z.number(),
   totalDelivered: z.number(),
+  totalOpen: z.number(),
   totalClicked: z.number(),
+  totalConvert: z.number(),
   totalFailed: z.number(),
   avgDeliveryRate: rateSchema,
+  avgOpenRate: rateSchema,
   avgClickRate: rateSchema,
+  avgConvertRate: rateSchema,
 });
 export type DashboardSummary = z.infer<typeof DashboardSummarySchema>;
 
@@ -55,10 +64,14 @@ export const CampaignMetricItemSchema = z.object({
   channel: z.string(),
   sentCount: z.number(),
   deliveredCount: z.number(),
+  openCount: z.number(),
   clickedCount: z.number(),
+  convertCount: z.number(),
   failedCount: z.number(),
   deliveryRate: rateSchema,
+  openRate: rateSchema,
   clickRate: rateSchema,
+  convertRate: rateSchema,
 });
 export type CampaignMetricItem = z.infer<typeof CampaignMetricItemSchema>;
 
@@ -66,10 +79,14 @@ export const ChannelMetricItemSchema = z.object({
   channel: z.string(),
   sentCount: z.number(),
   deliveredCount: z.number(),
+  openCount: z.number(),
   clickedCount: z.number(),
+  convertCount: z.number(),
   failedCount: z.number(),
   deliveryRate: rateSchema,
+  openRate: rateSchema,
   clickRate: rateSchema,
+  convertRate: rateSchema,
 });
 export type ChannelMetricItem = z.infer<typeof ChannelMetricItemSchema>;
 
@@ -84,9 +101,13 @@ export const SegmentMetricItemSchema = z.object({
   campaignCount: z.number(),
   sentCount: z.number(),
   deliveredCount: z.number(),
+  openCount: z.number(),
   clickedCount: z.number(),
+  convertCount: z.number(),
   deliveryRate: rateSchema,
+  openRate: rateSchema,
   clickRate: rateSchema,
+  convertRate: rateSchema,
 });
 export type SegmentMetricItem = z.infer<typeof SegmentMetricItemSchema>;
 

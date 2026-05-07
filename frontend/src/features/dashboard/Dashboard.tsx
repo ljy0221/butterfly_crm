@@ -142,11 +142,11 @@ export default function Dashboard() {
         }
       />
 
-      {/* KPI 4 cards */}
+      {/* KPI 6 cards (ADR-0007: OPEN/CONVERT 추가) */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
+          gridTemplateColumns: "repeat(6, 1fr)",
           gap: 14,
           marginBottom: 20,
         }}
@@ -259,7 +259,7 @@ function KpiBlock({ summary, isLoading, isError }: KpiBlockProps) {
   if (isLoading) {
     return (
       <>
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2, 3, 4, 5].map((i) => (
           <SkeletonCard key={i} height={108} />
         ))}
       </>
@@ -268,7 +268,7 @@ function KpiBlock({ summary, isLoading, isError }: KpiBlockProps) {
   if (isError || !summary) {
     return (
       <>
-        {[0, 1, 2, 3].map((i) => (
+        {[0, 1, 2, 3, 4, 5].map((i) => (
           <ErrorCard key={i} height={108} />
         ))}
       </>
@@ -284,11 +284,15 @@ function KpiBlock({ summary, isLoading, isError }: KpiBlockProps) {
       <StatCard label="총 발송" value={fmtNum(summary.totalSent) as string} />
       <StatCard label="평균 전달률" value={formatRate(summary.avgDeliveryRate)} />
       {/*
-        avgClickRate 의미는 ADR-0007 supersede 후 click/open으로 정의됨.
-        백엔드 v1 응답이 옛 정의(click/delivered)와 섞여 있을 수 있어 라벨은
-        중립적인 "평균 클릭률"로 통일 — KPI 정의서 §2.
+        ADR-0007 (2026-04-28 supersede ADR-0003) 적용 후 KPI 4종이 6종으로 확장.
+        - avgOpenRate    = open / delivered
+        - avgClickRate   = click / open  (이전 click/delivered 에서 분모 변경)
+        - avgConvertRate = convert / sent
+        분모가 0이면 백엔드가 null을 보내고 formatRate가 "—"로 표기 (KPI 정의서 §3).
       */}
+      <StatCard label="평균 오픈률" value={formatRate(summary.avgOpenRate)} />
       <StatCard label="평균 클릭률" value={formatRate(summary.avgClickRate)} />
+      <StatCard label="평균 전환률" value={formatRate(summary.avgConvertRate)} />
     </>
   );
 }
@@ -554,7 +558,8 @@ function RecentCampaignTable({
   onCreateCampaign,
   onRetry,
 }: RecentCampaignTableProps) {
-  const cols = "2.4fr 0.9fr 1fr 0.9fr 0.9fr";
+  // ADR-0007 적용: 발송수 / 전달률 / 오픈률 / 클릭률 / 전환률 5개 metric 컬럼.
+  const cols = "2.4fr 0.9fr 1fr 0.8fr 0.8fr 0.8fr 0.8fr";
 
   if (isLoading) {
     return (
@@ -576,6 +581,8 @@ function RecentCampaignTable({
           <div role="cell">발송수</div>
           <div role="cell">전달률</div>
           <div role="cell">오픈률</div>
+          <div role="cell">클릭률</div>
+          <div role="cell">전환률</div>
         </div>
         {[0, 1, 2, 3, 4].map((i) => (
           <div
@@ -591,6 +598,8 @@ function RecentCampaignTable({
             <SkeletonBar height={14} width="80%" />
             <SkeletonBar height={14} width="60%" />
             <SkeletonBar height={14} width="50%" />
+            <SkeletonBar height={14} width="40%" />
+            <SkeletonBar height={14} width="40%" />
             <SkeletonBar height={14} width="40%" />
             <SkeletonBar height={14} width="40%" />
           </div>
@@ -651,6 +660,8 @@ function RecentCampaignTable({
         <div role="cell">발송수</div>
         <div role="cell">전달률</div>
         <div role="cell">오픈률</div>
+        <div role="cell">클릭률</div>
+        <div role="cell">전환률</div>
       </div>
       {items.map((c, i) => (
         <div
@@ -702,30 +713,40 @@ function RecentCampaignTable({
           >
             {fmtNum(c.sentCount)}
           </div>
-          <div
-            role="cell"
-            style={{
-              color: c.deliveryRate === null ? "#94a3b8" : "#16a34a",
-              fontVariantNumeric: "tabular-nums",
-              fontWeight: c.deliveryRate === null ? 400 : 600,
-            }}
-            title={c.deliveryRate === null ? "분모가 0이라 비율을 계산할 수 없습니다" : undefined}
-          >
-            {formatRate(c.deliveryRate)}
-          </div>
-          <div
-            role="cell"
-            style={{
-              color: c.clickRate === null ? "#94a3b8" : "#f59e0b",
-              fontVariantNumeric: "tabular-nums",
-              fontWeight: c.clickRate === null ? 400 : 600,
-            }}
-            title={c.clickRate === null ? "분모가 0이라 비율을 계산할 수 없습니다" : undefined}
-          >
-            {formatRate(c.clickRate)}
-          </div>
+          <RateCell value={c.deliveryRate} color="#16a34a" />
+          <RateCell value={c.openRate} color="#0ea5e9" />
+          <RateCell value={c.clickRate} color="#f59e0b" />
+          <RateCell value={c.convertRate} color="#7c3aed" />
         </div>
       ))}
+    </div>
+  );
+}
+
+// ============================================================
+// 비율 셀 (recent campaigns 테이블 — ADR-0007 4종 비율 일관 표시)
+// ============================================================
+
+function RateCell({
+  value,
+  color,
+}: {
+  value: number | null;
+  color: string;
+}) {
+  const text = formatRate(value);
+  const isMissing = value === null;
+  return (
+    <div
+      role="cell"
+      style={{
+        color: isMissing ? "#94a3b8" : color,
+        fontVariantNumeric: "tabular-nums",
+        fontWeight: isMissing ? 400 : 600,
+      }}
+      title={isMissing ? "분모가 0이라 비율을 계산할 수 없습니다" : undefined}
+    >
+      {text}
     </div>
   );
 }
