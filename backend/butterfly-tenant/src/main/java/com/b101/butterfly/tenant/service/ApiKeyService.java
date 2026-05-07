@@ -1,16 +1,20 @@
 package com.b101.butterfly.tenant.service;
 
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.global.event.AuditRecordedEvent;
+import com.b101.butterfly.tenant.constant.AuditAction;
 import com.b101.butterfly.tenant.entity.Project;
 import com.b101.butterfly.tenant.exception.TenantErrorCode;
 import com.b101.butterfly.tenant.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,9 +24,10 @@ import java.util.UUID;
 public class ApiKeyService {
 
     private final ProjectRepository projectRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public String issueApiKey(Long projectId) {
+    public String issueApiKey(Long projectId, Long actorId) {
         Project project = findProject(projectId);
 
         if (project.getPublicApiKey() != null) {
@@ -31,17 +36,23 @@ public class ApiKeyService {
 
         String apiKey = generateApiKey();
         project.issueApiKey(sha256(apiKey));
-        // TODO(P7): AuditRecordedEvent 발행 (API_KEY_ISSUED) — ADR-0009
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, actorId, AuditAction.API_KEY_ISSUED, "Project", projectId,
+                null, null, Map.of("keyPrefix", apiKey.substring(0, 12) + "...")
+        ));
         return apiKey;
     }
 
     @Transactional
-    public String revokeAndReissueApiKey(Long projectId) {
+    public String revokeAndReissueApiKey(Long projectId, Long actorId) {
         Project project = findProject(projectId);
         // TODO(P7): 진행 중인 캠페인 확인 후 grace period 처리 — 역할 5 워커 연동
         String apiKey = generateApiKey();
         project.issueApiKey(sha256(apiKey));
-        // TODO(P7): AuditRecordedEvent 발행 (API_KEY_REVOKED) — ADR-0009
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, actorId, AuditAction.API_KEY_REVOKED, "Project", projectId,
+                null, null, Map.of("keyPrefix", apiKey.substring(0, 12) + "...")
+        ));
         return apiKey;
     }
 
