@@ -14,8 +14,12 @@ stages:
 
 variables:
   BACKEND_DIR: backend
+  FRONTEND_DIR: frontend
   GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+  # CI 환경에서 npm install이 dev 의존성 포함 + audit 비활성화로 더 빠름
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_AUDIT: "false"
 
 .gradle-cache: &gradle-cache
   cache:
@@ -27,6 +31,16 @@ variables:
     paths:
       - .gradle/caches/
       - .gradle/wrapper/
+    policy: pull-push
+
+.npm-cache: &npm-cache
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+      prefix: "fe-npm"
+    paths:
+      - frontend/node_modules/
     policy: pull-push
 
 unit-test:
@@ -151,3 +165,50 @@ package:
     - echo "Building image for module $MODULE"
     - 'echo "Target: ${GHCR_NAMESPACE}/${MODULE}:${CI_COMMIT_SHORT_SHA}"'
     - ./gradlew :${MODULE}:jib --build-cache --no-daemon
+
+# ==========
+# Frontend
+# ==========
+# 프론트엔드(React 18 + Vite + TypeScript)는 frontend/ 변경 시에만 트리거.
+# 백엔드 변경에서는 자원 절약을 위해 미실행. 단 .gitlab-ci.yml 변경은 양쪽 모두 트리거.
+# package 잡(이미지 빌드/배포)은 향후 별도 PR에서 추가 예정.
+
+frontend-type-check:
+  stage: test
+  image: node:22-alpine
+  rules:
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+  <<: *npm-cache
+  before_script:
+    - cd $FRONTEND_DIR
+    - npm ci --prefer-offline --no-audit
+  script:
+    - npm run type-check
+  artifacts:
+    name: "fe-type-check-$CI_COMMIT_SHORT_SHA"
+    when: on_failure
+    expire_in: 1 week
+    paths:
+      - "frontend/tsconfig.tsbuildinfo"
+
+frontend-build:
+  stage: test
+  image: node:22-alpine
+  rules:
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+  <<: *npm-cache
+  before_script:
+    - cd $FRONTEND_DIR
+    - npm ci --prefer-offline --no-audit
+  script:
+    - npm run build
+  artifacts:
+    name: "fe-build-$CI_COMMIT_SHORT_SHA"
+    when: on_success
+    expire_in: 1 week
+    paths:
+      - "frontend/dist/"
