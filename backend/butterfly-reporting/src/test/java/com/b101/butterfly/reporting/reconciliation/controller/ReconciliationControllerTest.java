@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -53,6 +54,70 @@ class ReconciliationControllerTest {
         );
         return PageResponse.of(List.of(item), 0, 20, 1L);
     }
+
+    private ReconciliationItem sampleItem(Long executionId, boolean consistent) {
+        return new ReconciliationItem(
+                executionId, 123L, 4521L, executionId, Channel.PUSH,
+                100, consistent ? 100 : 95, 90, 5, consistent ? 0 : 5,
+                consistent, consistent ? null : "5건 누락 감지",
+                LocalDateTime.of(2026, 4, 28, 12, 0)
+        );
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN — POST /reconciliations/campaigns/{id} → 200 + 검증 요약 (checked/consistent/inconsistent)")
+    void adminTriggerCampaignSuccess() throws Exception {
+        when(reconciliationService.reconcileCampaign(4521L)).thenReturn(List.of(
+                sampleItem(11L, true),
+                sampleItem(12L, false)
+        ));
+
+        mockMvc.perform(post("/api/v1/reconciliations/campaigns/{id}", 4521L)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.checked").value(2))
+                .andExpect(jsonPath("$.data.consistent").value(1))
+                .andExpect(jsonPath("$.data.inconsistent").value(1))
+                .andExpect(jsonPath("$.data.reconIds.length()").value(2));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN — POST /reconciliations/campaigns/{id} 회차 0건 → 200 + checked=0")
+    void adminTriggerCampaignNoExecutions() throws Exception {
+        when(reconciliationService.reconcileCampaign(4521L)).thenReturn(List.of());
+
+        mockMvc.perform(post("/api/v1/reconciliations/campaigns/{id}", 4521L)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.checked").value(0))
+                .andExpect(jsonPath("$.data.consistent").value(0))
+                .andExpect(jsonPath("$.data.inconsistent").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("ADMIN — POST /reconciliations/executions/{id} → 200 + 단일 ReconciliationItem")
+    void adminTriggerExecutionSuccess() throws Exception {
+        when(reconciliationService.reconcileExecution(99L)).thenReturn(sampleItem(99L, true));
+
+        mockMvc.perform(post("/api/v1/reconciliations/executions/{id}", 99L)
+                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.campaignExecutionId").value(99))
+                .andExpect(jsonPath("$.data.consistent").value(true));
+    }
+
+    // 참고:
+    // 1. 회차 미존재 → 404 EXECUTION_NOT_FOUND 매핑은 ReconciliationServiceTest 의
+    //    `reconcileExecution.executionNotFound` 가 BusinessException 던짐을 검증한다 —
+    //    GlobalExceptionHandler 의 BusinessException → HttpStatus 매핑은 GlobalExceptionHandlerTest 가 검증.
+    // 2. POST 트리거 API 의 권한 401/403 거부는 기존 GET 테스트
+    //    (anonymousIsUnauthorized, nonAdminIsForbidden) 가 동일 @PreAuthorize("hasRole('ADMIN')")
+    //    정책을 검증하므로 중복 작성하지 않는다.
+
 
     @Test
     @DisplayName("미인증 사용자는 GET /api/v1/reconciliations에 401")
