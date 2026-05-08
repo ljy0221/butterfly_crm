@@ -20,7 +20,9 @@ public record CampaignDetailResponse(
         Channel channel,
         CampaignStatus campaignStatus,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        /** 세그먼트 빌드 상태 — Targeting.All이면 null, Targeting.Segment이면 "READY"/"BUILDING" 등. */
+        String segmentBuildStatus
 ) {
 
     public static CampaignDetailResponse from(CampaignDetailResult result) {
@@ -37,7 +39,8 @@ public record CampaignDetailResponse(
                 result.channel(),
                 result.campaignStatus(),
                 result.createdAt(),
-                result.updatedAt()
+                result.updatedAt(),
+                result.segmentBuildStatus()
         );
     }
 }

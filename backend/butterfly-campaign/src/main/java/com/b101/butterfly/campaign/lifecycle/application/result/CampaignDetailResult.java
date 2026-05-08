@@ -20,7 +20,9 @@ public record CampaignDetailResult(
         Channel channel,
         CampaignStatus campaignStatus,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        /** 세그먼트 빌드 상태 — Targeting.All이면 null, Targeting.Segment이면 "READY"/"BUILDING" 등. */
+        String segmentBuildStatus
 ) {
 
     public static CampaignDetailResult from(Campaign campaign) {
@@ -37,7 +39,27 @@ public record CampaignDetailResult(
                 campaign.getChannel(),
                 campaign.getCampaignStatus(),
                 campaign.getCreatedAt(),
-                campaign.getUpdatedAt()
+                campaign.getUpdatedAt(),
+                null
+        );
+    }
+
+    public static CampaignDetailResult from(Campaign campaign, String segmentBuildStatus) {
+        return new CampaignDetailResult(
+                campaign.getCampaignId(),
+                campaign.getProjectId(),
+                campaign.getMessageTemplateId(),
+                campaign.getSegmentId(),
+                campaign.getMemberId(),
+                campaign.getCampaignName(),
+                campaign.getCampaignDescription(),
+                campaign.getCampaignType(),
+                campaign.getSendMode(),
+                campaign.getChannel(),
+                campaign.getCampaignStatus(),
+                campaign.getCreatedAt(),
+                campaign.getUpdatedAt(),
+                segmentBuildStatus
         );
     }
 }

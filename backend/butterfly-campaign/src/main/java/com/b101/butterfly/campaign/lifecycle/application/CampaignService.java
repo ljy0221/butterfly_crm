@@ -13,6 +13,7 @@ import com.b101.butterfly.campaign.lifecycle.application.CampaignRemover;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
+import com.b101.butterfly.campaign.lifecycle.port.SegmentReadinessPort;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,6 +36,7 @@ public class CampaignService {
     private final CampaignModifier modifier;
     private final CampaignRemover remover;
     private final CampaignActivator activator;
+    private final SegmentReadinessPort segmentReadinessPort;
 
     @Transactional
     public Long createCampaign(CampaignCreateCommand command) {
@@ -60,7 +62,14 @@ public class CampaignService {
         if (!campaign.isOwnedBy(projectId)) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_NOT_FOUND);
         }
-        return CampaignDetailResult.from(campaign);
+        // segmentId가 있으면 segmentBuildStatus 조회 (Targeting.All이면 null)
+        String segmentBuildStatus = null;
+        if (campaign.getSegmentId() != null) {
+            segmentBuildStatus = segmentReadinessPort.findStatus(campaign.getSegmentId())
+                    .map(v -> v.buildStatus())
+                    .orElse(null);
+        }
+        return CampaignDetailResult.from(campaign, segmentBuildStatus);
     }
 
     @Transactional
