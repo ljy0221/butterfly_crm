@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -55,8 +56,9 @@ public class ProjectController {
     @DeleteMapping("/projects/{projectId}/members/{memberId}")
     public ResponseEntity<ApiResponse<Void>> removeMember(
             @PathVariable Long projectId,
-            @PathVariable Long memberId) {
-        projectMemberService.removeMember(projectId, memberId);
+            @PathVariable Long memberId,
+            @RequestHeader("X-Member-Id") Long actorId) {
+        projectMemberService.removeMember(projectId, memberId, actorId);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
@@ -65,21 +67,26 @@ public class ProjectController {
     public ResponseEntity<ApiResponse<Void>> updateMemberRole(
             @PathVariable Long projectId,
             @PathVariable Long memberId,
+            @RequestHeader("X-Member-Id") Long actorId,
             @Valid @RequestBody UpdateMemberRoleRequest request) {
-        projectMemberService.updateMemberRole(projectId, memberId, request);
+        projectMemberService.updateMemberRole(projectId, memberId, actorId, request);
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
     // API 키 최초 발급 (OWNER)
     @PostMapping("/projects/{projectId}/api-keys/issue")
-    public ResponseEntity<ApiResponse<ApiKeyResponse>> issueApiKey(@PathVariable Long projectId) {
-        return ResponseEntity.ok(ApiResponse.ok(new ApiKeyResponse(apiKeyService.issueApiKey(projectId))));
+    public ResponseEntity<ApiResponse<ApiKeyResponse>> issueApiKey(
+            @PathVariable Long projectId,
+            @RequestHeader("X-Member-Id") Long actorId) {
+        return ResponseEntity.ok(ApiResponse.ok(new ApiKeyResponse(apiKeyService.issueApiKey(projectId, actorId))));
     }
 
     // API 키 재발급 (OWNER)
     @PostMapping("/projects/{projectId}/api-keys/revoke")
-    public ResponseEntity<ApiResponse<ApiKeyResponse>> revokeApiKey(@PathVariable Long projectId) {
-        return ResponseEntity.ok(ApiResponse.ok(new ApiKeyResponse(apiKeyService.revokeAndReissueApiKey(projectId))));
+    public ResponseEntity<ApiResponse<ApiKeyResponse>> revokeApiKey(
+            @PathVariable Long projectId,
+            @RequestHeader("X-Member-Id") Long actorId) {
+        return ResponseEntity.ok(ApiResponse.ok(new ApiKeyResponse(apiKeyService.revokeAndReissueApiKey(projectId, actorId))));
     }
 
 }
