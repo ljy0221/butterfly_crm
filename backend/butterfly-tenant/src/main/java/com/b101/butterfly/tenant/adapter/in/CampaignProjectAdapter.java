@@ -3,7 +3,7 @@ package com.b101.butterfly.tenant.adapter.in;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectInformationPort;
 import com.b101.butterfly.global.error.BusinessException;
-import com.b101.butterfly.tenant.error.code.ProjectErrorCode;
+import com.b101.butterfly.tenant.exception.TenantErrorCode;
 import com.b101.butterfly.tenant.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,8 +21,8 @@ public class CampaignProjectAdapter implements ProjectExistencePort, ProjectInfo
 
     @Override
     public String findProjectName(Long projectId) {
-        if (projectRepository.existsById(projectId)) {
-            throw new BusinessException(ProjectErrorCode.PROJECT_NOT_FOUND);
+        if (!projectRepository.existsById(projectId)) {
+            throw new BusinessException(TenantErrorCode.PROJECT_NOT_FOUND);
         }
         return projectRepository.findNameById(projectId);
     }
