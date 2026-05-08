@@ -1,20 +1,15 @@
 package com.b101.butterfly.api.baseline;
 
-import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.Tag;
+import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,8 +30,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
  * DataSource + Flyway + JdbcTemplate만 구성하며 JPA 자동설정은 로드하지 않는다.
+ *
+ * MySQL 컨테이너는 testsupport의 {@link AbstractMySqlContainerTest}를 상속하여
+ * JVM 수명 동안 단일 인스턴스를 다른 통합 테스트와 공유한다 (메모리 압박 완화 + 부팅 1회).
+ * databaseName이 필요한 information_schema 쿼리는 {@link #CONTAINER}.getDatabaseName()으로 접근.
  */
-@Tag("integration")
 @SpringBootTest(
         classes = {
                 DataSourceAutoConfiguration.class,
@@ -45,17 +43,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         },
         webEnvironment = org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE
 )
-@Testcontainers
-class BaselineMigrationIntegrationTest {
-
-    @Container
-    @ServiceConnection
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("butterfly_test")
-            .withUsername("test")
-            .withPassword("test")
-            // binary logging이 활성화된 MySQL 8에서 non-SUPER 사용자도 트리거를 생성할 수 있도록 허용
-            .withCommand("--log_bin_trust_function_creators=1");
+class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {
@@ -74,7 +62,7 @@ class BaselineMigrationIntegrationTest {
                 "SELECT COUNT(*) FROM information_schema.tables " +
                 "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
                 "AND table_name <> 'flyway_schema_history'",
-                Integer.class, mysql.getDatabaseName());
+                Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(32);
     }
 
@@ -92,7 +80,7 @@ class BaselineMigrationIntegrationTest {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.triggers " +
                 "WHERE trigger_schema = ? AND event_object_table = 'audit_logs'",
-                Integer.class, mysql.getDatabaseName());
+                Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(2);
     }
 
@@ -111,7 +99,7 @@ class BaselineMigrationIntegrationTest {
                 "SELECT COUNT(*) FROM information_schema.columns " +
                 "WHERE table_schema = ? AND table_name = 'segments' " +
                 "AND column_name IN ('build_token', 'build_started_at', 'build_heartbeat_at')",
-                Integer.class, mysql.getDatabaseName());
+                Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(3);
     }
 
@@ -120,7 +108,7 @@ class BaselineMigrationIntegrationTest {
         String columnDefault = jdbc.queryForObject(
                 "SELECT column_default FROM information_schema.columns " +
                 "WHERE table_schema = ? AND table_name = 'segments' AND column_name = 'schema_version'",
-                String.class, mysql.getDatabaseName());
+                String.class, CONTAINER.getDatabaseName());
         assertThat(columnDefault).isEqualTo("4");
     }
 }

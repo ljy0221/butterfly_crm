@@ -5,7 +5,7 @@ import static org.awaitility.Awaitility.await;
 
 import com.b101.butterfly.event.EventTestApplication;
 import com.b101.butterfly.event.repository.EventRepository;
-import com.b101.butterfly.event.support.AbstractMySqlContainerTest;
+import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
