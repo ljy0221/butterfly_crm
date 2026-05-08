@@ -85,18 +85,52 @@ export default function AnalyticsHome() {
             !card.requires ||
             (card.requires === "OWNER" && role === "OWNER") ||
             card.requires === "ADMIN"; // ADMIN 카드는 진입 자체는 외부 페이지 안내
-          const clickable = card.status === "ready" && card.to && allowed;
+          const clickable = card.status === "ready" && !!card.to && allowed;
+          // 공용 Card 컴포넌트는 onClick prop을 받지 않으므로(다른 도메인 영향 회피),
+          // 클릭 가능한 카드는 외부 div(role="button")로 감싸서 마우스/키보드 처리.
+          const handleActivate = () => {
+            if (clickable && card.to) navigate(card.to);
+          };
+          const interactiveProps = clickable
+            ? {
+                role: "button" as const,
+                tabIndex: 0,
+                onClick: handleActivate,
+                onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleActivate();
+                  }
+                },
+              }
+            : {};
           return (
-            <Card
+            <div
               key={card.key}
+              {...interactiveProps}
               style={{
                 cursor: clickable ? "pointer" : "default",
                 opacity: allowed ? 1 : 0.55,
+                outline: "none",
+                borderRadius: 12,
               }}
-              onClick={() => {
-                if (clickable && card.to) navigate(card.to);
-              }}
+              onFocus={
+                clickable
+                  ? (e) => {
+                      e.currentTarget.style.boxShadow =
+                        "0 0 0 2px rgba(99, 102, 241, 0.4)";
+                    }
+                  : undefined
+              }
+              onBlur={
+                clickable
+                  ? (e) => {
+                      e.currentTarget.style.boxShadow = "none";
+                    }
+                  : undefined
+              }
             >
+              <Card>
               <div
                 style={{
                   display: "flex",
@@ -170,6 +204,7 @@ export default function AnalyticsHome() {
                 </div>
               </div>
             </Card>
+            </div>
           );
         })}
       </div>
