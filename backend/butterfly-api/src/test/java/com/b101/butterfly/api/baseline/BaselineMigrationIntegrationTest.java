@@ -25,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - V6: campaign_executions.version (optimistic lock)
  * - V7: devices.external_id 추가 (ADR-0012, S14P31B101-21)
  * - V8: 세그먼트/이벤트 조회용 인덱스 2개 (S14P31B101-195)
- * - flyway_schema_history: 8 row
+ * - V9: token_blacklist 테이블 DROP (Redis 블랙리스트로 대체)
+ * - flyway_schema_history: 9 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
@@ -56,23 +57,23 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
     JdbcTemplate jdbc;
 
     @Test
-    void v1_v8_적용_후_테이블_32개_생성() {
-        // V7(devices.external_id ADD COLUMN) / V8(인덱스 2개)은 테이블을 추가하지 않으므로 32개 유지.
+    void v1_v9_적용_후_테이블_31개_생성() {
+        // V9: token_blacklist DROP → 32개 → 31개
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.tables " +
                 "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
                 "AND table_name <> 'flyway_schema_history'",
                 Integer.class, CONTAINER.getDatabaseName());
-        assertThat(count).isEqualTo(32);
+        assertThat(count).isEqualTo(31);
     }
 
     @Test
-    void schema_history_8개_row_성공_상태() {
-        // V1 ~ V8 — V7(devices.external_id), V8(segment/event 조회 인덱스) 추가됨.
+    void schema_history_9개_row_성공_상태() {
+        // V1 ~ V9 — V9(token_blacklist DROP) 추가됨.
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(8);
+        assertThat(count).isEqualTo(9);
     }
 
     @Test
