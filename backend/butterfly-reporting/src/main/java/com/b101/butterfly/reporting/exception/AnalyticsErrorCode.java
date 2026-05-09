@@ -13,7 +13,8 @@ public enum AnalyticsErrorCode implements ErrorCode {
     DATE_RANGE_TOO_LARGE("ANALYTICS_003", "조회 기간이 너무 깁니다.", HttpStatus.BAD_REQUEST),
     AUDIT_NOT_FOUND("ANALYTICS_004", "감사 로그를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     LOG_NOT_FOUND("ANALYTICS_005", "발송 로그를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
-    INVALID_ACTION_TARGET("ANALYTICS_006", "actionTarget이 유효한 URL이 아닙니다.", HttpStatus.BAD_REQUEST);
+    INVALID_ACTION_TARGET("ANALYTICS_006", "actionTarget이 유효한 URL이 아닙니다.", HttpStatus.BAD_REQUEST),
+    EXECUTION_NOT_FOUND("ANALYTICS_007", "캠페인 회차를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

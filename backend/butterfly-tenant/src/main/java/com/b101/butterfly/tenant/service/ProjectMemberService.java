@@ -6,14 +6,18 @@ import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.auth.repository.RefreshTokenRepository;
 import com.b101.butterfly.auth.security.ProjectPermissionEvaluator;
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.global.event.AuditRecordedEvent;
+import com.b101.butterfly.tenant.constant.AuditAction;
 import com.b101.butterfly.tenant.dto.request.UpdateMemberRoleRequest;
 import com.b101.butterfly.tenant.dto.response.ProjectMemberResponse;
 import com.b101.butterfly.tenant.exception.TenantErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +28,7 @@ public class ProjectMemberService {
     private final MemberRepository memberRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final ProjectPermissionEvaluator projectPermissionEvaluator;
+    private final ApplicationEventPublisher eventPublisher;
 
     public List<ProjectMemberResponse> getMembers(Long projectId) {
         return memberRepository.findAllByProjectId(projectId)
@@ -33,7 +38,7 @@ public class ProjectMemberService {
     }
 
     @Transactional
-    public void removeMember(Long projectId, Long targetMemberId) {
+    public void removeMember(Long projectId, Long targetMemberId, Long actorId) {
         Member target = findMemberInProject(projectId, targetMemberId);
 
         if (target.getRoleType() == RoleType.OWNER) {
@@ -44,20 +49,27 @@ public class ProjectMemberService {
         refreshTokenRepository.deleteByMemberId(targetMemberId);
         projectPermissionEvaluator.evictCache(targetMemberId, projectId);
         // TODO(P7): AccessToken 블랙리스트 등록 — JWT 통합 시 구현
-        // TODO(P7): AuditRecordedEvent 발행 (MEMBER_REMOVED) — ADR-0009
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, actorId, AuditAction.MEMBER_REMOVED, "Member", targetMemberId,
+                null, null, Map.of("removedMemberId", targetMemberId)
+        ));
     }
 
     @Transactional
-    public void updateMemberRole(Long projectId, Long targetMemberId, UpdateMemberRoleRequest request) {
+    public void updateMemberRole(Long projectId, Long targetMemberId, Long actorId, UpdateMemberRoleRequest request) {
         Member target = findMemberInProject(projectId, targetMemberId);
 
         if (request.roleType() == RoleType.OWNER) {
             throw new BusinessException(TenantErrorCode.OWNER_TRANSFER_REQUIRED);
         }
 
+        RoleType previousRole = target.getRoleType();
         target.updateRole(request.roleType());
         projectPermissionEvaluator.evictCache(targetMemberId, projectId);
-        // TODO(P7): AuditRecordedEvent 발행 (MEMBER_ROLE_CHANGED) — ADR-0009
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, actorId, AuditAction.MEMBER_ROLE_CHANGED, "Member", targetMemberId,
+                null, null, Map.of("from", previousRole.name(), "to", request.roleType().name())
+        ));
     }
 
     private Member findMemberInProject(Long projectId, Long memberId) {
