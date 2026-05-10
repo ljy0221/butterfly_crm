@@ -30,6 +30,21 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
     Optional<NotificationLog> findByMessageKey(String messageKey);
 
     /**
+     * 자동 배치(S14P31B101-187 PR-2) 가 "실제 발송 row 가 1건이라도 있는 회차" 만 검증 대상으로
+     * 좁히기 위한 빠른 카운트.
+     *
+     * <p>이서연 합의(2026-05-08)에 따라 어댑터 JPQL은 그대로 두고 caller-side 에서
+     * {@code count > 0} 필터링을 적용한다 — `send_started_at IS NULL` 회차의 노이즈 불일치 적재
+     * 방지. "발송 시작은 됐는데 워커가 stuck 인 회차" 모니터링은 별도 메트릭(stale execution
+     * detection)으로 분리, 본 메서드는 reconciliation 전용 1차 필터.
+     *
+     * <p>스케줄러가 회차당 1회 호출하므로 인덱스 활용이 중요 —
+     * `idx_notification_logs_project_time` 만으로는 부족할 수 있어 대량 회차 처리 시
+     * `(campaign_execution_id, channel)` 복합 인덱스 유무를 점검한다 (PR-3 운영 점검 항목).
+     */
+    long countByCampaignExecutionIdAndChannel(Long campaignExecutionId, Channel channel);
+
+    /**
      * 정합성 검증용 카운트 — 회차×채널 단위 actual/sent/failed 합산.
      *
      * <p>SENT/DELIVERED 는 sent_count, FAILED 는 failed_count, 전체 row 수가 actual_count.
