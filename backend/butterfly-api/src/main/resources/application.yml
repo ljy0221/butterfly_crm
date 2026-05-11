@@ -85,9 +85,8 @@ jwt:
   access-token-expiry-ms: 1800000
   refresh-token-expiry-ms: 604800000
 
-# AES-256 (FCM 자격증명 암호화)
-aes:
-  secret-key: ${AES_KEY}
+# AES_KEY 는 S14P31B101-206 으로 AesEncryptionService 가 제거되면서 미사용.
+# FCM 자격 증명 암호화는 Phase 2 에서 별도 결정 (KMS 또는 시크릿 매니저 직접 주입).
 
 # CORS — 콤마 구분. 운영은 BUTTERFLY_CORS_ALLOWED_ORIGINS 환경변수로 override.
 # 기본값: localhost SPA 포트 (3000/5173-5175 Vite/8080).
