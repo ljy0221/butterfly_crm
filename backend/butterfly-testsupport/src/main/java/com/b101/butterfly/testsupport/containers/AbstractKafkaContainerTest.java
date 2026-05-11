@@ -13,7 +13,8 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class AbstractKafkaContainerTest {
 
     private static final KafkaContainer CONTAINER =
-            new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.0"));
+            new KafkaContainer(DockerImageName.parse("apache/kafka:3.7.0"))
+                    .withReuse(true);
 
     static {
         CONTAINER.start();

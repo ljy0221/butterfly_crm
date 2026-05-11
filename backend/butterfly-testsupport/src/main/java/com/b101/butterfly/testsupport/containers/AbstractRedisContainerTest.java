@@ -16,7 +16,8 @@ public abstract class AbstractRedisContainerTest {
 
     private static final GenericContainer<?> CONTAINER =
             new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-                    .withExposedPorts(REDIS_PORT);
+                    .withExposedPorts(REDIS_PORT)
+                    .withReuse(true);
 
     static {
         CONTAINER.start();
