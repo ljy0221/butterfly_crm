@@ -15,7 +15,7 @@ public record MessageTemplateDetailResponse(
         String messageTemplateImageUrl,
         List<String> requiredVariables,
         LocalDateTime createdAt,
-        LocalDateTime updateAt
+        LocalDateTime updatedAt
 ) {
 
     public static MessageTemplateDetailResponse from(MessageTemplateDetailResult result) {
@@ -30,7 +30,7 @@ public record MessageTemplateDetailResponse(
                 result.messageTemplateImageUrl(),
                 result.requiredVariables(),
                 result.createdAt(),
-                result.updateAt()
+                result.updatedAt()
         );
     }
 

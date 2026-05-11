@@ -50,15 +50,46 @@ class CampaignDomainTest {
     }
 
     @Nested
-    @DisplayName("update — DRAFT 일반 필드 수정")
+    @DisplayName("update — DRAFT 일반 필드 + template/segment 수정")
     class Update {
         @Test
-        @DisplayName("DRAFT 상태에서 이름/설명을 수정한다")
+        @DisplayName("DRAFT 상태에서 이름/설명을 수정한다 (template/segment 동일)")
         void updateInDraft() {
             Campaign c = draftCampaign();
-            c.update("새이름", "새설명");
+            c.update("새이름", "새설명", TEMPLATE_ID, Channel.PUSH, null);
             assertThat(c.getCampaignName()).isEqualTo("새이름");
             assertThat(c.getCampaignDescription()).isEqualTo("새설명");
+            assertThat(c.getMessageTemplateId()).isEqualTo(TEMPLATE_ID);
+            assertThat(c.getChannel()).isEqualTo(Channel.PUSH);
+            assertThat(c.getSegmentId()).isNull();
+        }
+
+        @Test
+        @DisplayName("messageTemplateId 변경 시 channel 도 함께 갱신된다 (호출자 책임)")
+        void updateChangesTemplateAndChannel() {
+            Campaign c = draftCampaign();
+            Long newTemplateId = 200L;
+            c.update("이름", "설명", newTemplateId, Channel.EMAIL, null);
+            assertThat(c.getMessageTemplateId()).isEqualTo(newTemplateId);
+            assertThat(c.getChannel()).isEqualTo(Channel.EMAIL);
+        }
+
+        @Test
+        @DisplayName("segmentId 를 null → 값 으로 변경 (Targeting.All → Targeting.Segment)")
+        void updateSetsSegmentId() {
+            Campaign c = draftCampaign();
+            c.update("이름", "설명", TEMPLATE_ID, Channel.PUSH, 42L);
+            assertThat(c.getSegmentId()).isEqualTo(42L);
+        }
+
+        @Test
+        @DisplayName("segmentId 를 값 → null 로 변경 (Targeting.Segment → Targeting.All)")
+        void updateClearsSegmentId() {
+            Campaign.CampaignCommonInputs common = new Campaign.CampaignCommonInputs(
+                    PROJECT_ID, template(), MEMBER_ID, "이름", "설명");
+            Campaign c = Campaign.create(common, new ScheduleSpec.Immediate(), new Targeting.Segment(42L));
+            c.update("이름", "설명", TEMPLATE_ID, Channel.PUSH, null);
+            assertThat(c.getSegmentId()).isNull();
         }
 
         @Test
@@ -66,7 +97,7 @@ class CampaignDomainTest {
         void updateInNonDraftRejected() {
             Campaign c = draftCampaign();
             c.activate();  // → ACTIVE
-            assertThatThrownBy(() -> c.update("x", "y"))
+            assertThatThrownBy(() -> c.update("x", "y", TEMPLATE_ID, Channel.PUSH, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.NOT_MODIFIABLE);
@@ -76,10 +107,20 @@ class CampaignDomainTest {
         @DisplayName("이름이 비어 있으면 CAMPAIGN_NAME_REQUIRED 예외")
         void blankNameRejected() {
             Campaign c = draftCampaign();
-            assertThatThrownBy(() -> c.update("  ", "설명"))
+            assertThatThrownBy(() -> c.update("  ", "설명", TEMPLATE_ID, Channel.PUSH, null))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.CAMPAIGN_NAME_REQUIRED);
+        }
+
+        @Test
+        @DisplayName("messageTemplateId 가 null 이면 CAMPAIGN_MESSAGE_TEMPLATE_REQUIRED 예외")
+        void nullTemplateIdRejected() {
+            Campaign c = draftCampaign();
+            assertThatThrownBy(() -> c.update("이름", "설명", null, Channel.PUSH, null))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(CampaignErrorCode.CAMPAIGN_MESSAGE_TEMPLATE_REQUIRED);
         }
     }
 
