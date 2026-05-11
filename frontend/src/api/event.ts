@@ -18,15 +18,13 @@ import {
  *
  * 백엔드 (실 API):
  *  - POST /api/v1/events  (EventCollectController)
- *
- * Mock-fallback (백엔드 미구현):
- *  - GET    /api/v1/events/categories
- *  - GET    /api/v1/events/categories/{categoryName}
- *  - GET    /api/v1/events/categories/{categoryName}/schema
- *  - POST   /api/v1/events/categories
- *  - PUT    /api/v1/events/categories/{categoryName}/schema
- *  - DELETE /api/v1/events/categories/{categoryId}
- *  - GET    /api/v1/events/categories/{categoryName}/sample
+ *  - GET    /api/v1/projects/{projectId}/events/categories
+ *  - GET    /api/v1/projects/{projectId}/events/categories/{categoryName}
+ *  - GET    /api/v1/projects/{projectId}/events/categories/{categoryName}/schema
+ *  - POST   /api/v1/projects/{projectId}/events/categories
+ *  - PUT    /api/v1/projects/{projectId}/events/categories/{categoryName}/schema
+ *  - DELETE /api/v1/projects/{projectId}/events/categories/{categoryId}
+ *  - GET    /api/v1/projects/{projectId}/events/categories/{categoryName}/sample
  */
 
 // ---------- Re-exports ----------
@@ -40,8 +38,9 @@ export type {
 // ---------- POST /api/v1/events (실 API) ----------
 
 export interface EventCollectRequest {
-  userId: number;
-  deviceId: number;
+  /** externalId 등 비숫자 식별자가 들어올 수 있어 string. 백엔드 record도 String. */
+  userId: string;
+  deviceId: string;
   eventCategory: string;
   /** ISO LocalDateTime 문자열 ("YYYY-MM-DDTHH:mm:ss"). */
   occurredAt: string;
