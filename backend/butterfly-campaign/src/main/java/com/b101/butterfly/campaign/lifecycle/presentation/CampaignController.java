@@ -10,6 +10,7 @@ import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignDetailResp
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignUpdateRequest;
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.StatusTransitionRequest;
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.StatusTransitionResponse;
+import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -60,7 +61,7 @@ public class CampaignController {
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PostMapping
-    public ResponseEntity<CampaignCreateResponse> createCampaign(
+    public ResponseEntity<ApiResponse<CampaignCreateResponse>> createCampaign(
             @PathVariable @Positive Long projectId,
             @RequestBody @Valid CampaignCreateRequest request,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey
@@ -69,60 +70,60 @@ public class CampaignController {
                 request.toCommand(projectId, currentMemberId()));
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(new CampaignCreateResponse(campaignId));
+                .body(ApiResponse.ok(new CampaignCreateResponse(campaignId)));
     }
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping
-    public ResponseEntity<PageResponse<CampaignListResult>> getCampaignList(
+    public ResponseEntity<ApiResponse<PageResponse<CampaignListResult>>> getCampaignList(
             @PathVariable @Positive Long projectId,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable
     ) {
         Page<CampaignListResult> page = campaignService.getCampaignList(projectId, pageable);
-        return ResponseEntity.ok(PageResponse.of(
+        return ResponseEntity.ok(ApiResponse.ok(PageResponse.of(
                 page.getContent(),
                 page.getNumber(),
                 page.getSize(),
                 page.getTotalElements()
-        ));
+        )));
     }
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/{campaignId}")
-    public ResponseEntity<CampaignDetailResponse> getCampaign(
+    public ResponseEntity<ApiResponse<CampaignDetailResponse>> getCampaign(
             @PathVariable @Positive Long projectId,
             @PathVariable @Positive Long campaignId
     ) {
         CampaignDetailResult result = campaignService.getCampaign(projectId, campaignId);
-        return ResponseEntity.ok(CampaignDetailResponse.from(result));
+        return ResponseEntity.ok(ApiResponse.ok(CampaignDetailResponse.from(result)));
     }
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PatchMapping("/{campaignId}")
-    public ResponseEntity<CampaignCreateResponse> updateCampaign(
+    public ResponseEntity<ApiResponse<CampaignCreateResponse>> updateCampaign(
             @PathVariable @Positive Long projectId,
             @PathVariable @Positive Long campaignId,
             @RequestBody @Valid CampaignUpdateRequest request
     ) {
         Long updatedId = campaignService.updateCampaign(
                 request.toCommand(projectId, campaignId));
-        return ResponseEntity.ok(new CampaignCreateResponse(updatedId));
+        return ResponseEntity.ok(ApiResponse.ok(new CampaignCreateResponse(updatedId)));
     }
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @DeleteMapping("/{campaignId}")
-    public ResponseEntity<Void> deleteCampaign(
+    public ResponseEntity<ApiResponse<Void>> deleteCampaign(
             @PathVariable @Positive Long projectId,
             @PathVariable @Positive Long campaignId
     ) {
         campaignService.deleteCampaign(campaignId, projectId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(ApiResponse.ok());
     }
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PatchMapping("/{campaignId}/status")
-    public ResponseEntity<StatusTransitionResponse> transitionStatus(
+    public ResponseEntity<ApiResponse<StatusTransitionResponse>> transitionStatus(
             @PathVariable @Positive Long projectId,
             @PathVariable @Positive Long campaignId,
             @RequestBody @Valid StatusTransitionRequest request,
@@ -130,7 +131,7 @@ public class CampaignController {
     ) {
         CampaignStatus newStatus = campaignService.transitionStatus(
                 request.toCommand(projectId, campaignId));
-        return ResponseEntity.ok(new StatusTransitionResponse(campaignId, newStatus));
+        return ResponseEntity.ok(ApiResponse.ok(new StatusTransitionResponse(campaignId, newStatus)));
     }
 
     /**

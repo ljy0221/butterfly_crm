@@ -86,7 +86,7 @@ class CampaignControllerWebMvcTest {
                                     }
                                     """))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID));
 
             verify(campaignService).createCampaign(any());
         }
@@ -141,8 +141,8 @@ class CampaignControllerWebMvcTest {
 
             mockMvc.perform(get(BASE_URL + "/" + CAMPAIGN_ID))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID))
-                    .andExpect(jsonPath("$.campaignName").value("캠페인명"));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID))
+                    .andExpect(jsonPath("$.data.campaignName").value("캠페인명"));
         }
     }
 
@@ -164,7 +164,7 @@ class CampaignControllerWebMvcTest {
                                     }
                                     """))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID));
         }
     }
 
@@ -185,8 +185,8 @@ class CampaignControllerWebMvcTest {
                                     }
                                     """))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID))
-                    .andExpect(jsonPath("$.campaignStatus").value("ACTIVE"));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID))
+                    .andExpect(jsonPath("$.data.campaignStatus").value("ACTIVE"));
         }
 
         @Test
@@ -206,10 +206,10 @@ class CampaignControllerWebMvcTest {
     class DeleteCampaign {
 
         @Test
-        @DisplayName("정상 요청 → 204 No Content")
+        @DisplayName("정상 요청 → 200 + ApiResponse.ok()")
         void deleteHappy() throws Exception {
             mockMvc.perform(delete(BASE_URL + "/" + CAMPAIGN_ID))
-                    .andExpect(status().isNoContent());
+                    .andExpect(status().isOk());
 
             verify(campaignService).deleteCampaign(CAMPAIGN_ID, PROJECT_ID);
         }
@@ -231,7 +231,7 @@ class CampaignControllerWebMvcTest {
 
             mockMvc.perform(get(BASE_URL))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content[0].campaignId").value(CAMPAIGN_ID));
+                    .andExpect(jsonPath("$.data.content[0].campaignId").value(CAMPAIGN_ID));
         }
     }
 }
