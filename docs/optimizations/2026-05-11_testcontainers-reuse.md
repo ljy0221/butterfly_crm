@@ -313,3 +313,76 @@ HHH000478: Unsuccessful: drop table if exists campaigns
 - **멀티테넌트** ← 직접 매핑 없음
 - **비동기** ← 간접 — Kafka 컨테이너 reuse로 reporting/notification 모듈 통합 테스트 wall-clock 단축에 기여
 - **채널 추상화** ← 직접 매핑 없음
+
+---
+
+## 머지 후 2차 관측 — Gradle Build Cache hit 시나리오
+
+머지 직후 develop pipeline (SHA `bd2b560`, 226 머지 후 5건 추가 머지 통과)에서 `integration-test` 잡 측정:
+
+| 측정 | 값 |
+|---|---|
+| **integration-test 잡 total** | **2m 00s** |
+| 환경 준비 (pod ready, cache restore) | ~1m 7s |
+| Gradle script | **53s** |
+
+### 정직성 — 이 2m 00s는 reuse 단독 효과가 아니다
+
+빌드 로그의 결정적 신호:
+
+```text
+> Task :butterfly-api:integrationTest FROM-CACHE
+> Task :butterfly-campaign:integrationTest FROM-CACHE
+> Task :butterfly-common:integrationTest FROM-CACHE
+> Task :butterfly-event:integrationTest FROM-CACHE
+> Task :butterfly-notification:integrationTest FROM-CACHE
+> Task :butterfly-reporting:integrationTest FROM-CACHE
+> Task :butterfly-segment:integrationTest FROM-CACHE
+> Task :butterfly-worker:integrationTest FROM-CACHE
+BUILD SUCCESSFUL in 53s
+49 actionable tasks: 22 executed, 27 from cache
+```
+
+**모든 모듈의 `:integrationTest` task가 `FROM-CACHE`**. Gradle Build Cache(S3 cache `shared-...`)가 직전 develop pipeline에서 만든 결과를 재사용해 컨테이너 부팅조차 발생하지 않은 fast path였다.
+
+이 측정은 **reuse 단독 효과가 아니라**:
+
+1. Gradle Build Cache `--build-cache` 플래그 (S14P31B101-169에서 정착)
+2. integrationTest task 입력 hash가 안정적으로 동일 (코드 변경이 testsupport reuse + 카드 + Spring Security 분리 등 IT 입력에 영향 적은 변경에 한정)
+3. 226 머지 ~ 측정 시점 사이에 들어온 5건 PR이 도커/문서/관측성 등 비-IT 영역에 집중
+
+이 셋이 결합한 결과다. 카드 본문의 -29%/-32% 정량은 변경 없이 유지하고, 이 fast path는 별개 현상으로 박제한다.
+
+### 의미 분석
+
+#### 좋은 점 — 캐시 hit 가능성이 일상화되면 effective wall-clock은 매우 작음
+
+| 머지 시나리오 | integration-test 예상 시간 |
+| --- | --- |
+| IT 입력에 영향 없는 PR (문서/관측성/배포 manifest) | 2분 (cache hit) |
+| 단일 모듈 코드 변경 PR | 그 모듈만 cache miss → 5~6분 |
+| 다수 모듈 코드 변경 PR | 부분 cache miss → 8~10분 |
+| testsupport / common 변경 PR | 모든 모듈 cache miss → 10~14분 |
+
+DoD 30분 SLA를 다시 보면, **평균은 5~6분 수준으로 떨어졌다고 추정 가능**.
+
+#### 위험 — 캐시 의존성 양날의 검
+
+- S3 cache pod 삭제, region 장애, key invalidation → 매번 14분으로 회귀
+- testcontainers 또는 의존성 버전 업그레이드 시 캐시 키가 광범위하게 invalidate
+- "cache hit이 일상"이라는 가정이 운영팀에 잘못 학습되면, 후속 캐시 정책 변경 시 회귀 폭이 클 수 있음
+
+### 후속 측정 트리거 (단독 효과 분리 검증)
+
+다음 측정 후보:
+
+1. **testsupport / butterfly-common 변경 포함 PR 머지 후** integration-test 잡 시간 — Gradle cache miss 강제. 이때 reuse 단독 효과 측정 가능
+2. **S14P31B101-224 (cgroup limit 부재) 후속 G안** 적용 후 같은 조건 측정
+3. **develop pipeline 5건 누적** wall-clock p50/p95 — `git rev-list 5814297..HEAD --merges | wc -l` 5 도달 시점
+
+### 결론
+
+- 1차 카드 본문 정량 (`14m 02s → 9m 56s, -29%`)은 reuse 단독 효과의 **상한 추정값**으로 유효
+- 2차 머지 후 fast path (`2m 00s`)는 **Gradle Build Cache hit 효과 + reuse 효과 합산**의 **하한 추정값**으로 별개 박제
+- 진짜 reuse 단독 효과 = 두 측정 사이 어딘가 (대략 **3~5분 절감 추정**, 5건 누적 측정 후 정밀화)
+- DoD 30분 SLA 대비 effective margin은 **9m 56s 기준 -67%, 2m 00s 기준 -93%** — 어느 쪽이든 통과

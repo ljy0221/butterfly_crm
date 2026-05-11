@@ -75,9 +75,9 @@
 
 ### 1차 실측 완료 (VERIFIED, 단일 표본)
 
-| 카드 | 1차 (MR !144 commit 7be5475) | 핵심 결과 | 보강 트리거 |
-| --- | --- | --- | --- |
-| [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) | integration-test 잡 14m 02s → 9m 56s (-29%), script 13m 02s → 8m 55s (-32%), 데이터 누수 실패 0건 | 부작용(MySQL shutdown drop 실패 로그 노이즈, 테스트 PASS) + 추가 발견(컨텍스트 캐시 hit 0건, EmbeddedKafka 모듈 reuse 효과 0) 박제. 후속 7개 안 우선순위 정리 | 머지 후 develop pipeline 5건 누적으로 reuse 단독 효과 분리 검증 (S14P31B101-225 머지 영향 분리) |
+| 카드 | 1차 (MR !144 commit 7be5475) | 2차 (develop SHA bd2b560, 226 머지 후 5건) | 핵심 결과 | 보강 트리거 |
+| --- | --- | --- | --- | --- |
+| [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) | integration-test 잡 14m 02s → 9m 56s (-29%), script 13m 02s → 8m 55s (-32%), 데이터 누수 실패 0건 | **integration-test 잡 2m 00s** (Gradle Build Cache hit fast path — 모든 모듈 `:integrationTest` FROM-CACHE) — reuse 단독 효과 아님, 정직 박제 | 부작용(MySQL shutdown drop 실패 로그 노이즈, 테스트 PASS) + 추가 발견(컨텍스트 캐시 hit 0건, EmbeddedKafka 모듈 reuse 효과 0) 박제. **effective wall-clock은 PR 시나리오에 따라 2~14m 범위 추정** (cache hit/miss 패턴) | testsupport/common 변경 PR 머지 후 cache miss 강제 측정 (reuse 단독 효과 분리) |
 
 ### 머지 후 측정 대기 항목 (후속 측정 카드 분리 추적)
 
