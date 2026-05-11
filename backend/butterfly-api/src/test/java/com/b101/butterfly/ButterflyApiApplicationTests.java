@@ -17,8 +17,6 @@ import org.springframework.test.context.TestPropertySource;
  */
 @SpringBootTest
 @TestPropertySource(properties = {
-		"spring.rabbitmq.username=guest",
-		"spring.rabbitmq.password=guest",
 		"jwt.secret=butterfly-test-secret-key-must-be-32chars!!",
 		"mail.from=no-reply@test.local",
 		"spring.mail.username=test@test.local",

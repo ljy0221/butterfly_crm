@@ -69,3 +69,4 @@ consulted: ...
 | [ADR-0015](0015-segment-event-node-categoryid.md) | accepted | EventNode.category 식별자 — name(string) → categoryId(Long) | 2026-05-04 |
 | [ADR-0016](0016-segment-event-mixed-tree-support.md) | accepted | EVENT mixed 조건 트리 지원 | 2026-05-06 |
 | [ADR-0017](0017-public-api-key-authentication.md) | accepted | SDK Public API Key 인증 — Bean SPI + DB 단일 진실 + SHA-256 해시 | 2026-05-08 |
+| [ADR-0018](0018-monitoring-agent-deferred-alloy.md) | accepted | 모니터링 agent로 node-exporter+Promtail 유지, Grafana Alloy 미도입 | 2026-05-11 |
