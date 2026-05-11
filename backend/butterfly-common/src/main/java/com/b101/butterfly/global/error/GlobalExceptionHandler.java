@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -99,6 +100,12 @@ public class GlobalExceptionHandler {
         log.warn("Unsupported media type: {}", e.getContentType());
         return buildResponse(CommonErrorCode.UNSUPPORTED_MEDIA_TYPE,
                 CommonErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException e) {
+        log.warn("Access denied: {}", e.getMessage());
+        return buildResponse(CommonErrorCode.FORBIDDEN, CommonErrorCode.FORBIDDEN.getMessage());
     }
 
     @ExceptionHandler(Exception.class)
