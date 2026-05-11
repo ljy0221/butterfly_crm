@@ -15,13 +15,16 @@ import com.b101.butterfly.auth.port.CompanyAuthPort;
 import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.auth.repository.RefreshTokenRepository;
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.global.event.AuditRecordedEvent;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class AuthService {
     private final CompanyAuthPort companyAuthPort;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -96,6 +100,13 @@ public class AuthService {
         redisService.set("auth:refresh:" + member.getId(), refreshToken,
                 Duration.ofMillis(jwtProperties.getRefreshTokenExpiryMs()));
 
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                member.getProjectId(), member.getId(),
+                "LOGIN", "Member", member.getId(),
+                null, null,
+                Map.of("email", member.getEmail(), "role", member.getRoleType().name())
+        ));
+
         return new LoginResponse(accessToken, refreshToken, MemberInfoResponse.from(member));
     }
 
@@ -112,6 +123,15 @@ public class AuthService {
         // Refresh Token 삭제
         refreshTokenRepository.deleteByMemberId(memberId);
         redisService.delete("auth:refresh:" + memberId);
+
+        Long projectId = (accessToken != null && jwtTokenProvider.isValid(accessToken))
+                ? jwtTokenProvider.getProjectId(accessToken) : null;
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, memberId,
+                "LOGOUT", "Member", memberId,
+                null, null,
+                Map.of()
+        ));
     }
 
     @Transactional
