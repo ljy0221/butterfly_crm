@@ -74,12 +74,7 @@ public class CampaignService {
 
     @Transactional
     public Long updateCampaign(CampaignUpdateCommand command) {
-        return modifier.updateCampaign(
-                command.campaignId(),
-                command.projectId(),
-                command.campaignName(),
-                command.campaignDescription()
-        );
+        return modifier.updateCampaign(command);
     }
 
     @Transactional

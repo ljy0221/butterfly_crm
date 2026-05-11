@@ -160,7 +160,9 @@ class CampaignControllerWebMvcTest {
                             .content("""
                                     {
                                         "campaignName": "수정된 이름",
-                                        "campaignDescription": "수정된 설명"
+                                        "campaignDescription": "수정된 설명",
+                                        "messageTemplateId": 10,
+                                        "segmentId": 42
                                     }
                                     """))
                     .andExpect(status().isOk())
