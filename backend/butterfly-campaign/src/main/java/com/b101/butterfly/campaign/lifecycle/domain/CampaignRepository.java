@@ -24,6 +24,21 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     boolean existsByMessageTemplateIdAndCampaignStatusIn(
             Long messageTemplateId, List<CampaignStatus> statuses);
 
+    /**
+     * segment 를 사용 중인 캠페인 중 주어진 status 가 하나라도 있는지 확인 (count 쿼리, 메모리 로드 X).
+     *
+     * <p>{@code LinkedCampaignChecker#hasActiveOrSending} 용. segment 의 수정/삭제 보호를 위한 가드.
+     */
+    boolean existsBySegmentIdAndCampaignStatusIn(
+            Long segmentId, List<CampaignStatus> statuses);
+
+    /**
+     * segment 를 사용 중인 모든 캠페인 (soft delete 제외, {@code @SQLRestriction} 자동 적용).
+     *
+     * <p>{@code LinkedCampaignChecker#listLinkedCampaigns} 용. 상태별 그룹화는 호출자가 수행.
+     */
+    List<Campaign> findAllBySegmentId(Long segmentId);
+
     Optional<Campaign> findByCampaignId(Long campaignId);
 
     Page<Campaign> findAllByProjectId(Long projectId, Pageable pageable);
