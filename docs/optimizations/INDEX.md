@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- |
 | 2026-05-11 | PERF | [event-ingest-api-p99](2026-05-11_event-ingest-api-p99.md) | ADR-0017 명세 "100 req/s p99 < 200ms" 가 실제로 충족되는지 5/13 QA Run #1 에서 1차 실측. 인증 필터(205) + 도메인 검증(193) + 레이트 리밋(Redis) 흐름의 latency baseline 박제. 측정 후 COMPLETE 승격, 병목 식별 시 별도 카드(`event-ingest-api-p99-optimized`)로 Before/After 1쌍 분리. | BEFORE-ONLY |
 | 2026-05-11 | PERF | [aggregation-worker-throughput](2026-05-11_aggregation-worker-throughput.md) | 30K row 1시간치 hourly 집계 + daily 4종 롤업이 윈도우 안에 끝나는지 5/14 QA Run #2 에서 1차 실측. HourlyAggregator(124-A) + DailyRollupService(191 Refactor) 흐름의 처리량/latency baseline 박제. 멱등성·KPI 비율 정확도 동시 검증. | BEFORE-ONLY |
-| 2026-05-11 | DX | [ci-pipeline-dedup-mr-workflow](2026-05-11_ci-pipeline-dedup-mr-workflow.md) | `.gitlab-ci.yml` 최상위 `workflow:` 블록 + 잡 rules `merge_request_event` 분기 도입 + `package` 잡 MR 차단으로 branch ↔ MR pipeline 중복 실행 시나리오 3개를 룰 정의 기준 0개로 차단. `+33/-3` 단일 파일. wall-clock 절감 실측은 dry-run MR + develop 5건 누적으로 분리 추적. | BEFORE-ONLY |
+| 2026-05-11 | DX | [ci-pipeline-dedup-mr-workflow](2026-05-11_ci-pipeline-dedup-mr-workflow.md) | `.gitlab-ci.yml` 최상위 `workflow:` 블록 + 잡 rules `merge_request_event` 분기 도입 + `package` 잡 MR 차단으로 branch ↔ MR pipeline 중복 실행 시나리오 3개를 룰 정의 기준 0개로 차단. **MR !137 dry-run 검증 완료, 머지 후 develop pipeline에서 package 잡 1m 59s 정상 실행 확인. 추가 발견: integration-test critical path / cache `pull-push` 31s 낭비 / `:latest` 태그 신뢰도 / cgroup limit 부재** | VERIFIED |
 | 2026-05-07 | DX | [ci-gate-restoration](2026-05-07_ci-gate-restoration.md) | unit/integration `allow_failure: true` 제거 + Flyway V7/V8 회귀 fix + Jib latest 태그 한정 + readiness 폴링 — DoD "CI 그린" 측정 가능성 복원. **2차 실측: 전체 pipeline 10m 53s GREEN (DoD 30분 -64% 마진), 잡별 wall-clock 4건 박제, Jib latest 미푸시 결정적 증거 확보, 게이트가 회귀 누적 2건 정상 차단** | AFTER |
 
 ## 5/22 발표 4축 매핑
@@ -42,14 +42,14 @@
 
 - 2026-05-11 [event-ingest-api-p99](2026-05-11_event-ingest-api-p99.md) — ADR-0017 명세 p99 < 200ms 100 req/s 실측 baseline (BEFORE-ONLY) ⭐
 - 2026-05-11 [aggregation-worker-throughput](2026-05-11_aggregation-worker-throughput.md) — 집계 워커 5분/일 cron 윈도우 latency baseline (BEFORE-ONLY) ⭐
-- 2026-05-11 [ci-pipeline-dedup-mr-workflow](2026-05-11_ci-pipeline-dedup-mr-workflow.md) — CI 중복 트리거 제거로 DoD 30분 SLA 마진 추가 확장 + GHCR 태그 오염 차단 (BEFORE-ONLY)
+- 2026-05-11 [ci-pipeline-dedup-mr-workflow](2026-05-11_ci-pipeline-dedup-mr-workflow.md) — CI 중복 트리거 제거로 DoD 30분 SLA 마진 추가 확장 + GHCR 태그 오염 차단 (VERIFIED, package 1m 59s)
 - 2026-05-07 [ci-gate-restoration](2026-05-07_ci-gate-restoration.md) — DoD 측정 가능성 복원
 
 ## 카테고리별
 
 ### DX
 
-- 2026-05-11 [ci-pipeline-dedup-mr-workflow](2026-05-11_ci-pipeline-dedup-mr-workflow.md) — workflow 블록 + MR pipeline 전환 (BEFORE-ONLY)
+- 2026-05-11 [ci-pipeline-dedup-mr-workflow](2026-05-11_ci-pipeline-dedup-mr-workflow.md) — workflow 블록 + MR pipeline 전환 (VERIFIED)
 - 2026-05-07 [ci-gate-restoration](2026-05-07_ci-gate-restoration.md)
 
 ### PERF
