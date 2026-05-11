@@ -24,7 +24,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.NoSuchElementException;
+import com.b101.butterfly.reporting.reconciliation.dto.ReconciliationItem;
 
 /**
  * 발송 정합성 검증 도메인 서비스 (S14P31B101-126 / 126-A).
@@ -124,6 +126,39 @@ public class ReconciliationService {
                 result.getSize(),
                 result.getTotalElements()
         );
+    }
+
+    /**
+     * API #22 — 캠페인의 모든 회차 즉시 검증 (S14P31B101-187 트리거).
+     *
+     * <p>{@link CampaignExecutionPort#findByCampaign} 으로 회차 메타를 받아 회차별로 검증을 수행해
+     * {@link SendReconciliation} 을 적재하고 결과를 반환한다.
+     *
+     * <p>회차가 0건이면 빈 리스트 — 운영 시점에 캠페인 자체가 미존재인지/회차만 없는지 구분이
+     * 필요하면 호출자가 캠페인 존재 여부를 별도로 확인한다 (본 메서드는 캠페인 ID 유효성을
+     * 검증하지 않는다).
+     */
+    @Transactional
+    public List<ReconciliationItem> reconcileCampaign(Long campaignId) {
+        List<CampaignExecutionInfo> infos = campaignExecutionPort.findByCampaign(campaignId);
+        return infos.stream()
+                .map(this::reconcileInfo)
+                .map(ReconciliationItem::from)
+                .toList();
+    }
+
+    /**
+     * API #23 — 단일 회차 즉시 검증 (S14P31B101-187 트리거).
+     *
+     * <p>회차 미존재 시 {@link AnalyticsErrorCode#EXECUTION_NOT_FOUND} (404) 로 응답된다.
+     */
+    @Transactional
+    public ReconciliationItem reconcileExecution(Long executionId) {
+        try {
+            return ReconciliationItem.from(reconcile(executionId));
+        } catch (NoSuchElementException e) {
+            throw new BusinessException(AnalyticsErrorCode.EXECUTION_NOT_FOUND);
+        }
     }
 
     /**

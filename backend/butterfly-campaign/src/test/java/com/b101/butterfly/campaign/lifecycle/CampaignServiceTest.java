@@ -26,6 +26,7 @@ import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.lifecycle.domain.ScheduleSpec;
 import com.b101.butterfly.campaign.lifecycle.domain.Targeting;
+import com.b101.butterfly.campaign.lifecycle.port.SegmentReadinessPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.global.error.BusinessException;
 import java.lang.reflect.Field;
@@ -46,6 +47,7 @@ class CampaignServiceTest {
     private CampaignModifier modifier;
     private CampaignRemover remover;
     private CampaignActivator activator;
+    private SegmentReadinessPort segmentReadinessPort;
     private CampaignService service;
 
     @BeforeEach
@@ -55,7 +57,9 @@ class CampaignServiceTest {
         modifier = mock(CampaignModifier.class);
         remover = mock(CampaignRemover.class);
         activator = mock(CampaignActivator.class);
-        service = new CampaignService(campaignRepository, creator, modifier, remover, activator);
+        segmentReadinessPort = mock(SegmentReadinessPort.class);
+        service = new CampaignService(
+                campaignRepository, creator, modifier, remover, activator, segmentReadinessPort);
     }
 
     @Test

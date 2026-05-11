@@ -140,6 +140,20 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_024",
             "멤버를 찾을 수 없습니다.",
             HttpStatus.NOT_FOUND),
+
+    // ==================== 세그먼트 상태 검증 (CAMPAIGN_025 ~ CAMPAIGN_026) ====================
+
+    /** 캠페인 ACTIVE 전이 시 세그먼트가 READY 상태가 아님 (422). */
+    SEGMENT_NOT_READY(
+            "CAMPAIGN_025",
+            "세그먼트가 발송 가능한 상태가 아닙니다.",
+            HttpStatus.UNPROCESSABLE_ENTITY),
+
+    /** 캠페인 ACTIVE 전이 시 지정된 segmentId가 존재하지 않음 (404). */
+    SEGMENT_NOT_FOUND(
+            "CAMPAIGN_026",
+            "세그먼트를 찾을 수 없습니다.",
+            HttpStatus.NOT_FOUND),
     ;
 
     private final String code;

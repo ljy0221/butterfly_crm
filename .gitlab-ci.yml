@@ -15,7 +15,11 @@ stages:
 variables:
   BACKEND_DIR: backend
   FRONTEND_DIR: frontend
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
+  # workers.max=2: K8s pod memory limit 내에서 통합 테스트 모듈 동시 실행 수를 제한.
+  # 4개 모듈(api/event/campaign/reporting)이 동시에 SpringBoot 컨텍스트 + MySQL 컨테이너를
+  # 띄울 때 OOMKilled(exit 137) 발생 → 2개로 제한하여 메모리 정점을 절반으로.
+  # testsupport 컨테이너 공유와 함께 OOM 완화 (둘 다 필요).
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2"
   GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
   # CI 환경에서 npm install이 dev 의존성 포함 + audit 비활성화로 더 빠름
   NPM_CONFIG_FUND: "false"
@@ -102,7 +106,9 @@ integration-test:
         sleep 1
       done
   script:
-    - ./gradlew integrationTest --build-cache --no-daemon
+    # --no-parallel: 모듈별 integrationTest 동시 실행 방지 (Testcontainers MySQL × N개로 인한
+    # CI runner OOMKilled 137 해결). unit-test/checkstyle 잡은 그대로 parallel 유지.
+    - ./gradlew integrationTest --build-cache --no-daemon --no-parallel
   artifacts:
     name: "integration-test-reports-$CI_COMMIT_SHORT_SHA"
     when: always

@@ -134,7 +134,8 @@ class CampaignControllerWebMvcTest {
                     CampaignType.ONE_TIME, SendMode.IMMEDIATE, Channel.PUSH,
                     CampaignStatus.DRAFT,
                     LocalDateTime.of(2026, 1, 1, 0, 0),
-                    LocalDateTime.of(2026, 1, 2, 0, 0)
+                    LocalDateTime.of(2026, 1, 2, 0, 0),
+                    null
             );
             given(campaignService.getCampaign(PROJECT_ID, CAMPAIGN_ID)).willReturn(result);
 

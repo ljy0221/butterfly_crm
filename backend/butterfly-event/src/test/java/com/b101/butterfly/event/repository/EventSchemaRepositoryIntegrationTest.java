@@ -3,7 +3,7 @@ package com.b101.butterfly.event.repository;
 import com.b101.butterfly.event.entity.EventSchema;
 import com.b101.butterfly.event.entity.EventSchemaField;
 import com.b101.butterfly.event.entity.FieldType;
-import com.b101.butterfly.event.support.AbstractMySqlContainerTest;
+import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
