@@ -6,7 +6,7 @@
 
 ## 주요 기능
 
-- **발송 처리**: RabbitMQ/Kafka를 통해 전달된 발송 요청을 채널별로 처리
+- **발송 처리**: Kafka를 통해 전달된 발송 요청을 채널별로 처리
 - **발송 로그 조회**: 캠페인별, 유저별 발송 이력 조회
 - **발송 로그 상세**: 개별 발송 건의 상태 추적 (SENT → DELIVERED → CLICKED/FAILED)
 - **웹훅/콜백**: 발송 결과 콜백 수신 및 상태 업데이트
@@ -24,4 +24,4 @@
 ## 의존 관계
 
 - `butterfly-common`, `butterfly-auth`, `butterfly-event`, `butterfly-campaign`에 의존
-- Spring Data JPA, Spring AMQP, Spring Kafka, Spring Data Redis, MySQL
+- Spring Data JPA, Spring Kafka, Spring Data Redis, MySQL

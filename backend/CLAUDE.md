@@ -10,7 +10,7 @@
 - Java 21, Spring Boot 3.5, Gradle 멀티모듈
 - Spring Data JPA + MySQL
 - Spring Security (JWT 인증 + 프로젝트별 역할 기반 인가)
-- Spring AMQP (RabbitMQ) + Spring Kafka
+- Spring Kafka
 - Spring Data Redis
 - Lombok
 
