@@ -235,3 +235,46 @@ frontend-build:
     expire_in: 1 week
     paths:
       - "frontend/dist/"
+
+# ==========
+# Diagnostics (S14P31B101-224)
+# ==========
+# Runner pod 자원 한도 측정용 1회성 잡. when: manual로 자동 트리거 0.
+# 측정 결과는 integration-test --no-parallel 제거 / workers.max 복원 / 모듈별
+# matrix 분할 등 병렬화 후속 결정의 근거로 사용한다.
+# PAT 등 외부 토큰 의존 없음 — 컨테이너 내부 cgroup 정보만 read.
+ci-diagnostics:
+  stage: test
+  image: eclipse-temurin:21-jdk
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+    - if: $CI_COMMIT_BRANCH
+      when: manual
+      allow_failure: true
+  script:
+    - echo "===== Runner identity ====="
+    - 'echo "RUNNER_DESCRIPTION: ${CI_RUNNER_DESCRIPTION:-unknown}"'
+    - 'echo "RUNNER_TAGS: ${CI_RUNNER_TAGS:-unknown}"'
+    - 'echo "RUNNER_VERSION: ${CI_RUNNER_VERSION:-unknown}"'
+    - 'echo "JOB_NAME: ${CI_JOB_NAME} / CONCURRENT_ID: ${CI_CONCURRENT_ID}"'
+    - echo ""
+    - echo "===== Memory (cgroup v2 → v1 fallback) ====="
+    - 'cat /sys/fs/cgroup/memory.max 2>/dev/null && echo "  ^ cgroup v2 memory.max (bytes; max=unlimited)" || true'
+    - 'cat /sys/fs/cgroup/memory/memory.limit_in_bytes 2>/dev/null && echo "  ^ cgroup v1 memory.limit_in_bytes" || true'
+    - 'cat /sys/fs/cgroup/memory.current 2>/dev/null && echo "  ^ cgroup v2 memory.current (bytes)" || true'
+    - free -h || true
+    - echo ""
+    - echo "===== CPU ====="
+    - 'echo "nproc: $(nproc)"'
+    - 'cat /sys/fs/cgroup/cpu.max 2>/dev/null && echo "  ^ cgroup v2 cpu.max (quota period)" || true'
+    - 'cat /sys/fs/cgroup/cpu/cpu.cfs_quota_us 2>/dev/null && echo "  ^ cgroup v1 cpu.cfs_quota_us" || true'
+    - 'cat /sys/fs/cgroup/cpu/cpu.cfs_period_us 2>/dev/null && echo "  ^ cgroup v1 cpu.cfs_period_us" || true'
+    - echo ""
+    - echo "===== Disk ====="
+    - df -h . || true
+    - echo ""
+    - echo "===== Kernel / OS ====="
+    - uname -a || true
+    - 'cat /etc/os-release 2>/dev/null | head -5 || true'
