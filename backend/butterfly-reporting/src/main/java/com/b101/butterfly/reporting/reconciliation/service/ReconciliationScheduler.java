@@ -1,15 +1,20 @@
 package com.b101.butterfly.reporting.reconciliation.service;
 
+import com.b101.butterfly.reporting.health.entity.HealthStatus;
+import com.b101.butterfly.reporting.health.entity.SystemHealthSnapshot;
+import com.b101.butterfly.reporting.health.repository.SystemHealthSnapshotRepository;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
 import com.b101.butterfly.reporting.reconciliation.port.CampaignExecutionInfo;
 import com.b101.butterfly.reporting.reconciliation.port.CampaignExecutionPort;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -39,9 +44,20 @@ public class ReconciliationScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(ReconciliationScheduler.class);
 
+    /** {@code system_health_snapshots.metric_name} 으로 기록되는 카운트 메트릭 (PR-3). */
+    public static final String METRIC_RECONCILIATION_INCONSISTENT_COUNT = "reconciliation_inconsistent_count";
+
     private final CampaignExecutionPort campaignExecutionPort;
     private final ReportingNotificationLogRepository notificationLogRepository;
     private final ReconciliationService reconciliationService;
+    private final SystemHealthSnapshotRepository healthSnapshotRepository;
+
+    /** WARN/CRITICAL 임계치는 환경별 조정 가능. 기본값은 운영 합의 전 임시 기준 (작은 값 → WARN 빨리). */
+    @Value("${butterfly.reconciliation.health.warn-threshold:10}")
+    private int warnThreshold;
+
+    @Value("${butterfly.reconciliation.health.crit-threshold:100}")
+    private int critThreshold;
 
     /**
      * 매일 02:00 KST 실행. since = 시작 시점 - 24h.
@@ -93,6 +109,39 @@ public class ReconciliationScheduler {
         log.info("reconciliation batch done since={} total={} checked={} consistent={} inconsistent={} skipped={} failed={} elapsedMs={}",
                 since, infos.size(), checked, consistent, inconsistent, skipped, failed, elapsedMs);
 
+        recordHealthMetric(inconsistent);
+
         return new int[]{checked, consistent, inconsistent, skipped, failed};
+    }
+
+    /**
+     * 본 배치에서 발견된 불일치 카운트를 {@code system_health_snapshots} 에 적재한다.
+     *
+     * <p>본 PR(187 PR-3) 범위에서는 회당 누적값을 1행으로 INSERT — 시계열 분석 시 같은
+     * {@code metric_name} 의 latest row 를 보면 직전 배치의 결과가 된다. failed 카운트가
+     * 0보다 크면 임계치와 무관하게 WARN 으로 끌어올린다 (예외로 측정값 자체가 신뢰 불가).
+     */
+    private void recordHealthMetric(int inconsistentCount) {
+        BigDecimal value = BigDecimal.valueOf(inconsistentCount);
+        BigDecimal warn = BigDecimal.valueOf(warnThreshold);
+        BigDecimal crit = BigDecimal.valueOf(critThreshold);
+        HealthStatus status = HealthStatus.from(value, warn, crit);
+
+        SystemHealthSnapshot snapshot = SystemHealthSnapshot.create()
+                .metricName(METRIC_RECONCILIATION_INCONSISTENT_COUNT)
+                .metricTarget(null) // 전사 카운트 — target 미지정
+                .metricValue(value)
+                .thresholdWarn(warn)
+                .thresholdCrit(crit)
+                .status(status)
+                .collectedAt(LocalDateTime.now())
+                .build();
+        try {
+            healthSnapshotRepository.save(snapshot);
+        } catch (RuntimeException ex) {
+            // 메트릭 적재 실패가 정합성 배치 자체를 중단시키지 않도록 격리.
+            log.error("system_health_snapshots insert failed metric={} value={} cause={}",
+                    METRIC_RECONCILIATION_INCONSISTENT_COUNT, value, ex.getMessage(), ex);
+        }
     }
 }

@@ -1,5 +1,8 @@
 package com.b101.butterfly.reporting.reconciliation.service;
 
+import com.b101.butterfly.reporting.health.entity.HealthStatus;
+import com.b101.butterfly.reporting.health.entity.SystemHealthSnapshot;
+import com.b101.butterfly.reporting.health.repository.SystemHealthSnapshotRepository;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
 import com.b101.butterfly.reporting.reconciliation.entity.SendReconciliation;
@@ -8,7 +11,9 @@ import com.b101.butterfly.reporting.reconciliation.port.CampaignExecutionPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -37,16 +42,28 @@ class ReconciliationSchedulerTest {
     private CampaignExecutionPort campaignExecutionPort;
     private ReportingNotificationLogRepository notificationLogRepository;
     private ReconciliationService reconciliationService;
+    private SystemHealthSnapshotRepository healthSnapshotRepository;
     private ReconciliationScheduler scheduler;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         campaignExecutionPort = mock(CampaignExecutionPort.class);
         notificationLogRepository = mock(ReportingNotificationLogRepository.class);
         reconciliationService = mock(ReconciliationService.class);
+        healthSnapshotRepository = mock(SystemHealthSnapshotRepository.class);
         scheduler = new ReconciliationScheduler(
-                campaignExecutionPort, notificationLogRepository, reconciliationService
+                campaignExecutionPort, notificationLogRepository, reconciliationService,
+                healthSnapshotRepository
         );
+        // @Value 기본값은 Spring 컨텍스트 없이 평가되지 않으므로 reflection 으로 주입
+        injectField(scheduler, "warnThreshold", 10);
+        injectField(scheduler, "critThreshold", 100);
+    }
+
+    private static void injectField(Object target, String fieldName, Object value) throws Exception {
+        Field f = ReconciliationScheduler.class.getDeclaredField(fieldName);
+        f.setAccessible(true);
+        f.set(target, value);
     }
 
     private CampaignExecutionInfo info(long execId, Channel channel) {
@@ -139,7 +156,7 @@ class ReconciliationSchedulerTest {
     }
 
     @Test
-    @DisplayName("외부 회차 0건이면 reconcileInfo 미호출, 모든 카운트 0")
+    @DisplayName("외부 회차 0건이면 reconcileInfo 미호출, 모든 카운트 0 — 단 메트릭 0 row 는 적재")
     void emptyRecentReturnsAllZeros() {
         when(campaignExecutionPort.findRecent(SINCE)).thenReturn(List.of());
 
@@ -147,5 +164,78 @@ class ReconciliationSchedulerTest {
 
         assertThat(result).containsExactly(0, 0, 0, 0, 0);
         verify(reconciliationService, never()).reconcileInfo(any());
+        // 매 배치 1행 적재 — 0건도 측정값
+        verify(healthSnapshotRepository, times(1)).save(any(SystemHealthSnapshot.class));
+    }
+
+    // --- system_health_snapshots 메트릭 적재 (S14P31B101-187 PR-3) ---
+
+    @Test
+    @DisplayName("inconsistent < warn 임계치 (10) → OK 상태 적재")
+    void healthMetricOkWhenBelowWarn() {
+        givenSimpleBatch(5, false); // 5 회차 모두 consistent 처리
+
+        scheduler.runFor(SINCE);
+
+        SystemHealthSnapshot saved = captureSavedSnapshot();
+        assertThat(saved.getMetricName())
+                .isEqualTo(ReconciliationScheduler.METRIC_RECONCILIATION_INCONSISTENT_COUNT);
+        assertThat(saved.getMetricValue().intValue()).isZero();
+        assertThat(saved.getStatus()).isEqualTo(HealthStatus.OK);
+    }
+
+    @Test
+    @DisplayName("inconsistent >= warn (10) 이지만 < crit (100) → WARN 상태 적재")
+    void healthMetricWarnWhenBetweenThresholds() {
+        givenSimpleBatch(15, true); // 15 회차 모두 inconsistent
+
+        scheduler.runFor(SINCE);
+
+        SystemHealthSnapshot saved = captureSavedSnapshot();
+        assertThat(saved.getMetricValue().intValue()).isEqualTo(15);
+        assertThat(saved.getStatus()).isEqualTo(HealthStatus.WARN);
+    }
+
+    @Test
+    @DisplayName("inconsistent >= crit (100) → CRITICAL 상태 적재")
+    void healthMetricCriticalWhenAtOrAboveCrit() {
+        givenSimpleBatch(100, true); // 100 회차 모두 inconsistent
+
+        scheduler.runFor(SINCE);
+
+        SystemHealthSnapshot saved = captureSavedSnapshot();
+        assertThat(saved.getMetricValue().intValue()).isEqualTo(100);
+        assertThat(saved.getStatus()).isEqualTo(HealthStatus.CRITICAL);
+    }
+
+    @Test
+    @DisplayName("메트릭 적재 실패해도 정합성 배치 결과는 정상 반환")
+    void healthMetricInsertFailureDoesNotPropagate() {
+        givenSimpleBatch(1, true);
+        when(healthSnapshotRepository.save(any(SystemHealthSnapshot.class)))
+                .thenThrow(new RuntimeException("DB timeout"));
+
+        int[] result = scheduler.runFor(SINCE);
+
+        assertThat(result[2]).isEqualTo(1); // inconsistent 카운트는 정상 반환
+        verify(healthSnapshotRepository, times(1)).save(any(SystemHealthSnapshot.class));
+    }
+
+    private void givenSimpleBatch(int count, boolean inconsistent) {
+        // count 개의 회차를 모두 같은 결과로 처리
+        java.util.List<CampaignExecutionInfo> infos = new java.util.ArrayList<>();
+        for (int i = 0; i < count; i++) {
+            infos.add(info(1000L + i, Channel.PUSH));
+        }
+        when(campaignExecutionPort.findRecent(SINCE)).thenReturn(infos);
+        when(notificationLogRepository.countByCampaignExecutionIdAndChannel(any(), any()))
+                .thenReturn(50L);
+        when(reconciliationService.reconcileInfo(any())).thenReturn(savedRow(!inconsistent));
+    }
+
+    private SystemHealthSnapshot captureSavedSnapshot() {
+        ArgumentCaptor<SystemHealthSnapshot> captor = ArgumentCaptor.forClass(SystemHealthSnapshot.class);
+        verify(healthSnapshotRepository).save(captor.capture());
+        return captor.getValue();
     }
 }
