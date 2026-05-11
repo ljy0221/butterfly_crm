@@ -75,9 +75,9 @@
 
 ### 1차 실측 완료 (VERIFIED, 단일 표본)
 
-| 카드 | 1차 (MR !144 commit 7be5475) | 2차 (develop SHA bd2b560, 226 머지 후 5건) | 핵심 결과 | 보강 트리거 |
-| --- | --- | --- | --- | --- |
-| [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) | integration-test 잡 14m 02s → 9m 56s (-29%), script 13m 02s → 8m 55s (-32%), 데이터 누수 실패 0건 | **integration-test 잡 2m 00s** (Gradle Build Cache hit fast path — 모든 모듈 `:integrationTest` FROM-CACHE) — reuse 단독 효과 아님, 정직 박제 | 부작용(MySQL shutdown drop 실패 로그 노이즈, 테스트 PASS) + 추가 발견(컨텍스트 캐시 hit 0건, EmbeddedKafka 모듈 reuse 효과 0) 박제. **effective wall-clock은 PR 시나리오에 따라 2~14m 범위 추정** (cache hit/miss 패턴) | testsupport/common 변경 PR 머지 후 cache miss 강제 측정 (reuse 단독 효과 분리) |
+| 카드 | 1차 (MR !144 commit 7be5475) | 2차 (develop SHA bd2b560, 226 머지 후 5건) | 3차 (228 PR SHA 3b85a182, cache miss 강제) | 핵심 결과 | 보강 트리거 |
+| --- | --- | --- | --- | --- | --- |
+| [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) | integration-test 잡 14m 02s → 9m 56s (-29%), script 13m 02s → 8m 55s (-32%), 데이터 누수 실패 0건 | **integration-test 잡 2m 00s** (Gradle Build Cache hit fast path — 모든 모듈 `:integrationTest` FROM-CACHE) — reuse 단독 효과 아님, 정직 박제 | **integration-test 잡 10m 51s** (Spring Security 모듈 광범위 변경으로 거의 전체 cache miss). reuse 단독 효과 -23% 측정 → 1차 -29%와 합쳐 **reuse 진짜 효과 -25% 추정 확정** | effective wall-clock은 PR 시나리오에 따라 **2m (cache hit) ~ 11m (cache miss) 범위**로 4축 측정 완료. DoD 30분 SLA 모든 시나리오 통과 (-93% ~ -64% margin) | develop pipeline 5건 누적으로 p50/p95 정밀도 +20% 향상 |
 
 ### 머지 후 측정 대기 항목 (후속 측정 카드 분리 추적)
 
