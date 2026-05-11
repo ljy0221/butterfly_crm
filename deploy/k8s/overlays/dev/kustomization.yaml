@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# overlay에서 namespace: butterfly로 일괄 지정하면 monitoring Namespace의 metadata.name까지
+# 'butterfly'로 rewrite되어 ID conflict가 발생한다 (kustomize 5+ Namespace 처리 quirk).
+# base manifest 각각에 namespace를 명시했으므로 overlay에서는 지정하지 않는다.
+
+resources:
+  - ../../base
+
+# dev 환경 image 태그 override (Step 5에서 CI가 이 파일을 git push로 갱신)
+# 실제 CI는 GHCR에 push: ghcr.io/${GHCR_NAMESPACE}/butterfly-api:${CI_COMMIT_SHORT_SHA}
+# 아래 newName의 <GHCR_NAMESPACE>는 본인 GHCR namespace로 치환 필요 (예: s14p31b101)
+images:
+  - name: butterfly-api
+    newName: ghcr.io/<GHCR_NAMESPACE>/butterfly-api
+    newTag: latest
+  - name: butterfly-worker
+    newName: ghcr.io/<GHCR_NAMESPACE>/butterfly-worker
+    newTag: latest
+
+# secrets.yaml / regcred.yaml은 .gitignore 처리 + 별도 apply (이 파일에서 참조 X)
