@@ -1,0 +1,228 @@
+================================================================================
+.gitlab-ci.yml Before snapshot
+================================================================================
+- Captured at: 2026-05-11
+- Captured by: optimization-historian agent (S14P31B101-220 Before/After 카드)
+- Source command: git show e337c43:.gitlab-ci.yml
+- Source ref: e337c43 (develop, "Merge branch 'feat/S14P31B101-105_ValidateSegmentOnTrigger' into 'develop'")
+- File state: develop 직전 머지 시점 — workflow 블록 부재, 잡별 rules에 if 분기 없음
+- Purpose: S14P31B101-220 (CI 중복 트리거 제거) 의 Before baseline 박제
+
+핵심 관전 포인트:
+  - L7~L9: default.interruptible: true 만 있고 workflow 블록 없음
+  - L51~L57: unit-test rules — if 분기 없이 changes만 사용 (branch + MR 동시 매칭 가능)
+  - L91~L96: integration-test rules — 동일
+  - L123~L128: checkstyle rules — 동일
+  - L145~L156: package rules — main/develop/Feat/.../BE/... 분기는 있으나 MR 차단 없음
+  - L189~L194: frontend-build rules — 동일
+
+================================================================================
+파일 본문 (raw)
+================================================================================
+# Butterfly CI/CD - Phase 12: build time optimization
+# Changes from Phase 11:
+#   - Removed smoke-test (no-op placeholder)
+#   - Removed gradle-build (unit-test compiles, package builds image via jib)
+#   - Moved checkstyle from quality stage into test stage (parallel with unit/integration)
+#   - Enabled Gradle Build Cache (gradle.properties + --build-cache flag)
+
+default:
+  interruptible: true
+
+stages:
+  - test
+  - package
+
+variables:
+  BACKEND_DIR: backend
+  FRONTEND_DIR: frontend
+  # workers.max=2: K8s pod memory limit 내에서 통합 테스트 모듈 동시 실행 수를 제한.
+  # 4개 모듈(api/event/campaign/reporting)이 동시에 SpringBoot 컨텍스트 + MySQL 컨테이너를
+  # 띄울 때 OOMKilled(exit 137) 발생 → 2개로 제한하여 메모리 정점을 절반으로.
+  # testsupport 컨테이너 공유와 함께 OOM 완화 (둘 다 필요).
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.console=plain -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+  # CI 환경에서 npm install이 dev 의존성 포함 + audit 비활성화로 더 빠름
+  NPM_CONFIG_FUND: "false"
+  NPM_CONFIG_AUDIT: "false"
+
+.gradle-cache: &gradle-cache
+  cache:
+    key:
+      files:
+        - backend/build.gradle
+        - backend/gradle.properties
+      prefix: "shared"
+    paths:
+      - .gradle/caches/
+      - .gradle/wrapper/
+    policy: pull-push
+
+.npm-cache: &npm-cache
+  cache:
+    key:
+      files:
+        - frontend/package-lock.json
+      prefix: "fe-npm"
+    paths:
+      - frontend/node_modules/
+    policy: pull-push
+
+unit-test:
+  stage: test
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew test --build-cache --no-daemon
+  artifacts:
+    name: "test-reports-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 1 week
+    reports:
+      junit:
+        - "backend/*/build/test-results/test/TEST-*.xml"
+    paths:
+      - "backend/*/build/reports/tests/test/"
+
+integration-test:
+  stage: test
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  services:
+    - name: docker:27-dind
+      alias: docker
+      command: ["--tls=false"]
+  variables:
+    DOCKER_HOST: "tcp://docker:2375"
+    DOCKER_TLS_CERTDIR: ""
+    TESTCONTAINERS_HOST_OVERRIDE: "docker"
+    TESTCONTAINERS_RYUK_DISABLED: "true"
+  <<: *gradle-cache
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+    # docker daemon readiness 폴링 (기존 'sleep 10' 시간 기반 wait 대체)
+    # eclipse-temurin:21-jdk 이미지는 docker CLI를 포함하지 않으므로 HTTP _ping 엔드포인트로 직접 폴링
+    - |
+      echo "Waiting for docker daemon at $DOCKER_HOST/_ping ..."
+      for i in $(seq 1 60); do
+        if wget -q -O- "http://docker:2375/_ping" 2>/dev/null | grep -q OK; then
+          echo "docker daemon ready (took ${i}s)"
+          break
+        fi
+        if [ "$i" = "60" ]; then
+          echo "docker daemon did not become ready within 60s" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+  script:
+    # --no-parallel: 모듈별 integrationTest 동시 실행 방지 (Testcontainers MySQL × N개로 인한
+    # CI runner OOMKilled 137 해결). unit-test/checkstyle 잡은 그대로 parallel 유지.
+    - ./gradlew integrationTest --build-cache --no-daemon --no-parallel
+  artifacts:
+    name: "integration-test-reports-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 1 week
+    reports:
+      junit:
+        - "backend/*/build/test-results/integrationTest/TEST-*.xml"
+    paths:
+      - "backend/*/build/reports/tests/integrationTest/"
+
+checkstyle:
+  stage: test
+  image: eclipse-temurin:21-jdk
+  rules:
+    - changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+  script:
+    - ./gradlew checkstyleMain --build-cache --no-daemon
+    - echo "Checkstyle violation summary:"
+    - 'find . -name "main.xml" -path "*/checkstyle/*" -exec sh -c "echo {}: $(grep -c \"<error\" {}) errors" \;'
+  artifacts:
+    name: "checkstyle-$CI_COMMIT_SHORT_SHA"
+    when: always
+    expire_in: 1 week
+    paths:
+      - "backend/*/build/reports/checkstyle/"
+
+package:
+  stage: package
+  image: eclipse-temurin:21-jdk
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+    - if: $CI_COMMIT_REF_NAME == "develop"
+    - if: $CI_COMMIT_REF_NAME =~ /^(Feat|Fix|Hotfix|Chore)\//
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_REF_NAME =~ /^BE\/(Feat|Fix|Hotfix|Chore)\//
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+  <<: *gradle-cache
+  parallel:
+    matrix:
+      - MODULE:
+          - butterfly-api
+          - butterfly-worker
+  before_script:
+    - cd $BACKEND_DIR
+    - chmod +x ./gradlew
+    - 'test -n "$GHCR_USERNAME" || (echo "ERROR: GHCR_USERNAME not set"; exit 1)'
+    - 'test -n "$GHCR_TOKEN" || (echo "ERROR: GHCR_TOKEN not set"; exit 1)'
+    - 'test -n "$GHCR_NAMESPACE" || (echo "ERROR: GHCR_NAMESPACE not set"; exit 1)'
+  script:
+    - echo "Building image for module $MODULE"
+    - 'echo "Target: ${GHCR_NAMESPACE}/${MODULE}:${CI_COMMIT_SHORT_SHA}"'
+    - ./gradlew :${MODULE}:jib --build-cache --no-daemon
+
+# ==========
+# Frontend
+# ==========
+# 프론트엔드(React 18 + Vite + TypeScript)는 frontend/ 변경 시에만 트리거.
+# 백엔드 변경에서는 자원 절약을 위해 미실행. 단 .gitlab-ci.yml 변경은 양쪽 모두 트리거.
+# package 잡(이미지 빌드/배포)은 향후 별도 PR에서 추가 예정.
+#
+# type-check와 build를 한 잡으로 통합:
+#   - npm run build가 내부적으로 'tsc -b --noEmit && vite build'를 수행
+#     (package.json의 build 스크립트). 별도 type-check 잡은 동일 검증을 중복 수행
+#   - 동일 이미지/캐시/의존성이라 잡 분리 시 npm ci 오버헤드 ~30~60s × 2,
+#     pod 스케줄링 ~10~20s × 2의 비용만 추가되고 가시성 이득은 미미
+
+frontend-build:
+  stage: test
+  image: node:22-alpine
+  rules:
+    - changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+  <<: *npm-cache
+  before_script:
+    - cd $FRONTEND_DIR
+    - npm ci --prefer-offline --no-audit
+  script:
+    # tsc -b --noEmit + vite build (package.json의 build 스크립트 정의)
+    - npm run build
+  artifacts:
+    name: "fe-build-$CI_COMMIT_SHORT_SHA"
+    when: on_success
+    expire_in: 1 week
+    paths:
+      - "frontend/dist/"
