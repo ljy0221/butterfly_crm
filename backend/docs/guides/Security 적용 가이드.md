@@ -143,7 +143,35 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 ---
 
-## 5. API 경로별 인증 방식 (SecurityConfig 기준)
+## 5. 로컬 테스트 방법 (Security 활성화 이후)
+
+`@RequestHeader("X-Member-Id")`가 `@AuthenticationPrincipal`로 교체되면
+로컬에서 JWT 없이 어떻게 테스트하냐는 의문이 생깁니다.
+
+역할 1이 `LocalAuthFilter`를 구현해 두었습니다.
+**기본 프로파일(로컬)에서만 활성화**되며, 아래 헤더를 읽어 SecurityContext를 채워줍니다.
+JWT 없이도 기존처럼 헤더만 넣으면 `@AuthenticationPrincipal`이 정상 동작합니다.
+
+| 헤더 | 설명 | 기본값 |
+|------|------|--------|
+| `X-Member-Id` | 행위자 회원 ID | 없으면 인증 미설정 |
+| `X-Project-Id` | 프로젝트 ID | `null` |
+| `X-Role` | 역할 (`ADMIN`/`OWNER`/`EDITOR`/`VIEWER`) | `VIEWER` |
+
+**로컬 테스트 예시:**
+```http
+GET /api/v1/projects/1/segments
+X-Member-Id: 42
+X-Project-Id: 1
+X-Role: EDITOR
+```
+
+> **prod 프로파일에서는 LocalAuthFilter가 비활성화**됩니다.
+> prod에서는 반드시 `Authorization: Bearer {JWT}` 헤더로 요청해야 합니다.
+
+---
+
+## 6. API 경로별 인증 방식 (SecurityConfig 기준)
 
 | 경로 패턴 | 인증 방식 | 컨트롤러 작업 필요 여부 |
 |-----------|-----------|------------------------|
@@ -157,7 +185,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 ---
 
-## 6. 모듈별 체크리스트
+## 7. 모듈별 체크리스트
 
 MVP 배포 브랜치 생성 전까지 각 모듈에서 완료해야 할 항목입니다.
 
@@ -171,7 +199,7 @@ MVP 배포 브랜치 생성 전까지 각 모듈에서 완료해야 할 항목�
 
 ---
 
-## 7. 현재 모듈별 적용 현황
+## 8. 현재 모듈별 적용 현황
 
 | 모듈 | 컨트롤러 | @PreAuthorize | X-Member-Id | 조치 필요 |
 |------|----------|---------------|-------------|-----------|
@@ -189,7 +217,7 @@ MVP 배포 브랜치 생성 전까지 각 모듈에서 완료해야 할 항목�
 
 ---
 
-## 8. 역할 1이 담당하는 작업 (참고용)
+## 9. 역할 1이 담당하는 작업 (참고용)
 
 아래 작업은 역할 1이 직접 진행합니다. 각 팀은 자기 모듈만 신경 쓰면 됩니다.
 
@@ -200,7 +228,7 @@ MVP 배포 브랜치 생성 전까지 각 모듈에서 완료해야 할 항목�
 
 ---
 
-## 9. 문의
+## 10. 문의
 
 - 권한 기준 불명확 / SecurityConfig 경로 추가 요청: **역할 1**
 - `CustomUserDetails` 필드 추가 필요 시: **역할 1**
