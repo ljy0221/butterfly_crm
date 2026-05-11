@@ -1,0 +1,88 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: butterfly-worker
+  namespace: butterfly
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: butterfly-worker
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: butterfly-worker
+      # Prometheus scrape annotation은 in-cluster Prometheus가 K8s SD로 Pod을 찾을 때 의미가 있다.
+      # 외부 Prometheus(받은 EC2)는 NodePort 정적 target 방식이라 Pod annotation을 못 본다.
+      # worker는 Service 없음 → 외부에서 scrape 진입점 자체 없음 → annotation은 misleading.
+      # 추후 in-cluster Prometheus 도입 또는 worker용 NodePort 추가 시 다시 활성화.
+    spec:
+      nodeSelector:
+        tier: light
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: worker
+          image: butterfly-worker:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:mysql://mysql.butterfly.svc.cluster.local:3306/butterfly?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "butterfly"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-secret
+                  key: app-password
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka-0.kafka.butterfly.svc.cluster.local:9092"
+            - name: SPRING_DATA_REDIS_HOST
+              value: "redis.butterfly.svc.cluster.local"
+            # Flyway는 butterfly-api만 실행 (이중 마이그레이션 방지)
+            - name: SPRING_FLYWAY_ENABLED
+              value: "false"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,prometheus"
+            - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
+              value: "true"
+            # MaxRAMPercentage는 Jib jvmFlags(build.gradle)에서 단일 source of truth.
+            - name: JAVA_TOOL_OPTIONS
+              value: "-XX:+ExitOnOutOfMemoryError"
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1024Mi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            periodSeconds: 5
+            failureThreshold: 30

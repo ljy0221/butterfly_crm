@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - mysql/statefulset.yaml
+  - mysql/service.yaml
+  - kafka/statefulset.yaml
+  - kafka/service.yaml
+  - redis/deployment.yaml
+  - redis/service.yaml
+  - api/deployment.yaml
+  - api/service.yaml
+  - api/hpa.yaml
+  - worker/deployment.yaml
+  - monitoring/node-exporter-daemonset.yaml
+
+# 식별용 라벨만 추가 (selector에는 안 들어감 — includeSelectors 기본 false).
+# 이렇게 두면 추후 라벨 추가/제거 시 selector immutable 에러를 피할 수 있다.
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: butterfly
+      app.kubernetes.io/managed-by: kustomize
