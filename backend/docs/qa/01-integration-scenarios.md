@@ -53,43 +53,62 @@
 
 ---
 
-## 시나리오 #2 — SDK 이벤트 적재 → 부모 검증 → attribution 매칭
+## 시나리오 #2 — 고객사 앱 이벤트 적재 → 부모 검증 → attribution 매칭
 
 ### 목적
 이벤트 수집 도메인이 정상 동작하고, `notification_logs ↔ user_action_logs` 부모-자식 관계가 보장되는지 검증.
 KPI 정의서 §1.1 "전환 이벤트 정의" 와 일치하는지 확인.
 
-### 선행 조건
-- 시나리오 #3에서 발송된 캠페인의 notification_logs row 1개 존재 (logId=98234521, projectId=1, userId=78901, sentAt=현재시각)
-- SDK는 X-API-Key 헤더 사용 (S14P31B101-193 합의 결과)
+> **호출 주체**: MVP 범위에서 제품 내장 SDK는 제공하지 않는다. **고객사 앱 클라이언트**가 직접 HTTP API 를 호출한다. 인증 방식은 `X-API-Key` 헤더 (ADR-0017, `pk_live_` 접두사 + 32자, SHA-256 해시 검증).
 
-### 단계
+### 적용 엔드포인트 3개 (`/api/v1/events/**`)
+
+| 엔드포인트 | 용도 | 컨트롤러 |
+|---|---|---|
+| `POST /api/v1/events` | 이벤트 수집 단건 (사용자 행동 발생) | EventController (API #20) |
+| `POST /api/v1/events/batch` | 이벤트 수집 배치 (오프라인 후 일괄 업로드) | EventController (API #21) |
+| `POST /api/v1/events/actions` | 발송 반응 이벤트 (OPEN/CLICK/CONVERT/DISMISS) | UserActionIngestController (API #19) |
+
+> 본 시나리오는 **#19 반응 이벤트** 흐름을 중심으로 검증한다 (notification_logs 부모 검증 + attribution 윈도우). #20/#21 수집 단건/배치 흐름의 검증 흐름은 동일 인증 + 적재 패턴이며, 시드/모수 확보 단계에서 함께 호출된다.
+
+### 선행 조건
+
+- 시나리오 #3 에서 발송된 캠페인의 notification_logs row 1개 존재 (logId=98234521, projectId=1, userId=78901, sentAt=현재시각)
+- 유효한 API Key 1건 발급 (Project A, `pk_live_xxxx...` 32자)
+- 무효 API Key 1건 (Project B 의 키 — 단계 5 에서 사용)
+
+### 단계 (반응 이벤트 흐름 — API #19)
 
 | # | 액션 | 책임 도메인 | 기대 |
 |---|---|---|---|
-| 1 | `POST /api/v1/events/actions` with `actionType=OPEN`, `logId=98234521`, valid X-API-Key | event ingest (역할 6, 적재) + 인증/검증 파트 (X-API-Key 헤더 처리, 역할은 S14P31B101-193 책임 경계 합의 후 확정) | 201 Created, user_action_logs row 적재 |
-| 2 | 같은 logId로 `actionType=CLICK`, `actionTarget=https://...` | event ingest | 201 Created |
-| 3 | 같은 logId로 `actionType=CONVERT` | event ingest | 201 Created |
-| 4 | **부모 검증 실패**: `logId=999999999` (존재하지 않음) | event ingest | **400 LOG_NOT_FOUND** |
-| 5 | **다른 프로젝트 logId**: project=2의 logId 사용, project=1 API Key | auth + event | **400 LOG_NOT_FOUND** (정보 노출 방지 — 401/403이 아님) |
-| 6 | **무효 API Key**: 형태 불일치 (`pk_test_xxxx`) | auth (API Key validator) | **401 INVALID_API_KEY** |
-| 7 | **attribution 윈도우 밖**: `actionAt = sentAt - 31일` (즉 발송 전 31일) | event ingest | 201 적재되나, 분석 집계 시 이 row는 카운트 안 됨 (KPI 정의서 §4.2) |
-| 8 | DB 직접 확인: `user_action_logs` row 4건 (단계 1, 2, 3, 7 — 4번/5번/6번은 적재 안 됨) | — | 카운트 일치 |
-| 9 | DB 직접 확인: `user_action_logs.project_id` 모두 1 | — | 비정규화 정합성 (123-A 머지본) |
+| 1 | `POST /api/v1/events/actions` with `actionType=OPEN`, `logId=98234521`, X-API-Key=Project A 키 | 인증 필터 (역할 1, 205 머지본) + event ingest (역할 6, 123-A 머지본) | 201 Created, user_action_logs row 적재 |
+| 2 | 같은 logId 로 `actionType=CLICK`, `actionTarget=https://...` | event ingest | 201 Created |
+| 3 | 같은 logId 로 `actionType=CONVERT` | event ingest | 201 Created |
+| 4 | **부모 검증 실패**: `logId=999999999` (존재하지 않음), Project A 키 | event ingest | **400 LOG_NOT_FOUND** |
+| 5 | **다른 프로젝트 logId**: Project B 의 logId, Project A 키 | 인증 필터 + event ingest 도메인 검증 | **400 LOG_NOT_FOUND** (정보 노출 방지 — 401/403 이 아님) |
+| 6 | **무효 키 — 포맷 불일치**: `pk_test_xxxx` (접두사 다름) | 인증 필터 (`ApiKeyValidatorImpl.isValidFormat`) | **401 AUTH_401** (DB 조회 없이 즉시 차단) |
+| 7 | **무효 키 — DB 미존재**: `pk_live_` + 32자이나 발급되지 않은 키 | 인증 필터 (`ApiKeyValidator.resolveProjectId`) | **401 AUTH_401** |
+| 8 | **헤더 누락**: `X-API-Key` 없이 호출 | 인증 필터 | **401 AUTH_401** |
+| 9 | **레이트 리밋 초과**: 100 req/sec 한도 초과 호출 (간단히 burst 호출) | 인증 필터 (`RateLimiter`) | **429 RATE_429** + `Retry-After` 헤더 |
+| 10 | **attribution 윈도우 밖**: `actionAt = sentAt - 31일` | event ingest | 201 적재되나, 분석 집계 시 이 row 는 카운트 안 됨 (KPI 정의서 §4.2) |
+| 11 | DB 직접 확인: `user_action_logs` row 4건 (단계 1, 2, 3, 10 — 4~9 는 적재 안 됨) | — | 카운트 일치 |
+| 12 | DB 직접 확인: `user_action_logs.project_id` 모두 1 | — | 비정규화 정합성 (123-A 머지본) |
 
 ### 기대 결과
-- 단계 1~3 모두 201, 단계 4~6은 차단
-- 단계 5의 400 응답이 "키 잘못" 또는 "권한 없음"이 아닌 **`LOG_NOT_FOUND`** (다른 프로젝트의 logId 존재 사실 자체를 노출하지 않음)
-- 단계 8, 9의 DB 정합성 확인
+
+- 단계 1~3 모두 201, 단계 4~9 는 차단 (각 코드/메시지 정확)
+- 단계 5 의 400 응답이 "키 잘못" 또는 "권한 없음" 이 아닌 **`LOG_NOT_FOUND`** (다른 프로젝트의 logId 존재 사실 자체를 노출하지 않음)
+- 단계 11, 12 의 DB 정합성 확인
 
 ### 실패 시 진단
 
 | 증상 | 의심 도메인 | 확인 |
 |---|---|---|
 | 단계 4에서 500 또는 다른 에러 코드 | event ingest 부모 검증 | `UserActionIngestService#record` 의 logId 조회 분기 |
-| 단계 5에서 200 또는 다른 프로젝트 데이터 노출 | event + auth 통합 | API Key validator → projectId와 logId.projectId 비교 가드 (S14P31B101-193 후속) |
-| 단계 6에서 200 | auth (API Key 검증 미적용) | `ApiKeyValidator` Bean 등록 + 인증 필터 등록 여부 |
-| 단계 9에서 project_id null/불일치 | event ingest 비정규화 | 123-A 머지본 `UserActionIngestService` 의 project_id 복사 로직 |
+| 단계 5에서 200 또는 다른 프로젝트 데이터 노출 | event ingest 도메인 검증 | 인증 필터가 request attribute `resolvedProjectId` 를 설정하는지 + `UserActionIngestService` 가 그것과 `logId.projectId` 비교하는지 (ADR-0017 §"도메인 검증") |
+| 단계 6, 8 에서 200 | 인증 필터 미적용 | `SecurityFilterChain` 에 `ApiKeyAuthenticationFilter` 등록 여부, `shouldNotFilter` 의 `/api/v1/events` 매칭 |
+| 단계 9 에서 429 안 나옴 | 레이트 리밋 미적용 | `RedisRateLimiter` 연결 + `butterfly.ratelimit.api-key.requests-per-second` 설정값 |
+| 단계 12 에서 project_id null/불일치 | event ingest 비정규화 | 123-A 머지본 `UserActionIngestService` 의 project_id 복사 로직 |
 
 ---
 
