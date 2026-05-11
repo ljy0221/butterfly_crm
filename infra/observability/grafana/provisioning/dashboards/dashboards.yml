@@ -1,0 +1,18 @@
+# Grafana dashboard provisioning — JSON 파일 자동 임포트
+#
+# 본 디렉터리에 .json 파일을 두면 자동 등록.
+# Phase 1에서는 빈 디렉터리. 대시보드는 별도 작업으로 추가.
+
+apiVersion: 1
+
+providers:
+  - name: butterfly-default
+    orgId: 1
+    folder: butterfly
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 60
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true
