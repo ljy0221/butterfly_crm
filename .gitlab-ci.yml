@@ -8,6 +8,18 @@
 default:
   interruptible: true
 
+# branch pipeline ↔ MR pipeline 중복 방지 (S14P31B101-220).
+# MR이 열린 브랜치에 push하면 branch pipeline을 차단하고 MR pipeline만 돌린다.
+# - feature push (MR 없음): branch pipeline 1회
+# - MR 생성 이후 push: MR pipeline 1회 (branch pipeline 자동 차단)
+# - develop/main merge commit: branch pipeline 1회 (통합 검증 + package)
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
 stages:
   - test
   - package
@@ -51,7 +63,12 @@ unit-test:
   stage: test
   image: eclipse-temurin:21-jdk
   rules:
-    - changes:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH
+      changes:
         - backend/**/*
         - .gitlab-ci.yml
   <<: *gradle-cache
@@ -123,7 +140,12 @@ checkstyle:
   stage: test
   image: eclipse-temurin:21-jdk
   rules:
-    - changes:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH
+      changes:
         - backend/**/*
         - .gitlab-ci.yml
   <<: *gradle-cache
@@ -145,6 +167,9 @@ package:
   stage: package
   image: eclipse-temurin:21-jdk
   rules:
+    # MR pipeline에서는 이미지 빌드 스킵 (test 잡으로 검증 완료, GHCR 태그 오염 방지)
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
     - if: $CI_COMMIT_REF_NAME == "main"
     - if: $CI_COMMIT_REF_NAME == "develop"
     - if: $CI_COMMIT_REF_NAME =~ /^(Feat|Fix|Hotfix|Chore)\//
@@ -189,7 +214,12 @@ frontend-build:
   stage: test
   image: node:22-alpine
   rules:
-    - changes:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - frontend/**/*
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_BRANCH
+      changes:
         - frontend/**/*
         - .gitlab-ci.yml
   <<: *npm-cache
