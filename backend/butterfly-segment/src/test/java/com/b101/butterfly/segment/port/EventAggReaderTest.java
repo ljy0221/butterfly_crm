@@ -2,6 +2,7 @@ package com.b101.butterfly.segment.port;
 
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.Period;
+import com.b101.butterfly.segment.service.preview.EventConditionNotReadyException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link EventAggReader#userMatches} default 구현 검증.
@@ -62,5 +64,14 @@ class EventAggReaderTest {
         reader.userMatches(SAMPLE_NODE, 1L, CTX);
 
         assertThat(closed[0]).isTrue();
+    }
+
+    @Test
+    @DisplayName("default materializeEventMatchesIntoSegment — 미override 시 EventConditionNotReadyException")
+    void materialize_defaultThrows() {
+        EventAggReader reader = (node, ctx) -> Stream.empty();
+
+        assertThatThrownBy(() -> reader.materializeEventMatchesIntoSegment(42L, SAMPLE_NODE, CTX))
+                .isInstanceOf(EventConditionNotReadyException.class);
     }
 }

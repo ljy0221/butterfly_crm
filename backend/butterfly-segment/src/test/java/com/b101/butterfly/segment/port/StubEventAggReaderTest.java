@@ -39,4 +39,11 @@ class StubEventAggReaderTest {
         assertThatThrownBy(() -> stub.userMatches(SAMPLE_NODE, 1L, CTX))
                 .isInstanceOf(EventConditionNotReadyException.class);
     }
+
+    @Test
+    @DisplayName("materializeEventMatchesIntoSegment — EventConditionNotReadyException")
+    void materialize_throws() {
+        assertThatThrownBy(() -> stub.materializeEventMatchesIntoSegment(42L, SAMPLE_NODE, CTX))
+                .isInstanceOf(EventConditionNotReadyException.class);
+    }
 }

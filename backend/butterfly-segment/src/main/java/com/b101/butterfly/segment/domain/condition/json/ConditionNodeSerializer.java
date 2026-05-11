@@ -41,9 +41,12 @@ public class ConditionNodeSerializer extends JsonSerializer<ConditionNode> {
         gen.writeStartObject();
         gen.writeStringField("type", "event");
         provider.defaultSerializeField("categoryId", event.categoryId(), gen);
-        if (event.filters() != null && !event.filters().isEmpty()) {
-            provider.defaultSerializeField("filters", event.filters(), gen);
-        }
+        // filters는 빈 배열이라도 항상 직렬화 — 도메인 계약상 List는 항상 존재해야 하고,
+        // 클라이언트(zod 등) 검증에서 non-optional 배열로 받기 때문.
+        provider.defaultSerializeField(
+                "filters",
+                event.filters() != null ? event.filters() : java.util.List.of(),
+                gen);
         provider.defaultSerializeField("period", event.period(), gen);
         provider.defaultSerializeField("minCount", event.minCount(), gen);
         gen.writeEndObject();
