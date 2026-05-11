@@ -86,7 +86,7 @@ class UserActionIngestControllerTest {
         @Test
         @DisplayName("정상 요청 → 201 + actionId 반환")
         void validReturns201() throws Exception {
-            when(userActionIngestService.record(any())).thenReturn(stubLog(99L));
+            when(userActionIngestService.record(any(), any())).thenReturn(stubLog(99L));
 
             mockMvc.perform(post("/api/v1/events/actions")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +135,7 @@ class UserActionIngestControllerTest {
         @Test
         @DisplayName("logId 미존재 → 400 LOG_NOT_FOUND (BusinessException → ANALYTICS_005)")
         void parentNotFoundReturns400() throws Exception {
-            when(userActionIngestService.record(any()))
+            when(userActionIngestService.record(any(), any()))
                     .thenThrow(new BusinessException(AnalyticsErrorCode.LOG_NOT_FOUND));
 
             mockMvc.perform(post("/api/v1/events/actions")
@@ -148,7 +148,7 @@ class UserActionIngestControllerTest {
         @Test
         @DisplayName("CLICK + 잘못된 URL → 400 INVALID_ACTION_TARGET")
         void invalidActionTargetReturns400() throws Exception {
-            when(userActionIngestService.record(any()))
+            when(userActionIngestService.record(any(), any()))
                     .thenThrow(new BusinessException(AnalyticsErrorCode.INVALID_ACTION_TARGET));
 
             mockMvc.perform(post("/api/v1/events/actions")
