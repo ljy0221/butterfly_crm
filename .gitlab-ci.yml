@@ -103,6 +103,10 @@ integration-test:
     DOCKER_TLS_CERTDIR: ""
     TESTCONTAINERS_HOST_OVERRIDE: "docker"
     TESTCONTAINERS_RYUK_DISABLED: "true"
+    # S14P31B101-226: 같은 잡 안에서 모듈 전환 시 컨테이너 재사용 (DinD daemon 1개 공유).
+    # --no-parallel 순차 실행이므로 동시 사용 충돌 없음. 데이터 격리는 @DataJpaTest
+    # 트랜잭션 자동 롤백 + Flyway schema_history로 보장.
+    TESTCONTAINERS_REUSE_ENABLE: "true"
   <<: *gradle-cache
   before_script:
     - cd $BACKEND_DIR
