@@ -11,13 +11,16 @@ import com.b101.butterfly.campaign.lifecycle.application.CampaignCreator;
 import com.b101.butterfly.campaign.lifecycle.application.CampaignModifier;
 import com.b101.butterfly.campaign.lifecycle.application.CampaignRemover;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignSpecifications;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.lifecycle.port.SegmentReadinessPort;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,9 +54,16 @@ public class CampaignService {
     }
 
     @Transactional(readOnly = true)
-    public Page<CampaignListResult> getCampaignList(Long projectId, Pageable pageable) {
-        Page<Campaign> page = campaignRepository.findAllByProjectId(projectId, pageable);
-        return page.map(CampaignListResult::from);
+    public Page<CampaignListResult> getCampaignList(
+            Long projectId,
+            CampaignStatus status,
+            Channel channel,
+            String q,
+            Pageable pageable
+    ) {
+        Specification<Campaign> spec =
+                CampaignSpecifications.withFilters(projectId, status, channel, q);
+        return campaignRepository.findAll(spec, pageable).map(CampaignListResult::from);
     }
 
     @Transactional(readOnly = true)

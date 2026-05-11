@@ -4,6 +4,7 @@ import com.b101.butterfly.campaign.lifecycle.application.CampaignService;
 import com.b101.butterfly.campaign.lifecycle.application.result.CampaignDetailResult;
 import com.b101.butterfly.campaign.lifecycle.application.result.CampaignListResult;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignCreateRequest;
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignCreateResponse;
 import com.b101.butterfly.campaign.lifecycle.presentation.dto.CampaignDetailResponse;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -77,10 +79,14 @@ public class CampaignController {
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<CampaignListResult>>> getCampaignList(
             @PathVariable @Positive Long projectId,
+            @RequestParam(required = false) CampaignStatus status,
+            @RequestParam(required = false) Channel channel,
+            @RequestParam(required = false) String q,
             @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC)
             Pageable pageable
     ) {
-        Page<CampaignListResult> page = campaignService.getCampaignList(projectId, pageable);
+        Page<CampaignListResult> page =
+                campaignService.getCampaignList(projectId, status, channel, q, pageable);
         return ResponseEntity.ok(ApiResponse.ok(PageResponse.of(
                 page.getContent(),
                 page.getNumber(),

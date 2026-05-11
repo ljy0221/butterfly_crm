@@ -1,6 +1,7 @@
 package com.b101.butterfly.campaign.lifecycle.presentation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -228,12 +229,33 @@ class CampaignControllerWebMvcTest {
                     CAMPAIGN_ID, "캠페인명", Channel.PUSH, CampaignStatus.DRAFT,
                     LocalDateTime.of(2026, 1, 1, 0, 0)
             );
-            given(campaignService.getCampaignList(any(), any()))
+            given(campaignService.getCampaignList(any(), any(), any(), any(), any()))
                     .willReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1));
 
             mockMvc.perform(get(BASE_URL))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content[0].campaignId").value(CAMPAIGN_ID));
+        }
+
+        @Test
+        @DisplayName("필터 파라미터(status, channel, q) 전달 → service 호출 시 그대로 위임")
+        void listWithFilters() throws Exception {
+            given(campaignService.getCampaignList(any(), any(), any(), any(), any()))
+                    .willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
+
+            mockMvc.perform(get(BASE_URL)
+                            .param("status", "ACTIVE")
+                            .param("channel", "PUSH")
+                            .param("q", "검색어"))
+                    .andExpect(status().isOk());
+
+            verify(campaignService).getCampaignList(
+                    eq(PROJECT_ID),
+                    eq(CampaignStatus.ACTIVE),
+                    eq(Channel.PUSH),
+                    eq("검색어"),
+                    any()
+            );
         }
     }
 }
