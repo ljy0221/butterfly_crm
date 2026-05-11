@@ -8,7 +8,7 @@
 default:
   interruptible: true
 
-# branch pipeline ↔ MR pipeline 중복 방지.
+# branch pipeline ↔ MR pipeline 중복 방지 (S14P31B101-220).
 # MR이 열린 브랜치에 push하면 branch pipeline을 차단하고 MR pipeline만 돌린다.
 # - feature push (MR 없음): branch pipeline 1회
 # - MR 생성 이후 push: MR pipeline 1회 (branch pipeline 자동 차단)
