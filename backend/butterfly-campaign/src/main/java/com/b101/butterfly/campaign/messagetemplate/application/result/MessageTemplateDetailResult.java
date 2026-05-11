@@ -15,7 +15,7 @@ public record MessageTemplateDetailResult(
         String messageTemplateImageUrl,
         List<String> requiredVariables,
         LocalDateTime createdAt,
-        LocalDateTime updateAt
+        LocalDateTime updatedAt
 ) {
 
     public static MessageTemplateDetailResult of(MessageTemplate messageTemplate, String memberName,

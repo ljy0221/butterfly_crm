@@ -157,10 +157,10 @@ class MessageTemplateControllerWebMvcTest {
         }
 
         @Test
-        @DisplayName("DELETE /templates/{positive} → 204")
+        @DisplayName("DELETE /templates/{positive} → 200 + ApiResponse.ok()")
         void deleteTemplateIdHappy() throws Exception {
             mockMvc.perform(delete(BASE_URL + "/" + TEMPLATE_ID))
-                    .andExpect(status().isNoContent());
+                    .andExpect(status().isOk());
 
             verify(messageTemplateService).deleteMessageTemplate(TEMPLATE_ID, PROJECT_ID);
         }
