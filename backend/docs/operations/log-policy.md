@@ -74,6 +74,35 @@
 
 `audit_logs.detail`에 변경 추적이 필요한 비밀값은 SHA-256 앞 8자만 기록. 마스킹 책임은 **호출자(도메인 서비스)** — 로그 작성 전에 마스킹된 DTO를 만들어서 넘긴다.
 
+### 4.1 HTTP 요청 헤더 마스킹 (ADR-0017 후속)
+
+SDK 미사용·고객사 앱 직접 API 호출 환경에서 `X-API-Key` 헤더가 요청 로그에 평문으로 찍히면 평문 키 노출 위험이 있다. 다음 규칙을 강제한다:
+
+| 헤더 | 처리 | 적용 위치 |
+|---|---|---|
+| `X-API-Key` | **마스킹**: `pk_live_xxxx...****` (접두사 8자 + `****` 8자) | `RequestLoggingFilter`(또는 `ApiKeyAuthenticationFilter` 의 디버그 로그) |
+| `Authorization: Bearer <JWT>` | **마스킹**: `Bearer xxx...` (앞 3자만) | `JwtAuthenticationFilter` 디버그 로그 |
+| 그 외 헤더 | 평문 로깅 허용 | — |
+
+코드 예 (필터에서 헤더 안전 출력):
+
+```java
+private static String maskApiKey(String raw) {
+    if (raw == null || raw.length() < 12) return "****";
+    return raw.substring(0, 8) + "****"; // pk_live_xxxx**** 형태
+}
+```
+
+**금지 패턴**:
+
+- `log.info("request headers: {}", req.getHeaderNames())` 같이 전체 헤더를 dump 하는 코드
+- `log.debug("api key: {}", apiKey)` 같이 평문 키를 그대로 출력
+- 예외 메시지에 헤더 값을 포함시키는 코드 (스택트레이스를 통해 노출)
+
+**검증 방법** (QA Run 시):
+
+- dev 환경에서 정상 호출 1건 + 무효 키 호출 1건 → ELK/Loki 검색으로 `pk_live_` 평문이 5건 미만 나오는지 확인 (이상이면 필터/로그 코드 점검)
+
 ## 5. 보존 정책
 
 | 종류 | 보존 기간 | 비고 |
