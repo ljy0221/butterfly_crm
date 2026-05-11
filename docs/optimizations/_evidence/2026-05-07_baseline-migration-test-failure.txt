@@ -1,0 +1,32 @@
+## 출처
+- 명령: `./gradlew :butterfly-api:test --tests "*BaselineMigrationIntegrationTest*"`
+- 워크스페이스: C:/project/S14P31B101 (브랜치 Feat/S14P31B101-92, origin/develop 정렬됨)
+- 시점: 2026-05-07 10:55 KST 무렵
+- 원본 로그 위치: C:\Users\SSAFY\AppData\Local\Temp\claude\c--project-S14P31B101\1680ff6c-2556-48cc-b53f-4878b642731a\tasks\bbe1kwdeb.output
+
+## 핵심 결과 (원본 발췌)
+
+> Task :butterfly-api:test
+
+55 tests completed, 1 failed
+
+> Task :butterfly-api:test FAILED
+
+* What went wrong:
+Execution failed for task ':butterfly-api:test'.
+> There were failing tests. See the report at: file:///C:/project/S14P31B101/backend/butterfly-api/build/reports/tests/test/index.html
+
+BUILD FAILED in 1m 39s
+50 actionable tasks: 17 executed, 4 from cache, 29 up-to-date
+
+## 실패 테스트
+- 클래스: BaselineMigrationIntegrationTest
+- 메서드: schema_history_6개_row_성공_상태() (line 81 근처)
+- 원인: V7(devices.external_id 추가, ADR-0012 / S14P31B101-21) 및
+        V8(세그먼트/이벤트 인덱스, S14P31B101-195) 머지 시
+        expected 값 6 → 8 갱신 누락
+- 수정 커밋: 01e4a62 [S14P31B101-DevOps] fix(test): BaselineMigrationIntegrationTest expected를 V8까지 동기화
+
+## 의의
+이 회귀가 origin/develop CI에서는 그린으로 통과 처리되어 머지된 채로 잠복했다는 것이
+unit-test allow_failure: true가 실제로 막아야 했던 것을 막지 못한 구체 증거.

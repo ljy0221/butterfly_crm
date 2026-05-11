@@ -1,0 +1,47 @@
+## 출처
+- 명령: git -C C:/project/S14P31B101 show 'origin/develop:.gitlab-ci.yml'
+- 시점: 2026-05-07 (Before 캡처 시점)
+- 직전 origin/develop 머지: 128ef1c "Merge branch 'Feat/S14P31B101-180_KafkaDlqRetry'" (Kafka DLQ/재시도)
+- 직전 .gitlab-ci.yml 변경 커밋: d0e3931 "Hotfix: add docker profile" → 그 이전 52efc0d "smoke/build stage 제거 및 checkstyle 병렬화"
+
+## allow_failure: true 발견 위치 (line numbered)
+
+L32: unit-test:
+L54:   allow_failure: true     <-- P0-1 제거 대상
+L56: integration-test:
+L76:     - 'sleep 10'           <-- P1-1 readiness 폴링 교체 대상 (예정)
+L88:   allow_failure: true     <-- P0-2 제거 대상
+
+## 의미
+- L54: 단위 테스트가 빨간색이어도 파이프라인은 그린으로 보고됨
+       → DoD "CI 그린"의 정의 자체가 무력화됨
+- L88: TestContainers 통합 테스트가 실패해도 머지 게이트 통과
+       → S14P31B101-21 (이벤트 수집), S14P31B101-180 (Kafka DLQ) 등
+         핵심 통합 검증의 실효성이 깨짐
+- L76: docker daemon이 준비되지 않은 상태에서 시간 기반 wait. 깜빡임 원인.
+
+## 다른 위험 (정성적)
+
+### Jib latest 태그 (backend/build.gradle L118)
+- 명령: git -C C:/project/S14P31B101 show 'origin/develop:backend/build.gradle'
+- L98: jib { ... 블록 시작
+- L116: to { 블록 시작
+- L118: tags = [gitSha, branch, 'latest']
+- 문제: feature 브랜치(예: Feat/S14P31B101-180_KafkaDlqRetry) 빌드도
+        ghcr.io/<ns>/butterfly-api:latest 를 덮어씀
+        → 시연 환경(K8s deployment.image: ...:latest)에서
+          실제로 어떤 SHA가 떠 있는지 식별 불가
+- 정량 증거 없음 (이론적/시연 운영 위험), 정성 위험으로만 기록
+
+## 직전 develop 파이프라인 duration baseline
+- 본 시점 GitLab API 인증 토큰이 환경에 없어 실측 미수집.
+  이후 GitLab Personal Access Token 확보 시 다음 JQL 등가 호출로 수집:
+    GET /api/v4/projects/<id>/pipelines?ref=develop&per_page=10
+    필요 필드: id, sha, created_at, updated_at, duration, status
+- 이론적 critical path 추정 (직전 DevOps Engineer 진단 인용):
+  * 콜드 캐시 (gradle cache miss): 약 24분
+  * 웜 캐시 (gradle cache hit + dind 정상): 약 14분
+- DoD "머지 후 30분 내 빌드 완료" 와의 안전 마진:
+  * 콜드 24분 → 6분 마진 (빠듯, 한 번만 느려져도 위반)
+  * 웜 14분 → 16분 마진 (안전)
+- After 측정에서 GitLab API로 실측치 5건 평균 + p95 캡처 예정.

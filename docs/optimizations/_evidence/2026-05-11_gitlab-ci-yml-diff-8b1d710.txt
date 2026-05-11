@@ -1,0 +1,111 @@
+================================================================================
+S14P31B101-220 — .gitlab-ci.yml diff 박제
+================================================================================
+- Captured at: 2026-05-11
+- Captured by: optimization-historian agent
+- Source command: git show 8b1d710 -- .gitlab-ci.yml
+- Commit:        8b1d710a3e3260c0f3f180d556c8d6dafde8b6d3
+- Author:        이재영 <woduddl1000@gmail.com>
+- Date:          Mon May 11 10:01:48 2026 +0900
+- Subject:       [S14P31B101-220] ci(gitlab): workflow 블록 + MR pipeline 전환으로 중복 트리거 제거
+- Diff stat:     1 file changed, 33 insertions(+), 3 deletions(-)
+- Branch:        Refactor/S14P31B101-220_CIWorkflowDedup
+- Parent ref:    e337c43 (develop merge "feat/S14P31B101-105_ValidateSegmentOnTrigger")
+
+================================================================================
+diff 본문
+================================================================================
+diff --git a/.gitlab-ci.yml b/.gitlab-ci.yml
+index 28958d5..10a4bef 100644
+--- a/.gitlab-ci.yml
++++ b/.gitlab-ci.yml
+@@ -8,6 +8,18 @@
+ default:
+   interruptible: true
+
++# branch pipeline ↔ MR pipeline 중복 방지.
++# MR이 열린 브랜치에 push하면 branch pipeline을 차단하고 MR pipeline만 돌린다.
++# - feature push (MR 없음): branch pipeline 1회
++# - MR 생성 이후 push: MR pipeline 1회 (branch pipeline 자동 차단)
++# - develop/main merge commit: branch pipeline 1회 (통합 검증 + package)
++workflow:
++  rules:
++    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
++    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
++      when: never
++    - if: $CI_COMMIT_BRANCH
++
+ stages:
+   - test
+   - package
+@@ -51,7 +63,12 @@ unit-test:
+   stage: test
+   image: eclipse-temurin:21-jdk
+   rules:
+-    - changes:
++    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
++      changes:
++        - backend/**/*
++        - .gitlab-ci.yml
++    - if: $CI_COMMIT_BRANCH
++      changes:
+         - backend/**/*
+         - .gitlab-ci.yml
+   <<: *gradle-cache
+@@ -123,7 +140,12 @@ checkstyle:
+   stage: test
+   image: eclipse-temurin:21-jdk
+   rules:
+-    - changes:
++    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
++      changes:
++        - backend/**/*
++        - .gitlab-ci.yml
++    - if: $CI_COMMIT_BRANCH
++      changes:
+         - backend/**/*
+         - .gitlab-ci.yml
+   <<: *gradle-cache
+@@ -145,6 +167,9 @@ package:
+   stage: package
+   image: eclipse-temurin:21-jdk
+   rules:
++    # MR pipeline에서는 이미지 빌드 스킵 (test 잡으로 검증 완료, GHCR 태그 오염 방지)
++    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
++      when: never
+     - if: $CI_COMMIT_REF_NAME == "main"
+     - if: $CI_COMMIT_REF_NAME == "develop"
+     - if: $CI_COMMIT_REF_NAME =~ /^(Feat|Fix|Hotfix|Chore)\//
+@@ -189,7 +214,12 @@ frontend-build:
+   stage: test
+   image: node:22-alpine
+   rules:
+-    - changes:
++    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
++      changes:
++        - frontend/**/*
++        - .gitlab-ci.yml
++    - if: $CI_COMMIT_BRANCH
++      changes:
+         - frontend/**/*
+         - .gitlab-ci.yml
+   <<: *npm-cache
+
+================================================================================
+관전 포인트
+================================================================================
+1) workflow 블록 신설 (16~21행): GitLab 권장 표준 패턴 그대로 채택.
+   - rule 1: MR pipeline은 항상 통과
+   - rule 2: branch에 열린 MR이 있다면 branch pipeline 차단 (when: never)
+   - rule 3: 그 외 branch pipeline 허용 (MR 없는 feature push, develop/main merge)
+
+2) unit-test / checkstyle / frontend-build 의 rules 변경:
+   - 기존: changes만으로 매칭 (branch / MR 모두 동일하게 매칭)
+   - 변경: merge_request_event / CI_COMMIT_BRANCH 두 분기를 명시
+   - 이유: workflow 블록과 잡 rules는 AND 조건. 잡 rules에서 source를 명시하지 않으면
+     workflow 통과 후 잡이 무조건 매칭되어 의도치 않게 켜질 수 있음. 이중 안전장치.
+
+3) package 잡 rules 최상단에 'if MR_event then never' 추가:
+   - GHCR 이미지 푸시는 검증된 head 코드(branch pipeline 머지 commit)에서만 실행.
+   - MR pipeline에서는 unit/integration/checkstyle/frontend-build로만 검증.
+   - 검증되지 않은 MR commit이 GHCR에 :SHA 태그로 누적되는 것을 차단.
