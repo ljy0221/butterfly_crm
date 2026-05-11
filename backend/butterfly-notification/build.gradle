@@ -5,6 +5,7 @@ dependencies {
     implementation project(':butterfly-auth')
     implementation project(':butterfly-event')
     implementation project(':butterfly-campaign')
+    implementation project(':butterfly-segment')
 
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'

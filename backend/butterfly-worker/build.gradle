@@ -27,7 +27,12 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     testImplementation 'org.springframework.amqp:spring-rabbit-test'
     testImplementation 'org.springframework.kafka:spring-kafka-test'
-    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.awaitility:awaitility'
+    // EventsPersistedSegmentIntegrationTest (develop merge 후) 가
+    // AbstractMySqlContainerTest + GenericContainer + DockerImageName 사용.
     testImplementation project(':butterfly-testsupport')
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }

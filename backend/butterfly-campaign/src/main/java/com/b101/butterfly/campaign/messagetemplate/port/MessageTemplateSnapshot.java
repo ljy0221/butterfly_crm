@@ -11,9 +11,11 @@ public record MessageTemplateSnapshot(
         Long messageTemplateId,
         Long projectId,
         Channel channel,
-        String body
+        String title,
+        String body,
+        String imageUrl
 ) {
     public MessageTemplateSnapshot(Long messageTemplateId, Long projectId, Channel channel) {
-        this(messageTemplateId, projectId, channel, null);
+        this(messageTemplateId, projectId, channel, null, null, null);
     }
 }
