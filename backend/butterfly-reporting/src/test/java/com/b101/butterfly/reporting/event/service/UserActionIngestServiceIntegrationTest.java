@@ -68,7 +68,7 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
     @Test
     @DisplayName("정상 요청 → user_action_logs 1 row INSERT + project_id/campaign_id 비정규화 복사")
     void insertsAndCopiesParentDenormalizedFields() {
-        UserActionLog saved = service.record(request(ActionType.CLICK, "https://shop.example.com/promo"));
+        UserActionLog saved = service.record(request(ActionType.CLICK, "https://shop.example.com/promo"), null);
 
         assertThat(saved.getId()).isNotNull();
         assertThat(saved.getLogId()).isEqualTo(parentLogId);
@@ -90,7 +90,7 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
                 99999999L, 78901L, 23456L, ActionType.OPEN, null, null, ACTION_AT
         );
 
-        assertThatThrownBy(() -> service.record(request))
+        assertThatThrownBy(() -> service.record(request, null))
                 .isInstanceOfSatisfying(BusinessException.class, ex ->
                         assertThat(ex.getErrorCode()).isEqualTo(AnalyticsErrorCode.LOG_NOT_FOUND));
     }
@@ -100,8 +100,8 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
     void duplicatesAreAllowed() {
         UserActionIngestRequest request = request(ActionType.OPEN, null);
 
-        service.record(request);
-        service.record(request);
+        service.record(request, null);
+        service.record(request, null);
 
         assertThat(userActionLogRepository.count())
                 .as("이벤트 로그 특성상 중복 허용 — 멱등 키 없음")
@@ -111,10 +111,10 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
     @Test
     @DisplayName("OPEN/CLICK/CONVERT/DISMISS 4종 actionType 모두 적재 가능")
     void allActionTypesArePersisted() {
-        service.record(request(ActionType.OPEN, null));
-        service.record(request(ActionType.CLICK, "https://example.com"));
-        service.record(request(ActionType.CONVERT, null));
-        service.record(request(ActionType.DISMISS, null));
+        service.record(request(ActionType.OPEN, null), null);
+        service.record(request(ActionType.CLICK, "https://example.com"), null);
+        service.record(request(ActionType.CONVERT, null), null);
+        service.record(request(ActionType.DISMISS, null), null);
 
         assertThat(userActionLogRepository.count()).isEqualTo(4);
     }
@@ -122,7 +122,7 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
     @Test
     @DisplayName("CLICK인데 actionTarget이 null → INVALID_ACTION_TARGET")
     void clickWithoutTargetIsRejected() {
-        assertThatThrownBy(() -> service.record(request(ActionType.CLICK, null)))
+        assertThatThrownBy(() -> service.record(request(ActionType.CLICK, null), null))
                 .isInstanceOfSatisfying(BusinessException.class, ex ->
                         assertThat(ex.getErrorCode()).isEqualTo(AnalyticsErrorCode.INVALID_ACTION_TARGET));
     }
@@ -130,7 +130,7 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
     @Test
     @DisplayName("CLICK인데 actionTarget이 비-URL → INVALID_ACTION_TARGET")
     void clickWithInvalidUrlIsRejected() {
-        assertThatThrownBy(() -> service.record(request(ActionType.CLICK, "not-a-url")))
+        assertThatThrownBy(() -> service.record(request(ActionType.CLICK, "not-a-url"), null))
                 .isInstanceOfSatisfying(BusinessException.class, ex ->
                         assertThat(ex.getErrorCode()).isEqualTo(AnalyticsErrorCode.INVALID_ACTION_TARGET));
     }
@@ -138,9 +138,28 @@ class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest 
     @Test
     @DisplayName("OPEN은 actionTarget이 null이어도 정상 적재 (CLICK만 검증)")
     void openWithoutTargetIsAccepted() {
-        UserActionLog saved = service.record(request(ActionType.OPEN, null));
+        UserActionLog saved = service.record(request(ActionType.OPEN, null), null);
 
         assertThat(saved.getActionTarget()).isNull();
         assertThat(saved.getActionType()).isEqualTo(ActionType.OPEN);
+    }
+
+    @Test
+    @DisplayName("resolvedProjectId == parent.projectId → 정상 적재 (도메인 검증 통과)")
+    void domainValidationPassesWhenProjectMatches() {
+        UserActionLog saved = service.record(request(ActionType.OPEN, null), 123L);
+
+        assertThat(saved.getProjectId()).isEqualTo(123L);
+    }
+
+    @Test
+    @DisplayName("resolvedProjectId != parent.projectId → LOG_NOT_FOUND (정보 노출 방지, ADR-0017)")
+    void domainValidationRejectsCrossProjectLogId() {
+        // 인증된 키는 다른 프로젝트(999) 소속이지만 요청 logId 는 project=123 의 row
+        assertThatThrownBy(() -> service.record(request(ActionType.OPEN, null), 999L))
+                .isInstanceOfSatisfying(BusinessException.class, ex ->
+                        assertThat(ex.getErrorCode())
+                                .as("401/403 이 아닌 LOG_NOT_FOUND 로 통일 — logId 존재 사실 노출 방지")
+                                .isEqualTo(AnalyticsErrorCode.LOG_NOT_FOUND));
     }
 }
