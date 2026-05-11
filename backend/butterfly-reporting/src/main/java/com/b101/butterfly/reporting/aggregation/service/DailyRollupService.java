@@ -102,9 +102,12 @@ public class DailyRollupService {
     }
 
     /**
-     * 매일 새벽 1시 자동 실행 — 전날 데이터를 롤업한다.
+     * 매일 새벽 1시 KST 자동 실행 — 전날 데이터를 롤업한다.
+     *
+     * <p>zone = "Asia/Seoul" 명시 — JVM 기본 타임존이 UTC인 컨테이너에서도 KST 01:00에 발사되도록 잠금.
+     * {@code ReconciliationScheduler} L69 동일 패턴.
      */
-    @Scheduled(cron = "0 0 1 * * *")
+    @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
     public void scheduledRollup() {
         LocalDate yesterday = LocalDate.now().minusDays(1);
         try {
