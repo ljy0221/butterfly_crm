@@ -40,8 +40,8 @@ const DOMAIN_FLAGS: Record<string, boolean> = {
   segment_rebuild: false, // 백엔드 구현됨 (Stub)
   segment_linked_campaigns: false, // 백엔드 구현됨
   campaign: true, // 캠페인 CRUD/실행 전체 미구현 (CampaignController 자체 없음)
-  event_categories: true, // 이벤트 카테고리 CRUD 미구현
-  event_schema: true,
+  event_categories: false, // 백엔드 EventCategoryController 구현됨 (7개 endpoint)
+  event_schema: false, // 동일
 };
 
 export function shouldMock(domain?: string): boolean {
