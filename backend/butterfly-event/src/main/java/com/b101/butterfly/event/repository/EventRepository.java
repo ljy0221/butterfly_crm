@@ -2,6 +2,7 @@ package com.b101.butterfly.event.repository;
 
 import com.b101.butterfly.event.entity.Event;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,6 +15,10 @@ public interface EventRepository extends JpaRepository<Event, Long> {
   Page<Event> findByProjectIdAndUserId(Long projectId, Long userId, Pageable pageable);
 
   Page<Event> findByProjectId(Long projectId, Pageable pageable);
+
+  /** 특정 (project, category) 의 가장 최근 발생 이벤트 1건 — 카테고리 샘플 화면용. */
+  Optional<Event> findTopByProjectIdAndCategoryIdOrderByOccurredAtDesc(
+      Long projectId, Long categoryId);
 
   /**
    * event_uuid 기준 멱등 insert. 중복이면 0, 신규면 1 반환. (events insert 결과로 event_daily_agg 증분 여부를 결정하는 용도)

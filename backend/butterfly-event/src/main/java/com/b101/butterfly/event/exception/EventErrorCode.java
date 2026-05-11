@@ -19,6 +19,12 @@ public enum EventErrorCode implements ErrorCode {
             "해당 카테고리에 등록된 스키마가 없습니다."),
     SCHEMA_ALREADY_EXISTS(HttpStatus.CONFLICT,           "SCHEMA_ALREADY_EXISTS",
             "해당 카테고리에 이미 스키마가 존재합니다. 수정은 PUT /schemas 를 사용하세요."),
+    CATEGORY_ALREADY_EXISTS(HttpStatus.CONFLICT,         "CATEGORY_ALREADY_EXISTS",
+            "이미 존재하는 이벤트 카테고리 이름입니다."),
+    CATEGORY_BUILTIN_PROTECTED(HttpStatus.FORBIDDEN,     "CATEGORY_BUILTIN_PROTECTED",
+            "기본 제공(BUILTIN) 이벤트 카테고리는 삭제할 수 없습니다."),
+    INVALID_PROPERTY_TYPE(HttpStatus.BAD_REQUEST,        "INVALID_PROPERTY_TYPE",
+            "유효하지 않은 속성 타입입니다. (string/number/boolean/datetime/object)"),
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,     "INTERNAL_ERROR",
             "서버 내부 오류가 발생했습니다.");
 
