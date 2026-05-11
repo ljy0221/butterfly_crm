@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -13,11 +14,13 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * 임시 Security 설정 — JWT 인증 필터 검증 완료 후 교체 예정.
- * JwtAuthenticationFilter, @EnableMethodSecurity 는 검증 단계에서 활성화.
+ * 로컬/개발 환경 전용 Security 설정 (prod 프로파일 제외).
+ * 모든 요청 허용 — @PreAuthorize 비활성, X-Member-Id 헤더로 인증 대체.
+ * prod 환경은 SecureSecurityConfig 사용.
  */
 @Configuration
 @EnableWebSecurity
+@Profile("!prod")
 @EnableConfigurationProperties(CorsProperties.class)
 public class SecurityConfig {
 
@@ -30,8 +33,6 @@ public class SecurityConfig {
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/test/**").permitAll()
-                        .requestMatchers("/sdk/**").permitAll()
                         .anyRequest().permitAll()
                 );
 
