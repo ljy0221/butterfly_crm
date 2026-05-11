@@ -1,0 +1,13 @@
+# 비밀값 보관 — 절대 커밋 금지
+.env
+.env.local
+.env.*.local
+
+# 컨테이너 데이터 (도커 볼륨이 아니라 호스트 bind mount 사용 시 대비)
+data/
+*.db
+*.sqlite
+
+# 임시 파일
+*.bak
+*.tmp

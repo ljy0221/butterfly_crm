@@ -1,0 +1,84 @@
+# Prometheus — pull(scrape) + push(remote_write_receiver) 동시 운영
+#
+# ADR-0018: node-exporter (NodePort 30090) pull + Spring Boot Actuator (/actuator/prometheus) pull.
+# 향후 K8s pod ServiceMonitor 패턴 도입 시 prometheus-operator로 교체 가능.
+#
+# 라벨 cardinality 금지 (메모리 project_observability_stack.md):
+#   userId / projectId / campaignId / requestId / traceId 는 라벨 X. exemplar/attribute로.
+#
+# 본 파일은 K8s 클러스터 프로비저닝 후 AWS_NODE_*_EIP placeholder를 실제 EIP로 치환해야 함.
+
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 15s
+  external_labels:
+    env: prod          # 발급 EC2 환경 (개발/스테이징 분리되면 dev/staging로)
+    cluster: butterfly
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [alertmanager:9093]
+
+scrape_configs:
+
+  # ===========================================================================
+  # Prometheus 자기 자신 (메타 모니터링)
+  # ===========================================================================
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+        labels:
+          service: prometheus
+
+  # ===========================================================================
+  # AWS K3s 노드 메트릭 (node-exporter, Phase 2 도입 후 활성)
+  # K8s 클러스터 프로비저닝 시 AWS_*_EIP를 실제 EIP로 치환:
+  #   sed -i 's/AWS_MASTER_EIP/<실제 IP>/g' prometheus.yml
+  # ===========================================================================
+  - job_name: kubernetes-nodes
+    scrape_interval: 30s
+    static_configs:
+      - targets: [AWS_MASTER_EIP:30090]
+        labels:
+          node: master
+          tier: control-plane
+      - targets: [AWS_WORKER1_EIP:30090]
+        labels:
+          node: worker-1
+          tier: heavy
+      - targets: [AWS_WORKER2_EIP:30090]
+        labels:
+          node: worker-2
+          tier: light
+      - targets: [AWS_MYSQL_EIP:30090]
+        labels:
+          node: mysql-node
+          tier: database
+
+  # ===========================================================================
+  # Spring Boot Actuator (Phase 2 도입 후 활성)
+  # butterfly-api / butterfly-worker 의 /actuator/prometheus 풀
+  # K8s 측에서 NodePort 또는 ServiceMonitor 라벨로 주소 결정
+  # ===========================================================================
+  - job_name: butterfly-api
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: [AWS_WORKER1_EIP:30080]
+        labels:
+          service: butterfly-api
+          module: api
+
+  - job_name: butterfly-worker
+    metrics_path: /actuator/prometheus
+    scrape_interval: 30s
+    static_configs:
+      - targets: [AWS_WORKER2_EIP:30081]   # NodePort 미정 — Phase 2에서 확정
+        labels:
+          service: butterfly-worker
+          module: worker

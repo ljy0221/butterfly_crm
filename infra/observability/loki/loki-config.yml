@@ -1,0 +1,77 @@
+# Loki — single binary mode + filesystem 저장
+#
+# ADR-0018: Promtail(K8s DaemonSet) → 본 Loki로 push.
+# 운영 hot 30일 (log-policy.md). 콜드 아카이브는 향후 별도 ADR.
+#
+# Promtail push 엔드포인트 (Caddy 경유):
+#   https://k14b101.p.ssafy.io/lgtm/loki/loki/api/v1/push
+#   (Caddy handle_path /lgtm/loki/* → loki:3100, 즉 /loki/api/v1/push)
+
+auth_enabled: false   # Caddy Basic Auth가 0차 게이트, Loki 자체 멀티테넌시 X
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9096
+  log_level: info
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: inmemory
+
+schema_config:
+  configs:
+    - from: 2026-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # 운영 hot 30일 (log-policy.md)
+  retention_period: 720h
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h           # 7일보다 오래된 로그는 거부
+  # cardinality 폭발 방지 — 메모리 project_observability_stack.md
+  max_label_name_length: 1024
+  max_label_value_length: 4096
+  max_label_names_per_series: 30
+  # ingestion rate (DDoS 방어 + 실수 방지)
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  per_stream_rate_limit: 10MB
+  per_stream_rate_limit_burst: 20MB
+
+# retention 활성화 — compactor가 구 로그 GC
+compactor:
+  working_directory: /loki/compactor
+  delete_request_store: filesystem
+  retention_enabled: true
+  retention_delete_delay: 2h
+  retention_delete_worker_count: 150
+
+ruler:
+  storage:
+    type: local
+    local:
+      directory: /loki/rules
+  rule_path: /loki/rules-tmp
+  alertmanager_url: http://alertmanager:9093
+  ring:
+    kvstore:
+      store: inmemory
+  enable_api: true
+
+# 분석/리포트는 매일 외부에서 별도 batch — analytics_config 미사용
+
+analytics:
+  reporting_enabled: false

@@ -1,0 +1,36 @@
+# Grafana datasource provisioning — Prometheus + Loki 자동 등록
+#
+# 운영자가 UI에서 데이터소스 추가하지 않아도 부팅 시 자동 연결.
+# 컨테이너 간 통신만 사용 — Caddy 경유 X.
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s
+      httpMethod: POST
+      manageAlerts: false        # Alertmanager 별도 운영
+      prometheusType: Prometheus
+      cacheLevel: 'High'
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      maxLines: 5000
+      timeout: 60
+      derivedFields:
+        # log JSON에 traceId 있으면 Tempo로 점프 (Tempo 도입 후 활성)
+        # ADR-0018에 따라 현 단계에서는 미활성. 후속 ADR에서 Tempo 도입 시 켬.
+        - name: traceId
+          matcherRegex: '"traceId":"([0-9a-f]+)"'
+          url: '$${__value.raw}'
+          urlDisplayLabel: 'View in Tempo (TODO)'
