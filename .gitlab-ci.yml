@@ -106,7 +106,9 @@ integration-test:
         sleep 1
       done
   script:
-    - ./gradlew integrationTest --build-cache --no-daemon
+    # --no-parallel: 모듈별 integrationTest 동시 실행 방지 (Testcontainers MySQL × N개로 인한
+    # CI runner OOMKilled 137 해결). unit-test/checkstyle 잡은 그대로 parallel 유지.
+    - ./gradlew integrationTest --build-cache --no-daemon --no-parallel
   artifacts:
     name: "integration-test-reports-$CI_COMMIT_SHORT_SHA"
     when: always

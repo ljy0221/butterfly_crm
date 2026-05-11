@@ -8,6 +8,7 @@ import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstructionPublisher;
+import com.b101.butterfly.campaign.lifecycle.port.SegmentReadinessPort;
 import com.b101.butterfly.global.error.BusinessException;
 import java.time.Clock;
 import java.time.Instant;
@@ -39,6 +40,7 @@ public class CampaignActivator {
     private final CampaignRepository campaignRepository;
     private final CampaignExecutionRepository campaignExecutionRepository;
     private final CampaignSendInstructionPublisher publisher;
+    private final SegmentReadinessPort segmentReadinessPort;
     private final Clock clock;
 
     @Transactional
@@ -46,6 +48,11 @@ public class CampaignActivator {
         Campaign campaign = campaignRepository.getByCampaignId(campaignId);
         assertOwnedBy(campaign, projectId);
         assertActivatable(campaign);
+
+        // Targeting.Segment인 경우에만 세그먼트 readiness 검증 (Targeting.All은 segmentId=null)
+        if (campaign.getSegmentId() != null) {
+            segmentReadinessPort.requireReady(campaign.getSegmentId());
+        }
 
         campaign.activate();
         campaignRepository.saveAndFlush(campaign);
