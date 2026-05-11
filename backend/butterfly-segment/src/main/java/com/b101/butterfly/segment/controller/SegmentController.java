@@ -36,9 +36,6 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 /**
  * 세그먼트 API. 03-segment.md §1~2 12개 엔드포인트.
  *
@@ -144,9 +141,7 @@ public class SegmentController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<LinkedCampaignsResponse> linkedCampaigns(
             @PathVariable Long projectId, @PathVariable Long segmentId) {
-        // TODO Phase 7 — LinkedCampaignChecker.listLinkedCampaigns 변환
-        return ApiResponse.ok(
-                new LinkedCampaignsResponse(List.of(), List.of(), List.of(), List.of(), 0));
+        return ApiResponse.ok(segmentService.listLinkedCampaigns(projectId, segmentId));
     }
 
     @GetMapping("/favorites")

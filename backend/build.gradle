@@ -126,9 +126,12 @@ subprojects {
                     }
                 }
                 container {
+                    // MaxRAMPercentage 60%: K8s Deployment limits.memory(1.5G/1G)의 ~60%만 heap에
+                    // 할당. 나머지 ~600MB는 metaspace/direct buffer/Netty/Kafka producer/GC overhead로
+                    // 두어 cgroup limit과 마진 확보. 75%는 부하 시 OOMKill 마진이 빠듯하다.
                     jvmFlags = [
                         '-XX:+UseContainerSupport',
-                        '-XX:MaxRAMPercentage=75.0',
+                        '-XX:MaxRAMPercentage=60.0',
                         '-Djava.security.egd=file:/dev/./urandom'
                     ]
                     ports = ['8080']

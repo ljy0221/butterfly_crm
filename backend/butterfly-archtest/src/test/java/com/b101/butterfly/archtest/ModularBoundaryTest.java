@@ -6,6 +6,8 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 import com.tngtech.archunit.library.freeze.FreezingArchRule;
 
+import static com.tngtech.archunit.base.DescribedPredicate.not;
+import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
@@ -87,5 +89,23 @@ class ModularBoundaryTest {
                     slices().matching("com.b101.butterfly.(*)..")
                             .should().beFreeOfCycles()
                             .as("도메인 슬라이스 간 순환 의존 금지")
+            );
+
+    /**
+     * 캠페인 모듈은 세그먼트 모듈의 {@code port} 패키지만 접근할 수 있다.
+     *
+     * <p>S14P31B101-229 — campaign → segment 의존이 추가되며 기존 BC ACL 룰을 segment 측에
+     * 도 강화. segment 도메인 모델·서비스·repository·controller 등 내부 변경에 campaign 이
+     * 직접 묶이지 않도록 port 인터페이스 + DTO record 만 import 허용.
+     */
+    @ArchTest
+    static final ArchRule campaignToSegmentOnlyThroughPort =
+            FreezingArchRule.freeze(
+                    noClasses().that().resideInAPackage("com.b101.butterfly.campaign..")
+                            .should().dependOnClassesThat(
+                                    resideInAPackage("com.b101.butterfly.segment..")
+                                            .and(not(resideInAPackage("com.b101.butterfly.segment.port..")))
+                            )
+                            .as("캠페인 모듈은 세그먼트의 port 패키지만 접근 가능하다")
             );
 }

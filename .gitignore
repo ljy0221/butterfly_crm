@@ -52,3 +52,13 @@ backend/scripts/dev-segment-dummy-data.sql
 backend/scripts/reset-segment-dummy-data.bat
 backend/scripts/run-api-for-migration.bat
 backend/scripts/run-worker-for-segment-build.bat
+
+
+### 개인 학습 노트 (커밋 안 함) ###
+CLAUDE.local.md
+/docs/
+
+### K8s secrets (수동 apply, ArgoCD 외부) ###
+deploy/k8s/overlays/*/secrets.yaml
+deploy/k8s/overlays/*/regcred.yaml
+

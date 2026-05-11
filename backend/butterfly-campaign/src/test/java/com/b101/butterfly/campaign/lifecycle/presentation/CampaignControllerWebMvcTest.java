@@ -1,6 +1,7 @@
 package com.b101.butterfly.campaign.lifecycle.presentation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -86,7 +87,7 @@ class CampaignControllerWebMvcTest {
                                     }
                                     """))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID));
 
             verify(campaignService).createCampaign(any());
         }
@@ -141,8 +142,8 @@ class CampaignControllerWebMvcTest {
 
             mockMvc.perform(get(BASE_URL + "/" + CAMPAIGN_ID))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID))
-                    .andExpect(jsonPath("$.campaignName").value("캠페인명"));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID))
+                    .andExpect(jsonPath("$.data.campaignName").value("캠페인명"));
         }
     }
 
@@ -160,11 +161,13 @@ class CampaignControllerWebMvcTest {
                             .content("""
                                     {
                                         "campaignName": "수정된 이름",
-                                        "campaignDescription": "수정된 설명"
+                                        "campaignDescription": "수정된 설명",
+                                        "messageTemplateId": 10,
+                                        "segmentId": 42
                                     }
                                     """))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID));
         }
     }
 
@@ -185,8 +188,8 @@ class CampaignControllerWebMvcTest {
                                     }
                                     """))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.campaignId").value(CAMPAIGN_ID))
-                    .andExpect(jsonPath("$.campaignStatus").value("ACTIVE"));
+                    .andExpect(jsonPath("$.data.campaignId").value(CAMPAIGN_ID))
+                    .andExpect(jsonPath("$.data.campaignStatus").value("ACTIVE"));
         }
 
         @Test
@@ -206,10 +209,10 @@ class CampaignControllerWebMvcTest {
     class DeleteCampaign {
 
         @Test
-        @DisplayName("정상 요청 → 204 No Content")
+        @DisplayName("정상 요청 → 200 + ApiResponse.ok()")
         void deleteHappy() throws Exception {
             mockMvc.perform(delete(BASE_URL + "/" + CAMPAIGN_ID))
-                    .andExpect(status().isNoContent());
+                    .andExpect(status().isOk());
 
             verify(campaignService).deleteCampaign(CAMPAIGN_ID, PROJECT_ID);
         }
@@ -226,12 +229,33 @@ class CampaignControllerWebMvcTest {
                     CAMPAIGN_ID, "캠페인명", Channel.PUSH, CampaignStatus.DRAFT,
                     LocalDateTime.of(2026, 1, 1, 0, 0)
             );
-            given(campaignService.getCampaignList(any(), any()))
+            given(campaignService.getCampaignList(any(), any(), any(), any(), any()))
                     .willReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 10), 1));
 
             mockMvc.perform(get(BASE_URL))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.content[0].campaignId").value(CAMPAIGN_ID));
+                    .andExpect(jsonPath("$.data.content[0].campaignId").value(CAMPAIGN_ID));
+        }
+
+        @Test
+        @DisplayName("필터 파라미터(status, channel, q) 전달 → service 호출 시 그대로 위임")
+        void listWithFilters() throws Exception {
+            given(campaignService.getCampaignList(any(), any(), any(), any(), any()))
+                    .willReturn(new PageImpl<>(List.of(), PageRequest.of(0, 10), 0));
+
+            mockMvc.perform(get(BASE_URL)
+                            .param("status", "ACTIVE")
+                            .param("channel", "PUSH")
+                            .param("q", "검색어"))
+                    .andExpect(status().isOk());
+
+            verify(campaignService).getCampaignList(
+                    eq(PROJECT_ID),
+                    eq(CampaignStatus.ACTIVE),
+                    eq(Channel.PUSH),
+                    eq("검색어"),
+                    any()
+            );
         }
     }
 }

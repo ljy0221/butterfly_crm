@@ -11,6 +11,7 @@ import com.b101.butterfly.segment.dto.request.UpdateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
 import com.b101.butterfly.segment.dto.response.CreatorSummary;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignSummary;
+import com.b101.butterfly.segment.dto.response.LinkedCampaignsResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.entity.Segment;
@@ -115,6 +116,29 @@ public class SegmentService {
     public SegmentDetailResponse detail(Long projectId, Long segmentId, Long memberId) {
         Segment segment = findActiveSegment(segmentId);
         return toDetail(segment, memberId);
+    }
+
+    /**
+     * 세그먼트에 연결된 캠페인을 상태별로 그룹화해 반환 (API #45).
+     *
+     * <p>{@link #toDetail} 의 flatten 과 달리 status 별 리스트를 분리한 채로 노출 — 화면에서 status
+     * 별 섹션 렌더링용. campaign 모듈 미합류 시 {@code StubLinkedCampaignChecker} 가 빈 결과 반환.
+     */
+    public LinkedCampaignsResponse listLinkedCampaigns(Long projectId, Long segmentId) {
+        Segment segment = findActiveSegment(segmentId);
+        LinkedCampaignsView view = linkedCampaignChecker.listLinkedCampaigns(segment.getId());
+        return new LinkedCampaignsResponse(
+                view.active().stream().map(SegmentService::toDtoSummary).toList(),
+                view.paused().stream().map(SegmentService::toDtoSummary).toList(),
+                view.draft().stream().map(SegmentService::toDtoSummary).toList(),
+                view.ended().stream().map(SegmentService::toDtoSummary).toList(),
+                view.totalCount());
+    }
+
+    private static LinkedCampaignSummary toDtoSummary(
+            com.b101.butterfly.segment.port.LinkedCampaignSummary portSummary) {
+        return new LinkedCampaignSummary(
+                portSummary.campaignId(), portSummary.name(), portSummary.campaignStatus());
     }
 
     @Transactional

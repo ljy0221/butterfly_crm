@@ -5,13 +5,13 @@ import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import java.util.List;
 import java.util.Optional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface CampaignRepository extends JpaRepository<Campaign, Long> {
+public interface CampaignRepository
+        extends JpaRepository<Campaign, Long>, JpaSpecificationExecutor<Campaign> {
 
     List<Campaign> findAllByMessageTemplateId(Long messageTemplateId);
 
@@ -24,9 +24,22 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     boolean existsByMessageTemplateIdAndCampaignStatusIn(
             Long messageTemplateId, List<CampaignStatus> statuses);
 
-    Optional<Campaign> findByCampaignId(Long campaignId);
+    /**
+     * segment 를 사용 중인 캠페인 중 주어진 status 가 하나라도 있는지 확인 (count 쿼리, 메모리 로드 X).
+     *
+     * <p>{@code LinkedCampaignChecker#hasActiveOrSending} 용. segment 의 수정/삭제 보호를 위한 가드.
+     */
+    boolean existsBySegmentIdAndCampaignStatusIn(
+            Long segmentId, List<CampaignStatus> statuses);
 
-    Page<Campaign> findAllByProjectId(Long projectId, Pageable pageable);
+    /**
+     * segment 를 사용 중인 모든 캠페인 (soft delete 제외, {@code @SQLRestriction} 자동 적용).
+     *
+     * <p>{@code LinkedCampaignChecker#listLinkedCampaigns} 용. 상태별 그룹화는 호출자가 수행.
+     */
+    List<Campaign> findAllBySegmentId(Long segmentId);
+
+    Optional<Campaign> findByCampaignId(Long campaignId);
 
     default Campaign getByCampaignId(Long campaignId) {
         return findByCampaignId(campaignId)

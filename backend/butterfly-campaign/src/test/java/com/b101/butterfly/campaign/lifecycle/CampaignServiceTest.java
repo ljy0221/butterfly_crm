@@ -78,10 +78,11 @@ class CampaignServiceTest {
     @Test
     @DisplayName("updateCampaign: command를 Modifier로 위임")
     void updateDelegatesToModifier() {
-        given(modifier.updateCampaign(CAMPAIGN_ID, PROJECT_ID, "n", "d")).willReturn(CAMPAIGN_ID);
+        CampaignUpdateCommand cmd = new CampaignUpdateCommand(
+                CAMPAIGN_ID, PROJECT_ID, "n", "d", 50L, 60L);
+        given(modifier.updateCampaign(cmd)).willReturn(CAMPAIGN_ID);
 
-        Long id = service.updateCampaign(new CampaignUpdateCommand(
-                CAMPAIGN_ID, PROJECT_ID, "n", "d"));
+        Long id = service.updateCampaign(cmd);
 
         assertThat(id).isEqualTo(CAMPAIGN_ID);
     }

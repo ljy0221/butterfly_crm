@@ -15,6 +15,8 @@ import com.b101.butterfly.segment.domain.condition.validation.TypeFieldValidator
 import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
 import com.b101.butterfly.segment.dto.response.FavoritesResponse;
+import com.b101.butterfly.segment.dto.response.LinkedCampaignSummary;
+import com.b101.butterfly.segment.dto.response.LinkedCampaignsResponse;
 import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
@@ -209,8 +211,36 @@ class SegmentControllerWebMvcTest {
     }
 
     @Test
-    @DisplayName("GET /segments/{id}/campaigns — 더미 빈 그룹")
-    void linkedCampaignsReturnsEmptyGroups() throws Exception {
+    @DisplayName("GET /segments/{id}/campaigns — service 의 status 별 그룹화 응답을 그대로 반환")
+    void linkedCampaignsReturnsGroupedResponse() throws Exception {
+        LinkedCampaignSummary active1 = new LinkedCampaignSummary(101L, "스프링 캠페인", "ACTIVE");
+        LinkedCampaignSummary paused1 = new LinkedCampaignSummary(102L, "여름 캠페인", "PAUSED");
+        LinkedCampaignSummary draft1 = new LinkedCampaignSummary(103L, "초안 캠페인", "DRAFT");
+        LinkedCampaignsResponse response = new LinkedCampaignsResponse(
+                List.of(active1),
+                List.of(paused1),
+                List.of(draft1),
+                List.of(),
+                3);
+        when(segmentService.listLinkedCampaigns(eq(1L), eq(42L))).thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/projects/1/segments/42/campaigns"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(3))
+                .andExpect(jsonPath("$.data.active[0].campaignId").value(101))
+                .andExpect(jsonPath("$.data.active[0].campaignStatus").value("ACTIVE"))
+                .andExpect(jsonPath("$.data.paused[0].campaignId").value(102))
+                .andExpect(jsonPath("$.data.draft[0].campaignId").value(103))
+                .andExpect(jsonPath("$.data.ended").isEmpty());
+    }
+
+    @Test
+    @DisplayName("GET /segments/{id}/campaigns — campaign 모듈 미합류 시 빈 그룹")
+    void linkedCampaignsReturnsEmptyGroupsWhenStubbed() throws Exception {
+        when(segmentService.listLinkedCampaigns(eq(1L), eq(42L)))
+                .thenReturn(new LinkedCampaignsResponse(
+                        List.of(), List.of(), List.of(), List.of(), 0));
+
         mockMvc.perform(get("/api/v1/projects/1/segments/42/campaigns"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalCount").value(0));

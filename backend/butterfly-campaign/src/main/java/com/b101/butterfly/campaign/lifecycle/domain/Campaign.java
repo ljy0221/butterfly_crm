@@ -305,12 +305,32 @@ public class Campaign extends SoftDeletedDomain {
         return this.projectId.equals(projectId);
     }
 
-    public void update(String campaignName, String campaignDescription) {
+    /**
+     * DRAFT 상태에서 일반 필드 + 발송 대상(template/segment) 수정.
+     *
+     * <p>messageTemplateId 가 변경되면 channel 은 새 template 의 channel 로 함께 갱신된다 —
+     * 호출자(Service)가 template lookup 후 정확한 channel 을 전달할 책임을 진다.
+     * segmentId 는 nullable(Targeting.All 의미). update 시점에는 segment readiness 별도
+     * 검증 안 함 — DRAFT 라서 activate 시점에 SegmentReadinessPort 가 어차피 검증.
+     */
+    public void update(
+            String campaignName,
+            String campaignDescription,
+            Long messageTemplateId,
+            Channel channel,
+            Long segmentId
+    ) {
         assertModifiable();
         validateName(campaignName);
         validateDescription(campaignDescription);
+        if (messageTemplateId == null) {
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_MESSAGE_TEMPLATE_REQUIRED);
+        }
         this.campaignName = campaignName;
         this.campaignDescription = campaignDescription;
+        this.messageTemplateId = messageTemplateId;
+        this.channel = channel;
+        this.segmentId = segmentId;
     }
 
     public void activate() {
