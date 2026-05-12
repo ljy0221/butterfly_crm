@@ -15,7 +15,11 @@ import type {
  *  - ["analytics", "channels",  projectId, from, to]
  *  - ["analytics", "campaigns", projectId, from, to, page, size, channel?, segmentId?]
  *
- * staleTime 60초 — 메트릭이 실시간 집계가 아니라 배치 갱신이므로 잦은 refetch 불필요.
+ * staleTime 60초 — 메트릭이 실시간 집계가 아니라 배치 갱신(hourly 5분 주기 +
+ * daily 01:00 KST)이므로 60초 미만으로 줄여도 동일 응답이 반환된다. 발표 시연
+ * 동선에서는 시드 데이터가 미리 깔린 상태에서 화면 이동만 발생하므로 60초 캐시가
+ * 오히려 refetch 비용을 줄이고 UX 를 빠르게 한다. 캐시 신선도는 응답의
+ * metricsComputedAt 으로 사용자가 확인할 수 있다.
  */
 
 const STALE_TIME = 60_000;

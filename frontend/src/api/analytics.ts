@@ -3,12 +3,16 @@ import { ifMock } from "./_mock";
 import { getCampaignStatsMock } from "./_mock/campaign";
 import {
   CampaignMetricsPageSchema,
+  CampaignStatsResponseSchema,
   ChannelMetricsResponseSchema,
   DashboardResponseSchema,
+  ExecutionStatsResponseSchema,
   SegmentMetricsResponseSchema,
   type CampaignMetricItem,
+  type CampaignStatsResponse,
   type ChannelMetricsResponse,
   type DashboardResponse,
+  type ExecutionStatsResponse,
   type SegmentMetricsResponse,
 } from "@/schemas/analytics";
 
@@ -49,96 +53,17 @@ export interface SpringPage<T> {
 export type {
   CampaignMetricItem,
   CampaignMetricsPage,
+  CampaignStatsResponse,
   ChannelMetricItem,
   ChannelMetricsResponse,
   DailyPoint,
   DashboardResponse,
   DashboardSummary,
+  ExecutionStatsResponse,
+  ExecutionSummary,
   SegmentMetricItem,
   SegmentMetricsResponse,
 } from "@/schemas/analytics";
-
-// ---------- DTO 타입 — schemas 미정 (campaign 도메인 mock-fallback에 쓰임) ----------
-
-/**
- * API 58: GET /api/projects/{projectId}/campaigns/{campaignId}/stats
- *
- * ADR-0007 supersede 적용 (2026-05-07):
- *  - openCount / convertCount 추가
- *  - 비율 4종 모두 nullable (분모 0 ⇒ null)
- *  - clickRate 분모 의미: clicked/delivered → click/open
- */
-export interface CampaignStatsResponse {
-  campaignId: number;
-  totalTarget: number;
-  sentCount: number;
-  deliveredCount: number;
-  /** ADR-0007 신규 (open_count). */
-  openCount: number;
-  clickedCount: number;
-  /** ADR-0007 신규 (convert_count). */
-  convertCount: number;
-  failedCount: number;
-  /** delivered/sent. 분모 0이면 null. */
-  deliveryRate: number | null;
-  /** open/delivered. 분모 0이면 null. ADR-0007 신규. */
-  openRate: number | null;
-  /** click/open (ADR-0007). 분모 0이면 null. */
-  clickRate: number | null;
-  /** convert/sent. 분모 0이면 null. ADR-0007 신규. */
-  convertRate: number | null;
-  executions: ExecutionSummary[];
-  metricsComputedAt: string;
-}
-
-export interface ExecutionSummary {
-  executionId: number;
-  /** SCHEDULED | RUNNING | COMPLETED | FAILED ... */
-  status: string;
-  sendStartedAt: string;
-  sentCount: number;
-  deliveredCount: number;
-  /** ADR-0007 신규. */
-  openCount: number;
-  clickedCount: number;
-  /** ADR-0007 신규. */
-  convertCount: number;
-}
-
-/**
- * 신규 API: GET /api/projects/{projectId}/campaigns/{campaignId}/executions/{executionId}/stats
- * 회차별 상세 통계 (ADR-0002, ADR-0003 → ADR-0007 supersede).
- *
- * openCount / convertCount + 비율 4종 nullable.
- */
-export interface ExecutionStatsResponse {
-  campaignId: number;
-  executionId: number;
-  /** SCHEDULED | SENDING | COMPLETED | FAILED | CANCELED */
-  status: string;
-  /** SCHEDULED 상태에서는 0 (아직 세그먼트 미계산) */
-  totalTarget: number;
-  sentCount: number;
-  deliveredCount: number;
-  /** ADR-0007 신규. */
-  openCount: number;
-  clickedCount: number;
-  /** ADR-0007 신규. */
-  convertCount: number;
-  failedCount: number;
-  /** 분모 0이면 null */
-  deliveryRate: number | null;
-  /** ADR-0007 신규. 분모 0이면 null. */
-  openRate: number | null;
-  /** click/open (ADR-0007). 분모 0이면 null. */
-  clickRate: number | null;
-  /** ADR-0007 신규. 분모 0이면 null. */
-  convertRate: number | null;
-  sendStartedAt: string | null;
-  sendCompletedAt: string | null;
-  metricsComputedAt: string;
-}
-
 
 // ---------- 요청 파라미터 ----------
 
@@ -222,10 +147,10 @@ export async function getCampaignStats(
     "campaign",
     async () => getCampaignStatsMock(campaignId),
     async () => {
-      const res = await api.get<CampaignStatsResponse>(
+      const res = await api.get(
         `/api/projects/${projectId}/campaigns/${campaignId}/stats`,
       );
-      return res.data;
+      return CampaignStatsResponseSchema.parse(res.data);
     },
   );
 }
@@ -265,10 +190,10 @@ export async function getExecutionStats(
       metricsComputedAt: new Date().toISOString(),
     }),
     async () => {
-      const res = await api.get<ExecutionStatsResponse>(
+      const res = await api.get(
         `/api/projects/${projectId}/campaigns/${campaignId}/executions/${executionId}/stats`,
       );
-      return res.data;
+      return ExecutionStatsResponseSchema.parse(res.data);
     },
   );
 }

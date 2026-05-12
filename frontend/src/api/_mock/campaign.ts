@@ -1,5 +1,6 @@
 import { delay } from "./index";
 import { buildCronPreview } from "@/lib/cron-preview";
+import type { CampaignStatsResponse } from "@/schemas/analytics";
 import type {
   CampaignStatus,
   CampaignType,
@@ -840,31 +841,7 @@ export function getCampaignsBySegmentId(segmentId: number): {
  *  - clickRate 분모: open (ADR-0003 delivered → ADR-0007 open).
  *  - openRate = delivered 기준 70%, convertRate = open 기준 8% 가정 (시연용 합성).
  */
-export function getCampaignStatsMock(campaignId: number): {
-  campaignId: number;
-  totalTarget: number;
-  sentCount: number;
-  deliveredCount: number;
-  openCount: number;
-  clickedCount: number;
-  convertCount: number;
-  failedCount: number;
-  deliveryRate: number | null;
-  openRate: number | null;
-  clickRate: number | null;
-  convertRate: number | null;
-  executions: Array<{
-    executionId: number;
-    status: string;
-    sendStartedAt: string;
-    sentCount: number;
-    deliveredCount: number;
-    openCount: number;
-    clickedCount: number;
-    convertCount: number;
-  }>;
-  metricsComputedAt: string;
-} {
+export function getCampaignStatsMock(campaignId: number): CampaignStatsResponse {
   seed();
   const c = campaigns.get(campaignId);
   if (!c) {
