@@ -12,8 +12,9 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
  * 토큰 / 멤버 컨텍스트 액세서.
  * 순환 import를 피하기 위해 store가 직접 등록한다.
  *
- * 백엔드가 JWT SecurityContext로 인증 통합 완료 후 X-Member-Id 헤더는 더 이상 신뢰되지 않음.
- * getMemberId는 클라이언트 상태 관리용으로만 남기고, 헤더 자동 첨부는 제거됨.
+ * 백엔드 컨트롤러는 SecurityContext 에서 memberId 를 추출하도록 통합됐지만, JWT 진짜 운영 전까지
+ * SecurityContext 를 채우는 주체는 `LocalAuthFilter` 이며 이 필터는 `X-Member-Id` 헤더로 채운다.
+ * 따라서 프론트는 본 헤더를 인증 매개로 계속 송신해야 한다 (JWT 운영 전환 시 제거).
  */
 type TokenAccessor = {
   getAccessToken: () => string | null;
@@ -33,12 +34,18 @@ export const api: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// ---------- Request: attach Authorization ----------
+// ---------- Request: attach Authorization & X-Member-Id ----------
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = accessor?.getAccessToken() ?? null;
   // 백엔드 JWT가 아직 미구현이라 빈 문자열을 내려줄 수 있음 → 빈 토큰은 헤더 첨부 X
   if (token && token.length > 0) {
     config.headers.set("Authorization", `Bearer ${token}`);
+  }
+  // X-Member-Id: LocalAuthFilter 가 본 헤더로 SecurityContext 를 채운다.
+  // 모든 컨트롤러가 SecurityContext 에서 memberId 를 읽으므로 사실상 인증 매개.
+  const memberId = accessor?.getMemberId() ?? null;
+  if (memberId !== null) {
+    config.headers.set("X-Member-Id", String(memberId));
   }
   return config;
 });
