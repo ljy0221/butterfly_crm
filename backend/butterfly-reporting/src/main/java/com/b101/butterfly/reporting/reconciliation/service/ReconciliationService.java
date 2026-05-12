@@ -15,6 +15,7 @@ import com.b101.butterfly.reporting.reconciliation.repository.SendReconciliation
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -42,6 +43,7 @@ import com.b101.butterfly.reporting.reconciliation.dto.ReconciliationItem;
  */
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "butterfly.reconciliation.enabled", havingValue = "true")
 public class ReconciliationService {
 
     private static final Logger log = LoggerFactory.getLogger(ReconciliationService.class);
