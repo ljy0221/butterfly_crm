@@ -455,7 +455,7 @@ function CampaignRow({
       <div>
         <div style={{ color: "#1f2937", fontWeight: 600 }}>{item.campaignName}</div>
         <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-          #{item.campaignId} · {item.messageTemplateName}
+          #{item.campaignId}
         </div>
       </div>
       <div>
@@ -468,16 +468,11 @@ function CampaignRow({
           {CHANNEL_LABEL[item.channel]}
         </Tag>
       </div>
-      <div style={{ color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {item.segmentId == null ? "전체 사용자" : item.segmentName ?? `세그먼트 #${item.segmentId}`}
-      </div>
-      <div style={{ textAlign: "right", color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>
-        {item.sendCount.toLocaleString()}
-      </div>
-      <div style={{ textAlign: "right", color: item.openRate > 0 ? "#16a34a" : "#94a3b8", fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>
-        {item.openRate > 0 ? `${item.openRate.toFixed(1)}%` : "—"}
-      </div>
-      <div style={{ color: "#64748b", fontSize: 11.5 }}>{fmtDateTime(item.nextRunAt)}</div>
+      {/* 목록 응답에 segment/sendCount/openRate/nextRunAt 미노출 — 빈 칸 처리 */}
+      <div style={{ color: "#94a3b8" }}>—</div>
+      <div style={{ textAlign: "right", color: "#94a3b8" }}>—</div>
+      <div style={{ textAlign: "right", color: "#94a3b8" }}>—</div>
+      <div style={{ color: "#64748b", fontSize: 11.5 }}>{fmtDateTime(item.createdAt)}</div>
       <div style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
         {menuItems.length > 0 && (
           <Menu

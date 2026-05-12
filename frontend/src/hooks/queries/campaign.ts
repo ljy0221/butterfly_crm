@@ -5,22 +5,20 @@ import {
 } from "@tanstack/react-query";
 import * as campaignApi from "@/api/campaign";
 import type {
+  CampaignCreateResponse,
   CampaignDetail,
   CampaignListResponse,
   CreateCampaignRequest,
-  DeleteCampaignResponse,
   ListCampaignsParams,
+  StatusTransitionResponse,
   UpdateCampaignRequest,
 } from "@/api/campaign";
 
 /**
  * Sprint 6 — Campaign React Query 훅.
  *
- * 캐시 키:
- *  - ["campaigns", projectId, "list", params]
- *  - ["campaigns", projectId, "detail", id]
- *
- * 상태 전이 mutation (start/pause/delete) onSuccess 에서 list/detail 모두 invalidate.
+ * S14P31B101-233 머지 후 전 7 endpoint 실 API. 시작/일시정지는
+ * `PATCH /campaigns/{id}/status` 로 통합됨.
  */
 
 export const campaignKeys = {
@@ -70,8 +68,8 @@ export function useCampaignDetailQuery(
 
 export function useCreateCampaignMutation(projectId: number) {
   const qc = useQueryClient();
-  return useMutation<CampaignDetail, unknown, CreateCampaignRequest>({
-    mutationFn: (req) => campaignApi.createCampaign(req),
+  return useMutation<CampaignCreateResponse, unknown, CreateCampaignRequest>({
+    mutationFn: (req) => campaignApi.createCampaign(projectId, req),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: campaignKeys.lists(projectId) });
     },
@@ -85,9 +83,9 @@ export interface UpdateCampaignVariables {
 
 export function useUpdateCampaignMutation(projectId: number) {
   const qc = useQueryClient();
-  return useMutation<CampaignDetail, unknown, UpdateCampaignVariables>({
+  return useMutation<CampaignCreateResponse, unknown, UpdateCampaignVariables>({
     mutationFn: ({ campaignId, req }) =>
-      campaignApi.updateCampaign(campaignId, req),
+      campaignApi.updateCampaign(projectId, campaignId, req),
     onSuccess: (_data, { campaignId }) => {
       qc.invalidateQueries({ queryKey: campaignKeys.lists(projectId) });
       qc.invalidateQueries({
@@ -99,7 +97,7 @@ export function useUpdateCampaignMutation(projectId: number) {
 
 export function useDeleteCampaignMutation(projectId: number) {
   const qc = useQueryClient();
-  return useMutation<DeleteCampaignResponse, unknown, number>({
+  return useMutation<void, unknown, number>({
     mutationFn: (campaignId) =>
       campaignApi.deleteCampaign(projectId, campaignId),
     onSuccess: (_data, campaignId) => {
@@ -113,7 +111,7 @@ export function useDeleteCampaignMutation(projectId: number) {
 
 export function useStartCampaignMutation(projectId: number) {
   const qc = useQueryClient();
-  return useMutation<CampaignDetail, unknown, number>({
+  return useMutation<StatusTransitionResponse, unknown, number>({
     mutationFn: (campaignId) =>
       campaignApi.startCampaign(projectId, campaignId),
     onSuccess: (_data, campaignId) => {
@@ -121,20 +119,13 @@ export function useStartCampaignMutation(projectId: number) {
       qc.invalidateQueries({
         queryKey: campaignKeys.detail(projectId, campaignId),
       });
-      // mock 시뮬: 1.5초 후 SUCCESS 전이 → 한 번 더 invalidate
-      window.setTimeout(() => {
-        qc.invalidateQueries({
-          queryKey: campaignKeys.detail(projectId, campaignId),
-        });
-        qc.invalidateQueries({ queryKey: campaignKeys.lists(projectId) });
-      }, 1700);
     },
   });
 }
 
 export function usePauseCampaignMutation(projectId: number) {
   const qc = useQueryClient();
-  return useMutation<CampaignDetail, unknown, number>({
+  return useMutation<StatusTransitionResponse, unknown, number>({
     mutationFn: (campaignId) =>
       campaignApi.pauseCampaign(projectId, campaignId),
     onSuccess: (_data, campaignId) => {

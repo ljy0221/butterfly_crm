@@ -22,10 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getCampaignStats } from "@/api/analytics";
 import { describeRecurring } from "@/lib/cron-preview";
 import { fromUtcIsoToLocal } from "@/schemas/campaign";
-import type {
-  CampaignDetail as CampaignDetailType,
-  CampaignSchedule,
-} from "@/api/campaign";
+import type { CampaignDetail as CampaignDetailType } from "@/api/campaign";
 import type { CampaignStatus, Channel } from "@/schemas/campaign";
 import ExecutionsTable from "./ExecutionsTable";
 import MobilePreviewPane from "./MobilePreviewPane";
@@ -81,19 +78,6 @@ function fmtDateTime(iso: string | null | undefined): string {
   });
 }
 
-function describeScheduleHuman(s: CampaignSchedule): string {
-  if (s.type === "immediate") return "즉시 발송";
-  if (s.type === "scheduled") {
-    return `예약 발송 · ${fromUtcIsoToLocal(s.scheduledAt)}`;
-  }
-  return `반복 발송 · ${describeRecurring({
-    repeatType: s.repeatType,
-    repeatTime: s.repeatTime,
-    repeatDayOfWeek: s.repeatDayOfWeek,
-    repeatDayOfMonth: s.repeatDayOfMonth,
-  })} (목표 ${s.recurringCount}회)`;
-}
-
 export default function CampaignDetail() {
   const project = useProjectStore((s) => s.current);
   const role = project?.role ?? "VIEWER";
@@ -125,10 +109,7 @@ export default function CampaignDetail() {
     if (!campaign) return;
     const ok = await confirmDialog({
       title: "캠페인을 시작하시겠습니까?",
-      message:
-        campaign.schedule.type === "immediate"
-          ? "발송이 즉시 시작됩니다."
-          : "캠페인이 ACTIVE 상태로 전환됩니다.",
+      message: "캠페인이 ACTIVE 상태로 전환됩니다.",
       confirmText: "발송 시작",
       cancelText: "취소",
       tone: "danger",
@@ -275,10 +256,10 @@ function CampaignDetailBody({
   const isDraft = status === "DRAFT";
   const isActive = status === "ACTIVE";
 
-  const sent = stats?.sentCount ?? campaign.sendCount;
-  const delivered = stats?.deliveredCount ?? Math.floor(sent * 0.95);
-  const clicked = stats?.clickedCount ?? Math.floor(delivered * (campaign.openRate / 100));
-  const failed = stats?.failedCount ?? sent - delivered;
+  const sent = stats?.sentCount ?? 0;
+  const delivered = stats?.deliveredCount ?? 0;
+  const clicked = stats?.clickedCount ?? 0;
+  const failed = stats?.failedCount ?? 0;
 
   return (
     <div>
@@ -414,7 +395,7 @@ function CampaignDetailBody({
                 ["이름", campaign.campaignName],
                 ["유형", campaign.campaignType === "ONE_TIME" ? "일회성 (One-time)" : "자동화 (Automation)"],
                 ["설명", campaign.campaignDescription],
-                ["생성자", campaign.createdBy],
+                ["생성자 ID", `#${campaign.memberId}`],
                 ["생성일시", fmtDateTime(campaign.createdAt)],
                 ["수정일시", fmtDateTime(campaign.updatedAt)],
               ]}
@@ -429,8 +410,9 @@ function CampaignDetailBody({
                   "세그먼트",
                   campaign.segmentId == null
                     ? "전체 사용자 (세그먼트 미지정)"
-                    : campaign.segmentName ?? `세그먼트 #${campaign.segmentId}`,
+                    : `세그먼트 #${campaign.segmentId}`,
                 ],
+                ["세그먼트 빌드 상태", campaign.segmentBuildStatus ?? "—"],
               ]}
             />
           </Card>
@@ -438,7 +420,8 @@ function CampaignDetailBody({
           <Card title="메시지 템플릿" style={{}}>
             <DetailGrid
               rows={[
-                ["템플릿", campaign.messageTemplateName],
+                ["템플릿 ID", `#${campaign.messageTemplateId}`],
+                ["템플릿 이름", template?.messageTemplateName ?? "(로드 중)"],
                 ["채널", CHANNEL_LABEL[campaign.channel]],
                 template
                   ? ["감지된 변수", template.requiredVariables.length > 0 ? template.requiredVariables.map((v) => `{{${v}}}`).join(" ") : "없음"]
@@ -447,22 +430,25 @@ function CampaignDetailBody({
             />
           </Card>
 
-          <Card title="발송 일정" style={{}}>
+          <Card title="발송 모드" style={{}}>
             <DetailGrid
               rows={[
-                ["일정", describeScheduleHuman(campaign.schedule)],
-                campaign.schedule.type === "recurring"
-                  ? ["cron", campaign.recurringCron ?? "-"]
-                  : ["sendMode", campaign.sendMode ?? "-"],
-                campaign.schedule.type === "recurring"
-                  ? ["실행 회차", `${campaign.recurringExecutionCount} / ${campaign.schedule.recurringCount}`]
-                  : ["다음 실행", campaign.schedule.type === "scheduled" ? fmtDateTime(campaign.schedule.scheduledAt) : "-"],
+                ["sendMode", campaign.sendMode ?? "—"],
               ]}
             />
-          </Card>
-
-          <Card title="실행 이력" style={{}}>
-            <ExecutionsTable executions={campaign.executions} />
+            <div
+              style={{
+                marginTop: 8,
+                padding: 8,
+                fontSize: 11.5,
+                color: "#94a3b8",
+                background: "#f8fafc",
+                borderRadius: 6,
+                border: "1px dashed #e2e8f0",
+              }}
+            >
+              schedule 세부 정보는 백엔드에서 별도 제공 예정 (D-1).
+            </div>
           </Card>
         </div>
 
