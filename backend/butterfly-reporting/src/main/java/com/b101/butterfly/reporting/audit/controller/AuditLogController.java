@@ -1,5 +1,6 @@
 package com.b101.butterfly.reporting.audit.controller;
 
+import com.b101.butterfly.auth.security.CustomUserDetails;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import com.b101.butterfly.reporting.audit.dto.AuditLogDetailResponse;
@@ -12,9 +13,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -82,8 +83,7 @@ public class AuditLogController {
      * <p>매칭 row 50,000건 초과 시 {@code 400 ANALYTICS_003 DATE_RANGE_TOO_LARGE}로 거부.
      * 비동기 방식은 별도 티켓에서 다룬다.
      *
-     * <p>{@code X-Member-Id}는 본 export를 audit하기 위한 행위자 식별자 — auth 모듈 합류 후
-     * {@code @AuthenticationPrincipal}로 교체 예정 (다른 컨트롤러와 일관).
+     * <p>행위자 식별자는 {@link CustomUserDetails}에서 추출 — audit 트레일 기록용.
      */
     @GetMapping(value = "/export", produces = "text/csv;charset=UTF-8")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
@@ -94,10 +94,11 @@ public class AuditLogController {
             @RequestParam(required = false) String targetType,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
-            @RequestHeader("X-Member-Id") Long actorMemberId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest request,
             HttpServletResponse response
     ) throws IOException {
+        Long actorMemberId = userDetails != null ? userDetails.getMemberId() : null;
         AuditLogQuery query = new AuditLogQuery(projectId, memberId, action, targetType, startDate, endDate);
 
         response.setStatus(HttpServletResponse.SC_OK);
