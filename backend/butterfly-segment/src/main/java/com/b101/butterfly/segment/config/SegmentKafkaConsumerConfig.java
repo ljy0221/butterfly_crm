@@ -3,6 +3,7 @@ package com.b101.butterfly.segment.config;
 import com.b101.butterfly.segment.messaging.EventOccurredMessage;
 import com.b101.butterfly.segment.messaging.SegmentBuildErrorRecoverer;
 import com.b101.butterfly.segment.messaging.SegmentRebuildMessage;
+import com.b101.butterfly.segment.repository.SegmentRepository;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
@@ -46,6 +47,17 @@ public class SegmentKafkaConsumerConfig {
         props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, SegmentRebuildMessage.class.getName());
         props.put(JsonDeserializer.USE_TYPE_INFO_HEADERS, false);
         return new DefaultKafkaConsumerFactory<>(props);
+    }
+
+    /**
+     * Kafka 최종 실패 콜백 빈. 컴포넌트 스캔에 의존하지 않도록 본 config 내부에서 @Bean 으로 등록 —
+     * @AutoConfiguration 이 모든 컨텍스트에 로드되더라도 @Profile("worker") 조건이 함께 적용되어
+     * 좁은 스캔 범위의 테스트 컨텍스트 (예: EventTestApplication) 에서도 누락 위험이 없다.
+     */
+    @Bean
+    public SegmentBuildErrorRecoverer segmentBuildErrorRecoverer(
+            SegmentRepository segmentRepository) {
+        return new SegmentBuildErrorRecoverer(segmentRepository);
     }
 
     @Bean

@@ -4,9 +4,7 @@ import com.b101.butterfly.segment.repository.SegmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
-import org.springframework.stereotype.Component;
 
 /**
  * Kafka {@code DefaultErrorHandler} 최종 실패 콜백 — segments 강제 FAILED 강등.
@@ -26,10 +24,14 @@ import org.springframework.stereotype.Component;
  *
  * <p>본 recoverer 는 retry 가 다 소진된 시점에만 호출되므로 정상 worker 가 점유 중인
  * BUILDING row 와 충돌하지 않는다. retry 대상이 아닌 메시지는 도달하지 않음.
+ *
+ * <p><b>빈 등록 방식</b>: {@code @Component} 가 아니라 {@code SegmentKafkaConsumerConfig} 안에서
+ * {@code @Bean} 으로 등록된다. config 자체가 {@code @AutoConfiguration} 이라 모든 컨텍스트에
+ * 로드되므로 (예: {@code EventTestApplication} 처럼 좁은 스캔 범위의 테스트 컨텍스트에서도
+ * worker 프로파일이 켜질 수 있음) 의존성을 컴포넌트 스캔에 의존하지 않고 같은 config 클래스에
+ * 묶어 같은 {@code @Profile("worker")} 조건으로 함께 활성/비활성된다.
  */
 @Slf4j
-@Component
-@Profile("worker")
 @RequiredArgsConstructor
 public class SegmentBuildErrorRecoverer implements ConsumerRecordRecoverer {
 
