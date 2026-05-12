@@ -1,6 +1,7 @@
 package com.b101.butterfly.segment.config;
 
 import com.b101.butterfly.segment.messaging.EventOccurredMessage;
+import com.b101.butterfly.segment.messaging.SegmentBuildErrorRecoverer;
 import com.b101.butterfly.segment.messaging.SegmentRebuildMessage;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -11,7 +12,9 @@ import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
+import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -49,11 +52,18 @@ public class SegmentKafkaConsumerConfig {
     public ConcurrentKafkaListenerContainerFactory<String, SegmentRebuildMessage>
             segmentRebuildKafkaListenerContainerFactory(
                     ConsumerFactory<String, SegmentRebuildMessage>
-                            segmentRebuildConsumerFactory) {
+                            segmentRebuildConsumerFactory,
+                    SegmentBuildErrorRecoverer segmentBuildErrorRecoverer) {
         ConcurrentKafkaListenerContainerFactory<String, SegmentRebuildMessage> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(segmentRebuildConsumerFactory);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
+
+        // retry 9 회(default DefaultErrorHandler 와 동일) 소진 시 recoverer 가 segments FAILED 강등.
+        // S14P31B101-245 — PENDING/BUILDING 잔재 deadlock 방지.
+        FixedBackOff backOff = new FixedBackOff(0L, 9L);
+        factory.setCommonErrorHandler(
+                new DefaultErrorHandler(segmentBuildErrorRecoverer, backOff));
         return factory;
     }
 
