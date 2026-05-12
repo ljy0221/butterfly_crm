@@ -152,4 +152,27 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
                        AND s.buildHeartbeatAt < :staleThreshold
                     """)
     int markStaleBuildsAsFailed(@Param("staleThreshold") LocalDateTime staleThreshold);
+
+    /**
+     * 강제 FAILED 강등 — token 검사 없이 segments status 를 FAILED 로 전환하고 token/heartbeat 정리.
+     *
+     * <p><b>recovery 전용</b>: Kafka {@code DefaultErrorHandler} 의 최종 실패 콜백
+     * ({@code ConsumerRecordRecoverer}) 에서만 호출. retry 모두 소진된 메시지는 worker 가
+     * token 을 잡지 못했을 가능성이 높아 {@link #failBuildIfOwner} 의 token 매칭으로는 회수 불가 →
+     * 강제 강등이 필요. 정상 흐름의 실패는 {@link #failBuildIfOwner} 사용.
+     *
+     * @return 1 = 강등 성공, 0 = segment 가 이미 삭제됐거나 존재하지 않음
+     */
+    @Modifying
+    @Transactional
+    @Query(
+            value =
+                    """
+                    UPDATE Segment s
+                       SET s.buildStatus = com.b101.butterfly.segment.entity.BuildStatus.FAILED,
+                           s.buildToken = NULL,
+                           s.buildHeartbeatAt = NULL
+                     WHERE s.id = :segmentId
+                    """)
+    int forceFailById(@Param("segmentId") Long segmentId);
 }
