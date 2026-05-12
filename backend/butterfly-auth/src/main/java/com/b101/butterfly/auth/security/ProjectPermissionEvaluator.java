@@ -1,5 +1,6 @@
 package com.b101.butterfly.auth.security;
 
+import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.entity.Member;
 import com.b101.butterfly.auth.repository.MemberRepository;
@@ -44,6 +45,10 @@ public class ProjectPermissionEvaluator {
         }
 
         try {
+            Member member = memberRepository.findById(memberId)
+                    .orElseThrow(() -> new RuntimeException("Member not found"));
+            if (member.getStatus() != MemberStatus.ACTIVE) return false;
+
             RoleType actual   = resolveRole(memberId, projectId);
             RoleType required = RoleType.valueOf(requiredRole);
             return actual.ordinal() <= required.ordinal();

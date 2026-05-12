@@ -1,0 +1,2 @@
+ALTER TABLE members
+    ADD COLUMN member_status VARCHAR(10) NOT NULL DEFAULT 'ACTIVE';

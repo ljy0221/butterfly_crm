@@ -1,6 +1,7 @@
 package com.b101.butterfly.auth.service;
 
 import com.b101.butterfly.auth.config.JwtProperties;
+import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.dto.request.LoginRequest;
 import com.b101.butterfly.auth.dto.request.SetOwnerPasswordRequest;
@@ -61,6 +62,7 @@ public class AuthService {
                 .birthDate(request.birthDate())
                 .roleType(RoleType.VIEWER)
                 .projectId(projectId)
+                .status(MemberStatus.PENDING)
                 .build();
         memberRepository.save(member);
 

@@ -27,7 +27,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - V8: 세그먼트/이벤트 조회용 인덱스 2개 (S14P31B101-195)
  * - V9: token_blacklist 테이블 DROP (Redis 블랙리스트로 대체)
  * - V10: event_schema_fields.field_type ENUM 에 OBJECT 추가 (S14P31B101-225)
- * - flyway_schema_history: 10 row
+ * - V11: campaign_executions.send_completed_at NULL 허용
+ * - V12: campaign_executions.send_started_at NULL 허용
+ * - V13: members.member_status 컬럼 추가 (PENDING/ACTIVE)
+ * - flyway_schema_history: 13 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
@@ -69,12 +72,12 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
     }
 
     @Test
-    void schema_history_10개_row_성공_상태() {
-        // V1 ~ V10 — V10(event_schema_fields.field_type OBJECT enum 확장) 추가됨.
+    void schema_history_13개_row_성공_상태() {
+        // V1 ~ V13
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(10);
+        assertThat(count).isEqualTo(13);
     }
 
     @Test
@@ -114,6 +117,16 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 "AND column_name IN ('build_token', 'build_started_at', 'build_heartbeat_at')",
                 Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(3);
+    }
+
+    @Test
+    void v13_members_member_status_컬럼_추가() {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'members' " +
+                "AND column_name = 'member_status'",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(count).isEqualTo(1);
     }
 
     @Test

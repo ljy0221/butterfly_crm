@@ -1,5 +1,6 @@
 package com.b101.butterfly.auth.entity;
 
+import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.global.entity.BaseEntity;
 import jakarta.persistence.Column;
@@ -53,6 +54,10 @@ public class Member extends BaseEntity {
     @Column(name = "role_type", nullable = false, length = 10)
     private RoleType roleType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "member_status", nullable = false, length = 10)
+    private MemberStatus status = MemberStatus.ACTIVE;
+
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 
@@ -61,7 +66,8 @@ public class Member extends BaseEntity {
 
     @Builder
     public Member(Long projectId, String email, String passwordHash,
-                  String name, String phone, LocalDate birthDate, RoleType roleType) {
+                  String name, String phone, LocalDate birthDate,
+                  RoleType roleType, MemberStatus status) {
         this.projectId = projectId;
         this.email = email;
         this.passwordHash = passwordHash;
@@ -69,6 +75,7 @@ public class Member extends BaseEntity {
         this.phone = phone;
         this.birthDate = birthDate;
         this.roleType = roleType;
+        this.status = status != null ? status : MemberStatus.ACTIVE;
     }
 
     public void updatePassword(String newPasswordHash) {
@@ -85,6 +92,10 @@ public class Member extends BaseEntity {
 
     public void updatePhone(String phone) {
         this.phone = phone;
+    }
+
+    public void activate() {
+        this.status = MemberStatus.ACTIVE;
     }
 
     public void softDelete() {

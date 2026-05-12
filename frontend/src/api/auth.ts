@@ -22,6 +22,7 @@ export interface MemberInfoResponse {
   phone: string;
   roleType: RoleType;
   projectId: number | null;
+  status: "PENDING" | "ACTIVE";
   createdAt: string; // LocalDateTime
 }
 

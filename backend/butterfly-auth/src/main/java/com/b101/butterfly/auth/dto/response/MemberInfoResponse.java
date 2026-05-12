@@ -1,5 +1,6 @@
 package com.b101.butterfly.auth.dto.response;
 
+import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.entity.Member;
 
@@ -12,6 +13,7 @@ public record MemberInfoResponse(
         String phone,
         RoleType roleType,
         Long projectId,
+        MemberStatus status,
         LocalDateTime createdAt
 ) {
     public static MemberInfoResponse from(Member member) {
@@ -22,6 +24,7 @@ public record MemberInfoResponse(
                 member.getPhone(),
                 member.getRoleType(),
                 member.getProjectId(),
+                member.getStatus(),
                 member.getCreatedAt()
         );
     }
