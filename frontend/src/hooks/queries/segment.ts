@@ -70,12 +70,19 @@ export function useSegmentDetailQuery(
   projectId: number | null,
   segmentId: number | null,
   enabled: boolean = true,
+  options?: {
+    /** 데이터를 받아 폴링 주기(ms)나 false 를 반환. PENDING/BUILDING 동안 단축 폴링용. */
+    refetchInterval?: (data: SegmentDetail | undefined) => number | false;
+  },
 ) {
   return useQuery<SegmentDetail>({
     queryKey: segmentKeys.detail(projectId ?? -1, segmentId ?? -1),
     queryFn: () =>
       segmentApi.getSegment(projectId as number, segmentId as number),
     enabled: enabled && projectId != null && segmentId != null,
+    refetchInterval: options?.refetchInterval
+      ? (query) => options.refetchInterval!(query.state.data)
+      : undefined,
   });
 }
 
@@ -189,20 +196,14 @@ export function useRebuildSegmentMutation(projectId: number) {
   return useMutation<RebuildResponse, unknown, number>({
     mutationFn: (segmentId) => segmentApi.rebuildSegment(projectId, segmentId),
     onSuccess: (data, segmentId) => {
-      // 즉시 detail 캐시에 BUILDING 반영 (응답이 도착하기 전 invalidate 만 하면
-      // detail refetch 가 BUILDING 을 한 번도 보여주지 못할 수 있으므로)
+      // 백엔드가 API 시점에 segment.buildStatus 를 PENDING 으로 마크하므로 응답 즉시 반영.
+      // 이후 useSegmentDetailQuery 의 refetchInterval(PENDING/BUILDING 일 때 3s)가
+      // BUILDING→READY 전이를 자동 감지하므로 별도 setTimeout 불필요.
       qc.setQueryData<SegmentDetail | undefined>(
         segmentKeys.detail(projectId, segmentId),
         (prev) => (prev ? { ...prev, buildStatus: data.buildStatus } : prev),
       );
-      // mock: 5초 후 자동 READY 전이 → 재조회로 반영
-      // 실 API: 백엔드가 즉시 처리하면 바로 invalidate 해도 무관
-      window.setTimeout(() => {
-        qc.invalidateQueries({
-          queryKey: segmentKeys.detail(projectId, segmentId),
-        });
-        qc.invalidateQueries({ queryKey: segmentKeys.lists(projectId) });
-      }, 5_500);
+      qc.invalidateQueries({ queryKey: segmentKeys.lists(projectId) });
     },
   });
 }

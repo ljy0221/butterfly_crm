@@ -131,6 +131,18 @@ public class Segment extends BaseEntity {
     }
 
     /**
+     * 빌드 재요청 — {@code PENDING} 으로 되돌린다 (이미 PENDING/BUILDING 이면 멱등).
+     *
+     * <p>API 가 재계산 메시지를 발행하기 직전에 호출해 사용자에게 즉시 "처리 큐 진입" 신호를
+     * 보여주기 위함. worker 의 CAS({@code markBuildingIfPossible}) 는
+     * {@code buildStatus != BUILDING} 조건이라 PENDING/READY/FAILED 모두 진입 가능하므로
+     * 본 호출 후에도 정상 흐름 유지.
+     */
+    public void markPending() {
+        this.buildStatus = BuildStatus.PENDING;
+    }
+
+    /**
      * 빌드 시작 — {@code BUILDING}으로 전환하고 worker 인스턴스 token + 시작 시각 + 첫 heartbeat 기록.
      *
      * <p>도메인 단순 호출용. 실제 동시성 안전한 전환은 {@code SegmentRepository#markBuildingIfPossible}의

@@ -132,10 +132,17 @@ function BuilderInner({
   onCreated,
 }: BuilderInnerProps) {
   // ---------- Detail fetch (view/edit 시) ----------
+  // PENDING/BUILDING 상태에서는 3초 폴링으로 READY/FAILED 전이를 빠르게 감지.
   const detailQuery = useSegmentDetailQuery(
     projectId,
     segmentId,
     mode === "view",
+    {
+      refetchInterval: (data) =>
+        data?.buildStatus === "PENDING" || data?.buildStatus === "BUILDING"
+          ? 3_000
+          : false,
+    },
   );
   const linkedCampaignsQuery = useLinkedCampaignsQuery(
     projectId,
@@ -347,7 +354,7 @@ function BuilderInner({
     if (segmentId == null) return;
     try {
       await rebuildMut.mutateAsync(segmentId);
-      toast("재계산이 시작되었습니다 (약 5초 후 완료)", "info");
+      toast("재계산 요청을 큐에 넣었습니다. 완료까지 잠시 기다려 주세요.", "info");
     } catch (err) {
       const m = mapSegmentError(err);
       toast(m.message, "error");
@@ -435,7 +442,10 @@ function BuilderInner({
                 size="md"
                 icon={Icon.edit(12)}
                 onClick={onEnterEdit}
-                disabled={detail?.buildStatus === "BUILDING"}
+                disabled={
+                  detail?.buildStatus === "PENDING" ||
+                  detail?.buildStatus === "BUILDING"
+                }
                 style={{}}
               >
                 수정
@@ -670,16 +680,20 @@ function BuilderInner({
                   size="sm"
                   onClick={onRebuild}
                   disabled={
-                    rebuildMut.isPending || detail.buildStatus === "BUILDING"
+                    rebuildMut.isPending ||
+                    detail.buildStatus === "PENDING" ||
+                    detail.buildStatus === "BUILDING"
                   }
                   style={{
                     width: "100%",
                     justifyContent: "center",
                   }}
                 >
-                  {detail.buildStatus === "BUILDING"
-                    ? "빌드 중..."
-                    : "재계산 (mock)"}
+                  {detail.buildStatus === "PENDING"
+                    ? "대기 중..."
+                    : detail.buildStatus === "BUILDING"
+                      ? "빌드 중..."
+                      : "재계산"}
                 </Button>
               )}
             </Card>
