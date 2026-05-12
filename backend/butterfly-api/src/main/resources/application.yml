@@ -101,6 +101,12 @@ butterfly:
     burst-capacity: ${BUTTERFLY_RATELIMIT_BURST:100}
     # endpoint별 차등 RPM은 application-api.yml 에서 YAML Map 문법으로 정의.
     # (콜론(:) 포함 key는 .properties 형식으로 표현 불가 — YAML 사용)
+  # 정합성 검증 (S14P31B101-126/187) — reporting 모듈의 ReconciliationScheduler/Service/Controller
+  # 활성화 플래그. butterfly-api 컨텍스트에서만 true. worker는 CampaignExecutionPort 어댑터를
+  # 가지지 않으므로 미설정(기본 false) — @ConditionalOnProperty 가 빈 등록 자체를 차단해
+  # worker 부팅 시 missing-bean 으로 컨텍스트가 실패하지 않게 한다.
+  reconciliation:
+    enabled: true
 
 mail:
   from: ${MAIL_FROM}
