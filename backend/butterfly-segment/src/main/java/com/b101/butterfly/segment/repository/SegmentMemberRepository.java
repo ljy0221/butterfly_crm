@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -39,6 +40,7 @@ public interface SegmentMemberRepository extends JpaRepository<SegmentMember, Se
      * @return 삭제된 row 수 (estimated 기준 비교용)
      */
     @Modifying
+    @Transactional
     @Query("DELETE FROM SegmentMember sm WHERE sm.segmentId = :segmentId")
     int deleteBySegmentId(@Param("segmentId") Long segmentId);
 
@@ -60,6 +62,7 @@ public interface SegmentMemberRepository extends JpaRepository<SegmentMember, Se
      * @return 영향 row 수 (1 = INSERT, 2 = UPDATE — MySQL ON DUPLICATE KEY UPDATE 의미)
      */
     @Modifying
+    @Transactional
     @Query(
             value =
                     """
@@ -88,6 +91,7 @@ public interface SegmentMemberRepository extends JpaRepository<SegmentMember, Se
      * @return 삭제된 row 수
      */
     @Modifying
+    @Transactional
     @Query(
             "DELETE FROM SegmentMember sm WHERE sm.expiresAt IS NOT NULL AND sm.expiresAt <= :now")
     int deleteExpiredMembers(@Param("now") LocalDateTime now);
