@@ -22,8 +22,10 @@ interface FieldErrors {
 function resolveDest(
   role: AuthRole | undefined,
   projectId: number | null | undefined,
+  status?: "PENDING" | "ACTIVE",
 ): string {
   if (role === "ADMIN") return "/admin/applications";
+  if (status === "PENDING") return "/projects";
   if (projectId != null) return `/p/${projectId}/dashboard`;
   return "/projects";
 }
@@ -45,7 +47,7 @@ export default function LoginPage() {
   // 이미 로그인되어 있으면 자동으로 라우팅
   useEffect(() => {
     if (isAuthenticated && member) {
-      navigate(resolveDest(member.role, member.projectId), { replace: true });
+      navigate(resolveDest(member.role, member.projectId, member.status), { replace: true });
     }
   }, [isAuthenticated, member, navigate]);
 
@@ -68,6 +70,7 @@ export default function LoginPage() {
     loginMutation.mutate(parsed.data, {
       onSuccess: (res) => {
         const role = res.member.roleType as AuthRole;
+        const status = res.member.status as "PENDING" | "ACTIVE" | undefined;
         setAuth({
           accessToken: res.accessToken ?? "",
           refreshToken: res.refreshToken ?? "",
@@ -78,10 +81,11 @@ export default function LoginPage() {
             phone: res.member.phone,
             role,
             projectId: res.member.projectId,
+            status,
           },
         });
         toast(`${res.member.name}님 환영합니다`, "success");
-        navigate(resolveDest(role, res.member.projectId), { replace: true });
+        navigate(resolveDest(role, res.member.projectId, status), { replace: true });
       },
       onError: (err) => {
         const mapped = mapAuthError(err);

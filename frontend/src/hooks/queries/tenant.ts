@@ -22,6 +22,8 @@ export const tenantKeys = {
   detail: (projectId: number) => ["project", projectId] as const,
   members: (projectId: number) =>
     ["project", projectId, "members"] as const,
+  pendingMembers: (projectId: number) =>
+    ["project", projectId, "members", "pending"] as const,
 };
 
 export function useProjectQuery(
@@ -43,6 +45,38 @@ export function useMembersQuery(
     queryKey: tenantKeys.members(projectId ?? -1),
     queryFn: () => tenantApi.listMembers(projectId as number),
     enabled: enabled && projectId != null,
+  });
+}
+
+export function usePendingMembersQuery(
+  projectId: number | null,
+  enabled: boolean = true,
+) {
+  return useQuery<ProjectMemberResponse[]>({
+    queryKey: tenantKeys.pendingMembers(projectId ?? -1),
+    queryFn: () => tenantApi.listPendingMembers(projectId as number),
+    enabled: enabled && projectId != null,
+  });
+}
+
+export function useApproveMemberMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, number>({
+    mutationFn: (memberId) => tenantApi.approveMember(projectId, memberId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantKeys.pendingMembers(projectId) });
+      qc.invalidateQueries({ queryKey: tenantKeys.members(projectId) });
+    },
+  });
+}
+
+export function useRejectMemberMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<void, unknown, number>({
+    mutationFn: (memberId) => tenantApi.rejectMember(projectId, memberId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantKeys.pendingMembers(projectId) });
+    },
   });
 }
 

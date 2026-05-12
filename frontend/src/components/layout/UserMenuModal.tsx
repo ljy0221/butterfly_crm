@@ -43,19 +43,10 @@ export default function UserMenuModal({ close, onNavigate }: Props) {
 
   const goSettings = (tab: "profile" | "api-keys") => {
     close();
-    if (member.role === "ADMIN" || project == null) {
-      // ADMIN은 프로젝트 컨텍스트 없음 — 안내 토스트
-      toast(
-        member.role === "ADMIN"
-          ? "관리자 계정은 프로젝트 settings에 접근할 수 없습니다"
-          : "프로젝트를 먼저 선택해주세요",
-        "info",
-      );
+    if (project == null) {
+      toast("프로젝트를 먼저 선택해주세요", "info");
       return;
     }
-    // 한글 라벨 라우팅(설정) + URL 직접 이동을 함께 사용
-    // onNavigate는 사이드바와 동일한 한글-라벨 라우팅이라 query param 전달 불가 →
-    // window.location.assign으로 직접 이동.
     window.location.assign(`/p/${project.projectId}/settings?tab=${tab}`);
   };
 
@@ -89,26 +80,32 @@ export default function UserMenuModal({ close, onNavigate }: Props) {
     window.location.assign("/login");
   };
 
+  const isAdmin = member.role === "ADMIN";
+
   const items: MenuItem[] = [
-    {
-      label: "프로필 설정",
-      icon: Icon.edit(13),
-      onClick: () => goSettings("profile"),
-    },
-    {
-      label: "API 키 관리",
-      icon: Icon.copy(13),
-      onClick: () => goSettings("api-keys"),
-    },
-    {
-      label: "도움말 센터",
-      icon: Icon.search(13),
-      onClick: () => {
-        close();
-        toast("도움말 센터를 준비 중입니다", "info");
-      },
-    },
-    { divider: true },
+    ...(!isAdmin
+      ? [
+          {
+            label: "프로필 설정",
+            icon: Icon.edit(13),
+            onClick: () => goSettings("profile"),
+          },
+          {
+            label: "API 키 관리",
+            icon: Icon.copy(13),
+            onClick: () => goSettings("api-keys"),
+          },
+          {
+            label: "도움말 센터",
+            icon: Icon.search(13),
+            onClick: () => {
+              close();
+              toast("도움말 센터를 준비 중입니다", "info");
+            },
+          },
+          { divider: true },
+        ]
+      : []),
     {
       label: "로그아웃",
       icon: Icon.back(13),

@@ -108,3 +108,33 @@ export async function revokeApiKey(projectId: number): Promise<ApiKeyResponse> {
 export async function deleteProject(projectId: number): Promise<void> {
   await api.delete<void>(`/api/v1/admin/projects/${projectId}`);
 }
+
+/** 승인 대기 멤버 목록. OWNER 이상. */
+export async function listPendingMembers(
+  projectId: number,
+): Promise<ProjectMemberResponse[]> {
+  const res = await api.get<ProjectMemberResponse[]>(
+    `/api/v1/projects/${projectId}/members/pending`,
+  );
+  return res.data;
+}
+
+/** 멤버 가입 승인. OWNER 이상. */
+export async function approveMember(
+  projectId: number,
+  memberId: number,
+): Promise<void> {
+  await api.post<void>(
+    `/api/v1/projects/${projectId}/members/${memberId}/approve`,
+  );
+}
+
+/** 멤버 가입 거절. OWNER 이상. */
+export async function rejectMember(
+  projectId: number,
+  memberId: number,
+): Promise<void> {
+  await api.delete<void>(
+    `/api/v1/projects/${projectId}/members/${memberId}/reject`,
+  );
+}
