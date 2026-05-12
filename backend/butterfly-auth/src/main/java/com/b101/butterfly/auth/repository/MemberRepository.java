@@ -1,5 +1,6 @@
 package com.b101.butterfly.auth.repository;
 
+import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.entity.Member;
 import java.util.List;
 import java.util.Optional;
@@ -22,4 +23,6 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     int countByEmailIncludingDeleted(@Param("email") String email);
 
     String findNameById(Long id);
+
+    List<Member> findAllByProjectIdAndStatus(Long projectId, MemberStatus status);
 }

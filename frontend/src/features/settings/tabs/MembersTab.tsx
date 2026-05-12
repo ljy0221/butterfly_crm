@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { Card, Tag, Avatar, Icon } from "@/components/common";
 import {
+  useApproveMemberMutation,
   useDeleteMemberMutation,
   useMembersQuery,
+  usePendingMembersQuery,
+  useRejectMemberMutation,
   useUpdateMemberRoleMutation,
 } from "@/hooks/queries/tenant";
 import { useAuthStore } from "@/stores/auth";
@@ -46,8 +49,11 @@ export default function MembersTab({ projectId }: { projectId: number }) {
   const isManager = meRole === "OWNER" || meRole === "ADMIN";
 
   const membersQ = useMembersQuery(projectId);
+  const pendingQ = usePendingMembersQuery(projectId, isManager);
   const updateRole = useUpdateMemberRoleMutation(projectId);
   const deleteMember = useDeleteMemberMutation(projectId);
+  const approveMember = useApproveMemberMutation(projectId);
+  const rejectMember = useRejectMemberMutation(projectId);
   const qc = useQueryClient();
 
   const [pendingId, setPendingId] = useState<number | null>(null);
@@ -107,9 +113,84 @@ export default function MembersTab({ projectId }: { projectId: number }) {
   };
 
   const members = membersQ.data ?? [];
+  const pendingMembers = pendingQ.data ?? [];
   const colCount = isManager ? 4 : 3;
 
+  const handleApprove = async (m: ProjectMemberResponse) => {
+    try {
+      await approveMember.mutateAsync(m.memberId);
+      toast(`${m.name} 님의 가입을 승인했습니다`, "success");
+    } catch {
+      toast("승인 처리 중 오류가 발생했습니다", "error");
+    }
+  };
+
+  const handleReject = async (m: ProjectMemberResponse) => {
+    const ok = await confirmDialog({
+      title: "가입 거절",
+      message: `${m.name} 님의 가입 요청을 거절합니다.`,
+      confirmText: "거절",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await rejectMember.mutateAsync(m.memberId);
+      toast(`${m.name} 님의 가입을 거절했습니다`, "success");
+    } catch {
+      toast("거절 처리 중 오류가 발생했습니다", "error");
+    }
+  };
+
   return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    {isManager && pendingMembers.length > 0 && (
+      <Card title={`승인 대기 (${pendingMembers.length}명)`} padding={0}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: "#fffbeb" }}>
+              <th style={th()}>이름</th>
+              <th style={th()}>이메일</th>
+              <th style={{ ...th(), width: 140 }}>액션</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pendingMembers.map((m) => (
+              <tr key={m.memberId} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <td style={td()}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <Avatar name={m.name} size={28} />
+                    <span style={{ fontWeight: 500 }}>{m.name}</span>
+                  </div>
+                </td>
+                <td style={{ ...td(), color: "#64748b", fontSize: 12 }}>{m.email}</td>
+                <td style={td()}>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                      onClick={() => handleApprove(m)}
+                      style={{
+                        padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid #16a34a",
+                        background: "#f0fdf4", color: "#16a34a", cursor: "pointer", fontFamily: "inherit",
+                      }}
+                    >
+                      승인
+                    </button>
+                    <button
+                      onClick={() => handleReject(m)}
+                      style={{
+                        padding: "4px 10px", fontSize: 12, borderRadius: 6, border: "1px solid #fecaca",
+                        background: "#fff", color: "#b91c1c", cursor: "pointer", fontFamily: "inherit",
+                      }}
+                    >
+                      거절
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Card>
+    )}
     <Card
       title={`멤버${members.length > 0 ? ` (${members.length}명)` : ""}`}
       padding={0}
@@ -274,6 +355,7 @@ export default function MembersTab({ projectId }: { projectId: number }) {
       </table>
       <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
     </Card>
+    </div>
   );
 }
 

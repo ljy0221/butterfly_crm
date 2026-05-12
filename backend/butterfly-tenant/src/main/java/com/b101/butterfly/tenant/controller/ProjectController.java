@@ -68,6 +68,35 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.ok());
     }
 
+    // 승인 대기 멤버 목록 (OWNER 이상)
+    @GetMapping("/projects/{projectId}/members/pending")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
+    public ResponseEntity<ApiResponse<List<ProjectMemberResponse>>> getPendingMembers(@PathVariable Long projectId) {
+        return ResponseEntity.ok(ApiResponse.ok(projectMemberService.getPendingMembers(projectId)));
+    }
+
+    // 멤버 가입 승인 (OWNER 이상)
+    @PostMapping("/projects/{projectId}/members/{memberId}/approve")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
+    public ResponseEntity<ApiResponse<Void>> approveMember(
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        projectMemberService.approveMember(projectId, memberId, userDetails.getMemberId());
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
+    // 멤버 가입 거절 (OWNER 이상)
+    @DeleteMapping("/projects/{projectId}/members/{memberId}/reject")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
+    public ResponseEntity<ApiResponse<Void>> rejectMember(
+            @PathVariable Long projectId,
+            @PathVariable Long memberId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        projectMemberService.rejectMember(projectId, memberId, userDetails.getMemberId());
+        return ResponseEntity.ok(ApiResponse.ok());
+    }
+
     // 멤버 역할 변경 (OWNER 이상)
     @PutMapping("/projects/{projectId}/members/{memberId}/role")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")

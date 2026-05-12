@@ -56,6 +56,41 @@ export default function ProjectSelect() {
     navigate("/login", { replace: true });
   };
 
+  // ── 승인 대기 중인 멤버
+  if (member && member.status === "PENDING") {
+    return (
+      <Shell>
+        <Welcome name={member.name} />
+        <Card>
+          <div style={{ textAlign: "center" }}>
+            <h3 style={{ ...cardTitleStyle, textAlign: "center" }}>가입 승인 대기 중입니다</h3>
+            <div style={{
+              margin: "12px auto 0",
+              padding: "10px 14px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 8,
+              fontSize: 12,
+              color: "#64748b",
+              lineHeight: 1.7,
+              textAlign: "left",
+            }}>
+              <div style={{ fontWeight: 600, color: "#475569", marginBottom: 4 }}>안내</div>
+              프로젝트 관리자가 요청을 검토 후 승인합니다.
+              <br />
+              승인이 완료되면 가입 시 등록한 이메일로 알림이 발송됩니다.
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <Button variant="ghost" size="md" onClick={onLogout}>
+                로그아웃
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
+
   // ── ADMIN(소속 프로젝트 없음) 안내
   if (member && (member.role === "ADMIN" || member.projectId == null)) {
     return (

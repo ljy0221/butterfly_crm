@@ -15,6 +15,7 @@ export interface AuthMember {
   role?: AuthRole;
   phone?: string;
   projectId?: number | null;
+  status?: "PENDING" | "ACTIVE";
 }
 
 interface AuthState {

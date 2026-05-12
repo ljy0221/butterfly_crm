@@ -1,5 +1,6 @@
 package com.b101.butterfly.tenant.service;
 
+import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.entity.Member;
 import com.b101.butterfly.auth.repository.MemberRepository;
@@ -31,7 +32,7 @@ public class ProjectMemberService {
     private final ApplicationEventPublisher eventPublisher;
 
     public List<ProjectMemberResponse> getMembers(Long projectId) {
-        return memberRepository.findAllByProjectId(projectId)
+        return memberRepository.findAllByProjectIdAndStatus(projectId, MemberStatus.ACTIVE)
                 .stream()
                 .map(ProjectMemberResponse::from)
                 .toList();
@@ -69,6 +70,39 @@ public class ProjectMemberService {
         eventPublisher.publishEvent(AuditRecordedEvent.of(
                 projectId, actorId, AuditAction.MEMBER_ROLE_CHANGED, "Member", targetMemberId,
                 null, null, Map.of("from", previousRole.name(), "to", request.roleType().name())
+        ));
+    }
+
+    public List<ProjectMemberResponse> getPendingMembers(Long projectId) {
+        return memberRepository.findAllByProjectIdAndStatus(projectId, MemberStatus.PENDING)
+                .stream()
+                .map(ProjectMemberResponse::from)
+                .toList();
+    }
+
+    @Transactional
+    public void approveMember(Long projectId, Long targetMemberId, Long actorId) {
+        Member target = findMemberInProject(projectId, targetMemberId);
+        if (target.getStatus() != MemberStatus.PENDING) {
+            throw new BusinessException(TenantErrorCode.MEMBER_NOT_IN_PROJECT);
+        }
+        target.activate();
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, actorId, AuditAction.MEMBER_ROLE_CHANGED, "Member", targetMemberId,
+                null, null, Map.of("action", "APPROVED")
+        ));
+    }
+
+    @Transactional
+    public void rejectMember(Long projectId, Long targetMemberId, Long actorId) {
+        Member target = findMemberInProject(projectId, targetMemberId);
+        if (target.getStatus() != MemberStatus.PENDING) {
+            throw new BusinessException(TenantErrorCode.MEMBER_NOT_IN_PROJECT);
+        }
+        target.softDelete();
+        eventPublisher.publishEvent(AuditRecordedEvent.of(
+                projectId, actorId, AuditAction.MEMBER_REMOVED, "Member", targetMemberId,
+                null, null, Map.of("action", "REJECTED")
         ));
     }
 
