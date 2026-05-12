@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "443387127079",
-    "project_id": "butterflytest-f25a3",
-    "storage_bucket": "butterflytest-f25a3.firebasestorage.app"
+    "project_number": "376141712101",
+    "project_id": "butterfly-test-ce57c",
+    "storage_bucket": "butterfly-test-ce57c.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:443387127079:android:a1163cd433d7b69b0f3502",
+        "mobilesdk_app_id": "1:376141712101:android:23365c2837a15f1bf4e20c",
         "android_client_info": {
           "package_name": "com.example.notificationtest"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyAAYjgvWBYDrigPVu4FkEbdKUxys5bDOT8"
+          "current_key": "AIzaSyBub-7p7HIsy9UgLjL9GBQ91CUn1pMJf0E"
         }
       ],
       "services": {
