@@ -39,3 +39,8 @@ export const Toggle: ComponentType<AnyProps>;
 export const Menu: ComponentType<AnyProps>;
 export const SearchInput: ComponentType<AnyProps>;
 export const PageHeader: ComponentType<AnyProps>;
+export const BirthDatePicker: ComponentType<{
+  value: string;
+  onChange: (v: string) => void;
+  error?: string;
+}>;

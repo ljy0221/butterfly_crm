@@ -1,4 +1,4 @@
-import { Input } from "@/components/common";
+import { Input, BirthDatePicker } from "@/components/common";
 
 export interface PersonalInfoValue {
   name: string;
@@ -25,13 +25,7 @@ export default function PersonalInfoStep({ value, onChange, errors }: Props) {
   ) => onChange({ ...value, [key]: v });
 
   return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: "var(--space-3)",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-3)" }}>
       <Input
         label="이름"
         value={value.name}
@@ -44,35 +38,23 @@ export default function PersonalInfoStep({ value, onChange, errors }: Props) {
         error={!!errors?.name}
         help={errors?.name}
       />
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "var(--space-3)",
-        }}
-      >
-        <Input
-          label="전화번호 (-제외)"
-          value={value.phone}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            set("phone", e.target.value.replace(/[^0-9]/g, ""))
-          }
-          placeholder="01012345678"
-          maxLength={11}
-          error={!!errors?.phone}
-          help={errors?.phone}
-        />
-        <Input
-          label="생년월일"
-          type="date"
-          value={value.birthDate}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            set("birthDate", e.target.value)
-          }
-          error={!!errors?.birthDate}
-          help={errors?.birthDate}
-        />
-      </div>
+      <Input
+        label="전화번호 (-제외)"
+        value={value.phone}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+          set("phone", e.target.value.replace(/[^0-9]/g, ""))
+        }
+        placeholder="01012345678"
+        maxLength={11}
+        error={!!errors?.phone}
+        help={errors?.phone}
+      />
+      <BirthDatePicker
+        value={value.birthDate}
+        onChange={(v) => set("birthDate", v)}
+        error={errors?.birthDate}
+      />
     </div>
   );
 }
+
