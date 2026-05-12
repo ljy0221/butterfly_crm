@@ -18,7 +18,9 @@ spec:
         tier: heavy
       containers:
         - name: kafka
-          image: bitnami/kafka:3.7.0
+          # 2025-08 Bitnami 정책 변경: docker.io/bitnami/* 버전 태그가 무료 접근에서 제거됨.
+          # 무료 archived image는 bitnamilegacy/* namespace에서 제공. env 변수 호환성은 동일.
+          image: bitnamilegacy/kafka:3.7.0
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 9092

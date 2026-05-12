@@ -38,8 +38,10 @@ spec:
             - containerPort: 8080
               name: http
           env:
+            # backend가 @Profile("api")로 EventProducer 등 빈을 게이팅함.
+            # 'prod' 같은 임의 profile이 아니라 backend가 인지하는 'api'로 활성화.
             - name: SPRING_PROFILES_ACTIVE
-              value: "prod"
+              value: "api"
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:mysql://mysql.butterfly.svc.cluster.local:3306/butterfly?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul"
             - name: SPRING_DATASOURCE_USERNAME
@@ -60,10 +62,21 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: jwt-secret
+            # application.yml의 mail.from / mail.password 는 default 없는 placeholder라
+            # env로 반드시 설정해야 PlaceholderResolutionException 회피.
+            # 14일 시연용 — 실제 메일 발송 안 하므로 dummy 값.
+            - name: MAIL_FROM
+              value: "noreply@butterfly.local"
+            - name: MAIL_PASSWORD
+              value: ""
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
               value: "true"
+            # mail은 dummy SMTP(localhost:1025) — 실제 발송 안 함. health check에서 제외.
+            # (readiness/liveness 그룹은 기본적으로 mail을 포함 안 해서 probe엔 무관)
+            - name: MANAGEMENT_HEALTH_MAIL_ENABLED
+              value: "false"
             # 주의: Jib container.jvmFlags(-XX:MaxRAMPercentage=X)가 커맨드라인에서 나중에 적용되어
             # JAVA_TOOL_OPTIONS의 MaxRAMPercentage를 덮어쓴다. 실제 heap%는 backend/build.gradle의
             # jib.container.jvmFlags가 진실의 소스이므로 그쪽에서 60으로 설정됨.

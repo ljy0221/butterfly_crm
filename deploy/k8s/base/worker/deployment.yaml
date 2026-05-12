@@ -36,8 +36,27 @@ spec:
             - containerPort: 8080
               name: http
           env:
+            # backend가 @Profile로 빈을 게이팅함:
+            #   - EventConsumer(@Profile("worker")): worker에서 활성
+            #   - EventProducer(@Profile("api")): butterfly-event 모듈의 EventCollectController가
+            #     이를 의존하는데 worker가 EventCollectController까지 component scan함 → api도 필요
+            # 정석은 controller들에 @Profile("api") 추가하는 것 (backend 후속 작업 TODO).
+            # 일단 worker에도 api profile 추가 + lazy-initialization으로 부팅 통과.
             - name: SPRING_PROFILES_ACTIVE
-              value: "prod"
+              value: "worker,api"
+            # worker는 web-application-type=none이라 controller가 호출 안 됨.
+            # 그런데 reporting/event 모듈의 controller가 component scan에 잡혀서 의존성 검증 실패.
+            # lazy-initialization=true로 빈 instantiate를 사용 시점까지 지연 → 부팅 통과.
+            # TODO: backend 팀에 controller @Profile("api") 추가 요청 후 이 env 제거.
+            - name: SPRING_MAIN_LAZY_INITIALIZATION
+              value: "true"
+            # butterfly-notification 모듈의 EmailChannelAdapter가 JavaMailSender 의존.
+            # worker의 application.properties는 spring.mail.* 미정의라 auto-config 안 됨.
+            # 시연용 dummy host/port — 실제 발송은 안 함.
+            - name: SPRING_MAIL_HOST
+              value: "localhost"
+            - name: SPRING_MAIL_PORT
+              value: "1025"
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:mysql://mysql.butterfly.svc.cluster.local:3306/butterfly?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul"
             - name: SPRING_DATASOURCE_USERNAME
@@ -54,10 +73,18 @@ spec:
             # Flyway는 butterfly-api만 실행 (이중 마이그레이션 방지)
             - name: SPRING_FLYWAY_ENABLED
               value: "false"
+            # 도메인 모듈의 emailService 빈 등록 시 placeholder 해결 — api와 동일 이유
+            - name: MAIL_FROM
+              value: "noreply@butterfly.local"
+            - name: MAIL_PASSWORD
+              value: ""
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
               value: "true"
+            # mail dummy SMTP라 health 제외 (api와 동일 이유)
+            - name: MANAGEMENT_HEALTH_MAIL_ENABLED
+              value: "false"
             # MaxRAMPercentage는 Jib jvmFlags(build.gradle)에서 단일 source of truth.
             - name: JAVA_TOOL_OPTIONS
               value: "-XX:+ExitOnOutOfMemoryError"
@@ -68,21 +95,7 @@ spec:
             limits:
               cpu: 1000m
               memory: 1024Mi
-          readinessProbe:
-            httpGet:
-              path: /actuator/health/readiness
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /actuator/health/liveness
-              port: 8080
-            initialDelaySeconds: 90
-            periodSeconds: 20
-          startupProbe:
-            httpGet:
-              path: /actuator/health/liveness
-              port: 8080
-            periodSeconds: 5
-            failureThreshold: 30
+          # worker는 spring.main.web-application-type=none이라 HTTP server 미기동.
+          # → :8080 HTTP probe 영원히 fail. probe 제거하고 K8s는 process 살아있는 한 Ready로 본다.
+          # JVM crash 시 자동 restart 동작은 그대로 유지(probe와 무관).
+          # 추후 옵션: backend에서 management server를 별도 port로 노출 (management.server.port).
