@@ -116,6 +116,71 @@ export const SegmentMetricsResponseSchema = z.object({
 });
 export type SegmentMetricsResponse = z.infer<typeof SegmentMetricsResponseSchema>;
 
+/**
+ * API 58 — 캠페인 누적 통계 회차 요약.
+ * 백엔드: CampaignStatsResponse.ExecutionSummary record.
+ */
+export const ExecutionSummarySchema = z.object({
+  executionId: z.number(),
+  status: z.string(),
+  sendStartedAt: z.string(),
+  sentCount: z.number(),
+  deliveredCount: z.number(),
+  openCount: z.number(),
+  clickedCount: z.number(),
+  convertCount: z.number(),
+});
+export type ExecutionSummary = z.infer<typeof ExecutionSummarySchema>;
+
+/**
+ * API 58 — GET /api/projects/{projectId}/campaigns/{campaignId}/stats
+ * 백엔드: CampaignStatsResponse record (ADR-0007 supersede).
+ */
+export const CampaignStatsResponseSchema = z.object({
+  campaignId: z.number(),
+  totalTarget: z.number(),
+  sentCount: z.number(),
+  deliveredCount: z.number(),
+  openCount: z.number(),
+  clickedCount: z.number(),
+  convertCount: z.number(),
+  failedCount: z.number(),
+  deliveryRate: rateSchema,
+  openRate: rateSchema,
+  clickRate: rateSchema,
+  convertRate: rateSchema,
+  executions: z.array(ExecutionSummarySchema),
+  metricsComputedAt: z.string(),
+});
+export type CampaignStatsResponse = z.infer<typeof CampaignStatsResponseSchema>;
+
+/**
+ * 회차 상세 통계 — GET /api/projects/{projectId}/campaigns/{campaignId}/executions/{executionId}/stats
+ * 백엔드: ExecutionStatsResponse record (ADR-0007 supersede).
+ *
+ * SCHEDULED 상태에서는 totalTarget=0 + sendStartedAt/sendCompletedAt 가 null.
+ */
+export const ExecutionStatsResponseSchema = z.object({
+  campaignId: z.number(),
+  executionId: z.number(),
+  status: z.string(),
+  totalTarget: z.number(),
+  sentCount: z.number(),
+  deliveredCount: z.number(),
+  openCount: z.number(),
+  clickedCount: z.number(),
+  convertCount: z.number(),
+  failedCount: z.number(),
+  deliveryRate: rateSchema,
+  openRate: rateSchema,
+  clickRate: rateSchema,
+  convertRate: rateSchema,
+  sendStartedAt: z.string().nullable(),
+  sendCompletedAt: z.string().nullable(),
+  metricsComputedAt: z.string(),
+});
+export type ExecutionStatsResponse = z.infer<typeof ExecutionStatsResponseSchema>;
+
 /** API 59 페이지 응답: PageResponse<CampaignMetricItem>. */
 export const CampaignMetricsPageSchema = z.object({
   content: z.array(CampaignMetricItemSchema),
