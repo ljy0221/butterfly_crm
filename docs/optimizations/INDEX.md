@@ -18,6 +18,7 @@
 
 | 날짜 | 카테고리 | 슬러그 | 한 줄 요약 | 상태 |
 | --- | --- | --- | --- | --- |
+| 2026-05-12 | SECURITY (보조 SCHEMA) | [aggregation-audit-cron-zone](2026-05-12_aggregation-audit-cron-zone.md) | Code Freeze D-3 시점, 분석 도메인 9개 마일스톤(33/34/35/90/91/92/177/187/191) develop 머지 완료 후 5축 광범위 감사(UPSERT 멱등성 / Attribution / bucket_date 타임존 / notification_logs↔stats 정합 / V2 베이스라인 회귀 위험) 1회 실행 — BLOCKER **0건**, HIGH **1건**(`DailyRollupService.scheduledRollup` cron `zone` 미명시 / 같은 모듈 `ReconciliationScheduler` 와 비대칭), INFO 2건. HIGH 1건은 `@Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")` + Javadoc 보강 **1 파일 / +5 -2 / 1 commit `d476c6b`** 으로 즉시 잠금. `butterfly-reporting:test` 44s × 2 + `BaselineMigrationIntegrationTest` 34s 모두 GREEN, 회귀 0건. 별도 학습 노트(에이전트 권한 경계 위반 사례 / D-3 의존성 표면적 임계)는 [`_learnings/2026-05-12_agent-scope-boundary-violation.md`](_learnings/2026-05-12_agent-scope-boundary-violation.md) 로 분리. | COMPLETE |
 | 2026-05-11 | DX | [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) | testsupport 베이스 클래스 3종(MySQL/Kafka/Redis)에 `.withReuse(true)` + `.gitlab-ci.yml`에 `TESTCONTAINERS_REUSE_ENABLE=true` 단일 PR(파일 4개) 머지로 integration-test 잡 wall-clock **14m 02s → 9m 56s (-29%)**, script **13m 02s → 8m 55s (-32%)**. 부작용(MySQL shutdown drop 실패 로그 노이즈, 테스트 PASS) + 추가 발견(컨텍스트 캐시 hit 0건, EmbeddedKafka 모듈 reuse 효과 0) 박제. 1회 표본 (225 머지 영향 분리 불가) → develop 5건 누적으로 보강 예정. | VERIFIED |
 | 2026-05-11 | PERF | [event-ingest-api-p99](2026-05-11_event-ingest-api-p99.md) | ADR-0017 명세 "100 req/s p99 < 200ms" 가 실제로 충족되는지 5/13 QA Run #1 에서 1차 실측. 인증 필터(205) + 도메인 검증(193) + 레이트 리밋(Redis) 흐름의 latency baseline 박제. 측정 후 COMPLETE 승격, 병목 식별 시 별도 카드(`event-ingest-api-p99-optimized`)로 Before/After 1쌍 분리. | BEFORE-ONLY |
 | 2026-05-11 | PERF | [aggregation-worker-throughput](2026-05-11_aggregation-worker-throughput.md) | 30K row 1시간치 hourly 집계 + daily 4종 롤업이 윈도우 안에 끝나는지 5/14 QA Run #2 에서 1차 실측. HourlyAggregator(124-A) + DailyRollupService(191 Refactor) 흐름의 처리량/latency baseline 박제. 멱등성·KPI 비율 정확도 동시 검증. | BEFORE-ONLY |
@@ -28,10 +29,11 @@
 
 ### 멀티테넌트
 
-- _(아직 카드 없음)_
+- 2026-05-12 [aggregation-audit-cron-zone](2026-05-12_aggregation-audit-cron-zone.md) — (간접) 한국형 SaaS 정책 = KST 일자 경계 집계 = bucket_date 타임존 잠금 (COMPLETE)
 
 ### 비동기
 
+- 2026-05-12 [aggregation-audit-cron-zone](2026-05-12_aggregation-audit-cron-zone.md) — `@Scheduled` cron `zone = "Asia/Seoul"` 명시로 daily 롤업 워커의 정확한 발사 타이밍 잠금. Scheduled 비대칭(`Reconciliation` ↔ `DailyRollup`) 1줄 해소 (COMPLETE) ⭐
 - 2026-05-11 [aggregation-worker-throughput](2026-05-11_aggregation-worker-throughput.md) — Spring `@Scheduled` 5분/일 cron + MERGE 멱등 + force 재집계 baseline (BEFORE-ONLY) ⭐
 - 2026-05-11 [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) — (간접) Kafka 컨테이너 reuse로 reporting/notification 모듈 통합 테스트 wall-clock 단축 기여 (VERIFIED, 1회 표본)
 - _(추가 후보: S14P31B101-180 Kafka DLQ/재시도 카드화)_
@@ -42,6 +44,7 @@
 
 ### 성과 측정
 
+- 2026-05-12 [aggregation-audit-cron-zone](2026-05-12_aggregation-audit-cron-zone.md) — 분석 도메인 9개 마일스톤 머지 직후 회귀 안전성 검증 (BLOCKER 0건, HIGH 1건 즉시 잠금, INFO 2건 박제) = DoD "CI 그린" 의 시간 외 보강 (COMPLETE) ⭐
 - 2026-05-11 [testcontainers-reuse](2026-05-11_testcontainers-reuse.md) — integration-test 잡 wall-clock -29% / script -32%, DoD 30분 SLA 마진 추가 확장 (VERIFIED, 1회 표본)
 - 2026-05-11 [event-ingest-api-p99](2026-05-11_event-ingest-api-p99.md) — ADR-0017 명세 p99 < 200ms 100 req/s 실측 baseline (BEFORE-ONLY) ⭐
 - 2026-05-11 [aggregation-worker-throughput](2026-05-11_aggregation-worker-throughput.md) — 집계 워커 5분/일 cron 윈도우 latency baseline (BEFORE-ONLY) ⭐
@@ -61,9 +64,19 @@
 - 2026-05-11 [event-ingest-api-p99](2026-05-11_event-ingest-api-p99.md) — ADR-0017 100 req/s p99 < 200ms 검증 (BEFORE-ONLY)
 - 2026-05-11 [aggregation-worker-throughput](2026-05-11_aggregation-worker-throughput.md) — 30K row hourly + daily 4종 윈도우 latency (BEFORE-ONLY)
 
-### SCHEMA / ARCH / SECURITY / DECISION
+### SECURITY
 
-- _(아직 카드 없음)_
+- 2026-05-12 [aggregation-audit-cron-zone](2026-05-12_aggregation-audit-cron-zone.md) — Code Freeze D-3, 5축 광범위 감사로 운영 회귀 위험 1건(`DailyRollupService` cron zone 미명시) 사전 차단. **1 파일 / +5 -2 / 회귀 0건** (COMPLETE, 보조 카테고리 SCHEMA — bucket_date 타임존)
+
+### SCHEMA / ARCH / DECISION
+
+- _(아직 카드 없음 — `aggregation-audit-cron-zone` 카드가 SCHEMA 보조 카테고리)_
+
+## 학습 노트 (`_learnings/`)
+
+| 날짜 | 노트 | 핵심 |
+| --- | --- | --- |
+| 2026-05-12 | [`agent-scope-boundary-violation`](_learnings/2026-05-12_agent-scope-boundary-violation.md) | 감사 의뢰 에이전트가 범위를 초과해 7파일+신규1파일 변경 → 테스트 2개 회귀 → 즉시 롤백 → 안전한 1줄만 유지. 학습 4가지: (1) 명시적 negative scope 도 부풀 위험, (2) D-3 시점 변경 허용량 = 라인 수가 아닌 **의존성 표면적**, (3) BLOCKER 0건 확인 자체가 1차 산출물, (4) 같은 모듈 안 비대칭은 가장 빠른 감사 신호. 관련 카드: `2026-05-12_aggregation-audit-cron-zone` |
 
 ## After 측정 진행 상황
 
