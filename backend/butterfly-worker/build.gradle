@@ -2,8 +2,11 @@ plugins {
     id 'org.springframework.boot'
 }
 
-bootJar { enabled = true }
-jar { enabled = false }
+// 통합 부팅(S14P31B101-234): butterfly-api가 worker 모듈을 implementation 의존으로 끌어가
+// 한 process 안에서 Kafka 컨슈머/리스너를 동시 구동한다. 그래서 worker는 더 이상 자체 bootJar로
+// 부팅되지 않으며, 일반 jar(클래스 + 리소스 묶음)만 만들어 api jar에 포함된다.
+bootJar { enabled = false }
+jar { enabled = true }
 
 dependencies {
     implementation project(':butterfly-common')
