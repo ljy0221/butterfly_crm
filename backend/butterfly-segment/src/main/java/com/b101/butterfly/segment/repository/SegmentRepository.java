@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,6 +46,7 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
      * @return 1 = 점유 성공, 0 = 다른 worker가 점유 중
      */
     @Modifying
+    @Transactional
     @Query(
             value =
                     """
@@ -70,6 +72,7 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
      * @return 1 = 갱신, 0 = 이미 다른 worker로 인수됐거나 종료됨
      */
     @Modifying
+    @Transactional
     @Query(
             value =
                     """
@@ -90,6 +93,7 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
      * @return 1 = 성공, 0 = 다른 worker로 인수됐거나 종료됨
      */
     @Modifying
+    @Transactional
     @Query(
             value =
                     """
@@ -115,6 +119,7 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
      * @return 1 = 성공, 0 = 다른 worker로 인수됐거나 종료됨
      */
     @Modifying
+    @Transactional
     @Query(
             value =
                     """
@@ -134,6 +139,7 @@ public interface SegmentRepository extends JpaRepository<Segment, Long> {
      * @return 전환된 row 수
      */
     @Modifying
+    @Transactional
     @Query(
             value =
                     """
