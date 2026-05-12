@@ -16,3 +16,4 @@ export { default as Toggle } from "./Toggle.jsx";
 export { default as Menu } from "./Menu.jsx";
 export { default as SearchInput } from "./SearchInput.jsx";
 export { default as PageHeader } from "./PageHeader.jsx";
+export { default as BirthDatePicker } from "./BirthDatePicker.tsx";

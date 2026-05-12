@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Button, Card, Checkbox, Input } from "@/components/common";
+import { Button, Card, Checkbox, Input, BirthDatePicker } from "@/components/common";
 import { useCreateApplicationMutation } from "@/hooks/queries/application";
 import { applicationSchema } from "@/schemas/application";
 import { ApiError } from "@/api/types";
@@ -204,15 +204,10 @@ export default function ApplyPage() {
                 error={errors.phone}
                 style={{}}
               />
-              <Input
-                label="생년월일"
-                type="date"
+              <BirthDatePicker
                 value={form.birthDate}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  update("birthDate", e.target.value)
-                }
+                onChange={(v: string) => update("birthDate", v)}
                 error={errors.birthDate}
-                style={{}}
               />
             </div>
 
@@ -323,3 +318,4 @@ function grid2(): React.CSSProperties {
     gap: "var(--space-4)",
   };
 }
+
