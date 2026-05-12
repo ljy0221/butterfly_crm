@@ -12,8 +12,12 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
  * 토큰 / 멤버 컨텍스트 액세서.
  * 순환 import를 피하기 위해 store가 직접 등록한다.
  *
- * 백엔드가 JWT SecurityContext로 인증 통합 완료 후 X-Member-Id 헤더는 더 이상 신뢰되지 않음.
- * getMemberId는 클라이언트 상태 관리용으로만 남기고, 헤더 자동 첨부는 제거됨.
+ * 백엔드 인증 매개는 환경별로 다르다:
+ * - 로컬/개발 (`!prod` 프로파일): `LocalAuthFilter` 가 `X-Member-Id` 헤더로 SecurityContext 를 채움
+ * - 배포 (`prod`): `JwtAuthenticationFilter` 가 `Authorization` Bearer 토큰으로 SecurityContext 를 채움
+ *
+ * 프론트는 빌드 모드로 분기 — DEV 빌드에서만 X-Member-Id 송신, PROD 빌드는 Authorization 만 송신.
+ * 배포 빌드가 위조 가능한 헤더를 만들지 않도록 보안 매개를 명확히 분리.
  */
 type TokenAccessor = {
   getAccessToken: () => string | null;
@@ -33,12 +37,20 @@ export const api: AxiosInstance = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// ---------- Request: attach Authorization ----------
+// ---------- Request: attach Authorization (+ X-Member-Id in DEV only) ----------
 api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = accessor?.getAccessToken() ?? null;
   // 백엔드 JWT가 아직 미구현이라 빈 문자열을 내려줄 수 있음 → 빈 토큰은 헤더 첨부 X
   if (token && token.length > 0) {
     config.headers.set("Authorization", `Bearer ${token}`);
+  }
+  // DEV 빌드에서만 X-Member-Id 송신 — LocalAuthFilter(@Profile("!prod")) 호환용.
+  // PROD 빌드는 JwtAuthenticationFilter 가 Authorization 만 사용하므로 헤더 송신 안 함.
+  if (import.meta.env.DEV) {
+    const memberId = accessor?.getMemberId() ?? null;
+    if (memberId !== null) {
+      config.headers.set("X-Member-Id", String(memberId));
+    }
   }
   return config;
 });

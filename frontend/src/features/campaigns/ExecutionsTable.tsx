@@ -1,11 +1,24 @@
 import { Tag } from "@/components/common";
-import type { CampaignExecution } from "@/api/campaign";
 import type { ExecutionStatus } from "@/schemas/campaign";
 
 /**
  * Sprint 6 — 캠페인 실행 이력 테이블.
- * mock store 의 CampaignExecutionRecord[] 를 회차/상태/대상/발송/실패/시각/사유 컬럼으로 출력.
+ *
+ * 백엔드 `CampaignDetailResponse` 에 실행 이력 미노출 — 현 시점 미사용.
+ * 추후 별도 endpoint (e.g. `/campaigns/{id}/executions`) 합류 시 재활성.
  */
+
+export interface CampaignExecution {
+  campaignExecutionId: number;
+  runRound: number;
+  campaignExecutionStatus: ExecutionStatus;
+  targetCount: number;
+  sentCount: number;
+  failedCount: number;
+  sendStartedAt: string | null;
+  sendCompletedAt: string | null;
+  failReason: string | null;
+}
 
 const STATUS_LABEL: Record<ExecutionStatus, string> = {
   READY: "대기",

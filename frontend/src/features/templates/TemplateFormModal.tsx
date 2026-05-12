@@ -12,17 +12,13 @@ import {
   updateTemplateSchema,
   type Channel,
 } from "@/schemas/template";
-import { useAuthStore } from "@/stores/auth";
 import VariableHighlight from "./VariableHighlight";
 
 /**
  * Sprint 4 — 템플릿 생성/수정 공용 모달.
  *
- * - mode="create" : 실 API POST /api/v1/templates 호출 후 mock store 봉합.
- * - mode="edit"   : mock-fallback (PUT 미구현). DRAFT 만 진입 가능.
- *
- * 백엔드 검증과 zod 스키마는 동일 룰을 사용하며,
- * 본문 textarea 는 VariableHighlight 오버레이로 `{{variable}}` 강조.
+ * S14P31B101-233 머지 후 실 API. 모든 필드(name/description/channel/title/body)는
+ * 백엔드 record 의 @NotBlank 필드. imageUrl만 선택.
  */
 
 export type TemplateFormMode = "create" | "edit";
@@ -39,10 +35,11 @@ export interface TemplateFormModalProps {
 
 export interface TemplateFormValues {
   messageTemplateName: string;
+  messageTemplateDescription: string;
   channel: Channel;
+  messageTemplateTitle: string;
   messageTemplateBody: string;
-  description?: string;
-  title?: string;
+  messageTemplateImageUrl?: string;
 }
 
 const CHANNEL_OPTIONS: Array<{ value: Channel; label: string }> = [
@@ -63,10 +60,11 @@ const SUGGESTED_VARS = [
 
 interface FieldErrors {
   messageTemplateName?: string;
+  messageTemplateDescription?: string;
   channel?: string;
+  messageTemplateTitle?: string;
   messageTemplateBody?: string;
-  description?: string;
-  title?: string;
+  messageTemplateImageUrl?: string;
   _root?: string;
 }
 
@@ -77,8 +75,6 @@ export default function TemplateFormModal({
   initialValues,
   onClose,
 }: TemplateFormModalProps) {
-  const authMember = useAuthStore((s) => s.member);
-
   const [name, setName] = useState<string>(
     initialValues?.messageTemplateName ?? "",
   );
@@ -89,9 +85,14 @@ export default function TemplateFormModal({
     initialValues?.messageTemplateBody ?? "",
   );
   const [description, setDescription] = useState<string>(
-    initialValues?.description ?? "",
+    initialValues?.messageTemplateDescription ?? "",
   );
-  const [title, setTitle] = useState<string>(initialValues?.title ?? "");
+  const [title, setTitle] = useState<string>(
+    initialValues?.messageTemplateTitle ?? "",
+  );
+  const [imageUrl, setImageUrl] = useState<string>(
+    initialValues?.messageTemplateImageUrl ?? "",
+  );
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const detectedVars = useMemo(() => extractVariables(body), [body]);
@@ -113,10 +114,11 @@ export default function TemplateFormModal({
     const schema = mode === "create" ? createTemplateSchema : updateTemplateSchema;
     const candidate = {
       messageTemplateName: name.trim(),
+      messageTemplateDescription: description.trim(),
       channel,
+      messageTemplateTitle: title.trim(),
       messageTemplateBody: body,
-      description: description.trim() || undefined,
-      title: title.trim() || undefined,
+      messageTemplateImageUrl: imageUrl.trim() || undefined,
     };
     const parsed = schema.safeParse(candidate);
     if (parsed.success) {
@@ -127,10 +129,11 @@ export default function TemplateFormModal({
       const field = issue.path[0] as keyof FieldErrors | undefined;
       if (
         field === "messageTemplateName" ||
+        field === "messageTemplateDescription" ||
         field === "channel" ||
+        field === "messageTemplateTitle" ||
         field === "messageTemplateBody" ||
-        field === "description" ||
-        field === "title"
+        field === "messageTemplateImageUrl"
       ) {
         fe[field] = issue.message;
       }
@@ -149,32 +152,11 @@ export default function TemplateFormModal({
     try {
       if (mode === "create") {
         if (!parsed) return;
-        await createMut.mutateAsync({
-          req: {
-            projectId,
-            messageTemplateName: parsed.messageTemplateName,
-            channel: parsed.channel,
-            messageTemplateBody: parsed.messageTemplateBody,
-          },
-          meta: {
-            description: parsed.description,
-            title: parsed.title,
-            createdBy: authMember?.email ?? "unknown@butterfly.io",
-          },
-        });
+        await createMut.mutateAsync({ req: parsed });
         toast("템플릿이 생성되었습니다", "success");
       } else {
         if (!parsed || templateId == null) return;
-        await updateMut.mutateAsync({
-          id: templateId,
-          req: {
-            messageTemplateName: parsed.messageTemplateName,
-            channel: parsed.channel,
-            messageTemplateBody: parsed.messageTemplateBody,
-            description: parsed.description,
-            title: parsed.title,
-          },
-        });
+        await updateMut.mutateAsync({ id: templateId, req: parsed });
         toast("템플릿이 수정되었습니다", "success");
       }
       onClose();
@@ -248,24 +230,25 @@ export default function TemplateFormModal({
           autoFocus
           value={name}
           onChange={(e) => setName(e.target.value)}
-          maxLength={50}
+          maxLength={255}
           placeholder="예: 환영 메시지"
           style={inputStyle(!!errors.messageTemplateName)}
         />
       </Field>
 
-      {/* 설명 (mock-only) */}
+      {/* 설명 */}
       <Field
-        label="설명 (선택)"
-        error={errors.description}
-        help={`${description.length}/200`}
+        label="설명"
+        required
+        error={errors.messageTemplateDescription}
+        help={`${description.length}/500`}
       >
         <input
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          maxLength={200}
+          maxLength={500}
           placeholder="템플릿 사용 시점/대상 등 메모"
-          style={inputStyle(!!errors.description)}
+          style={inputStyle(!!errors.messageTemplateDescription)}
         />
       </Field>
 
@@ -288,18 +271,19 @@ export default function TemplateFormModal({
         </select>
       </Field>
 
-      {/* 제목 (mock-only) */}
+      {/* 제목 */}
       <Field
-        label="제목 (선택, EMAIL/PUSH 권장)"
-        error={errors.title}
-        help={`${title.length}/100`}
+        label="제목"
+        required
+        error={errors.messageTemplateTitle}
+        help={`${title.length}/255`}
       >
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          maxLength={100}
+          maxLength={255}
           placeholder="알림 제목"
-          style={inputStyle(!!errors.title)}
+          style={inputStyle(!!errors.messageTemplateTitle)}
         />
       </Field>
 
@@ -308,17 +292,32 @@ export default function TemplateFormModal({
         label="메시지 본문"
         required
         error={errors.messageTemplateBody}
-        help={`${body.length}/1000자 · {{변수명}} 형식 사용 가능`}
+        help={`${body.length}/10000자 · {{변수명}} 형식 사용 가능`}
       >
         <VariableHighlight
           value={body}
           onChange={setBody}
           rows={8}
-          maxLength={1000}
+          maxLength={10000}
           placeholder="안녕하세요 {{name}}님! ..."
           ariaLabel="메시지 본문"
           ariaDescribedBy={variablesHelpId}
           invalid={!!errors.messageTemplateBody}
+        />
+      </Field>
+
+      {/* 이미지 URL (선택) */}
+      <Field
+        label="이미지 URL (선택)"
+        error={errors.messageTemplateImageUrl}
+        help={`${imageUrl.length}/500`}
+      >
+        <input
+          value={imageUrl}
+          onChange={(e) => setImageUrl(e.target.value)}
+          maxLength={500}
+          placeholder="https://..."
+          style={inputStyle(!!errors.messageTemplateImageUrl)}
         />
       </Field>
 

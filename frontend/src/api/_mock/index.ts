@@ -35,11 +35,11 @@ const DOMAIN_FLAGS: Record<string, boolean> = {
   // 도메인별 강제 mock. 백엔드 구현되면 false로 바꾸거나 키 자체를 제거.
   // (2026-05-04) 백엔드 SegmentController에 users/rebuild/campaigns 3개가 추가되어
   // mock을 false 로 전환. 백엔드 응답이 스켈레톤(빈 페이지/Stub)이지만 path는 살아있다.
-  template_list: true, // 목록/상세/수정/삭제는 백엔드 미구현
+  template_list: false, // 백엔드 MessageTemplateController CRUD 구현됨 (-233 머지)
   segment_users: false, // 백엔드 구현됨 (스켈레톤이지만 정상 응답)
   segment_rebuild: false, // 백엔드 구현됨 (Stub)
   segment_linked_campaigns: false, // 백엔드 구현됨
-  campaign: true, // 캠페인 CRUD/실행 전체 미구현 (CampaignController 자체 없음)
+  campaign: false, // 백엔드 CampaignController CRUD + 상태 전이 구현됨 (-233 머지)
   event_categories: false, // 백엔드 EventCategoryController 구현됨 (7개 endpoint)
   event_schema: false, // 동일
 };

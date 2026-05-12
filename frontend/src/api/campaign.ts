@@ -1,60 +1,33 @@
 import { api } from "./client";
-import { ifMock } from "./_mock";
-import {
-  createCampaignMock,
-  deleteCampaignMock,
-  getCampaignMock,
-  listCampaignsMock,
-  pauseCampaignMock,
-  startCampaignMock,
-  updateCampaignMock,
-  type CampaignDetailMock,
-  type CampaignExecutionRecord,
-  type CampaignListItemMock,
-  type CampaignListMockParams,
-  type CampaignListMockResponse,
-  type CreateCampaignMockRequest,
-  type ScheduleRecord,
-  type UpdateCampaignMockRequest,
-} from "./_mock/campaign";
 import type {
   CampaignStatus,
   CampaignType,
   Channel,
-  ExecutionStatus,
-  RepeatType,
   SendMode,
 } from "@/schemas/campaign";
 
 /**
  * Sprint 6 — Campaign API.
  *
- * 백엔드: com.b101.butterfly.campaign.campaign (도메인만 완성, REST 미구현).
- * 7개 엔드포인트 모두 ifMock("campaign") 으로 감싸 mock-fallback. 백엔드 추가 구현 시
- * src/api/_mock/index.ts 의 campaign 플래그를 false 로 바꾸면 real 경로 활성화.
+ * 백엔드: com.b101.butterfly.campaign.lifecycle.presentation.CampaignController
+ * 베이스 경로: `/api/v1/projects/{projectId}/campaigns`
+ *
+ * S14P31B101-233 머지 후 전 7 endpoint 실 API. 응답은 ApiResponse 래퍼.
+ *
+ * ⚠️ schedule(예약·반복) 세부 정보는 백엔드 CampaignDetailResponse 에 미노출 (D-1 보류).
+ * 위저드에서 받은 schedule 상태는 현재 백엔드에 전달되지 않으며, 상세 조회 시에도 반환되지 않는다.
  */
 
-// ---------- 공통 타입 (mock 도메인을 그대로 export) ----------
+// ---------- 요청 ----------
 
-export type CampaignSchedule = ScheduleRecord;
-export type {
-  CampaignDetailMock as CampaignDetail,
-  CampaignListItemMock as CampaignListItem,
-  CampaignExecutionRecord as CampaignExecution,
-  CampaignListMockResponse,
-};
-
-// ---------- 요청/응답 DTO (백엔드 명세 §3 기반) ----------
-
-export interface CampaignListResponse {
-  campaigns: CampaignListItemMock[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalElements: number;
-    pageSize: number;
-  };
+export interface CreateCampaignRequest {
+  messageTemplateId: number;
+  segmentId: number | null;
+  campaignName: string;
+  campaignDescription: string;
 }
+
+export type UpdateCampaignRequest = CreateCampaignRequest;
 
 export interface ListCampaignsParams {
   projectId: number;
@@ -63,58 +36,74 @@ export interface ListCampaignsParams {
   q?: string;
   page?: number;
   size?: number;
-  sort?: "createdAt,desc" | "createdAt,asc" | "name,asc";
+  sort?: string;
 }
 
-export interface CreateCampaignRequest {
-  projectId: number;
-  campaignName: string;
-  campaignDescription: string;
-  campaignType: CampaignType;
-  channel: Channel;
-  segmentId: number | null;
-  messageTemplateId: number;
-  schedule: CampaignSchedule;
-  isTempSave: boolean;
-  /** mock-only — 표시용 메타. 백엔드 호출 시 무시됨. */
-  meta?: {
-    messageTemplateName?: string;
-    segmentName?: string | null;
-    createdBy?: string;
-  };
-}
+// ---------- 응답 ----------
 
-export type UpdateCampaignRequest = CreateCampaignRequest;
-
-export interface DeleteCampaignResponse {
+export interface CampaignCreateResponse {
   campaignId: number;
 }
 
-// 미구현 백엔드 호출용 — schedule 을 백엔드 record 형식으로 직렬화
-function scheduleToBackend(s: CampaignSchedule): {
-  sendMode: SendMode;
-  scheduledAt?: string;
-  repeat?: {
-    repeatType: RepeatType;
-    repeatTime: string;
-    repeatDayOfWeek?: string;
-    repeatDayOfMonth?: number;
-    recurringCount: number;
-    nextRunAt?: string;
+export interface CampaignListItem {
+  campaignId: number;
+  campaignName: string;
+  channel: Channel;
+  campaignStatus: CampaignStatus;
+  createdAt: string;
+}
+
+/** 백엔드 `PageResponse<T>` 그대로. */
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
+export interface CampaignListResponse {
+  campaigns: CampaignListItem[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalElements: number;
+    pageSize: number;
   };
-} {
-  if (s.type === "immediate") return { sendMode: "IMMEDIATE" };
-  if (s.type === "scheduled")
-    return { sendMode: "SCHEDULED", scheduledAt: s.scheduledAt };
+}
+
+export interface CampaignDetail {
+  campaignId: number;
+  projectId: number;
+  messageTemplateId: number;
+  segmentId: number | null;
+  memberId: number;
+  campaignName: string;
+  campaignDescription: string;
+  campaignType: CampaignType;
+  sendMode: SendMode;
+  channel: Channel;
+  campaignStatus: CampaignStatus;
+  createdAt: string;
+  updatedAt: string;
+  segmentBuildStatus: string | null;
+}
+
+export interface StatusTransitionResponse {
+  campaignId: number;
+  campaignStatus: CampaignStatus;
+}
+
+// ---------- 어댑터 ----------
+
+function toListResponse(p: PageResponse<CampaignListItem>): CampaignListResponse {
   return {
-    sendMode: "RECURRING",
-    repeat: {
-      repeatType: s.repeatType,
-      repeatTime: s.repeatTime,
-      repeatDayOfWeek: s.repeatDayOfWeek,
-      repeatDayOfMonth: s.repeatDayOfMonth,
-      recurringCount: s.recurringCount,
-      nextRunAt: s.nextRunAt,
+    campaigns: p.content,
+    pagination: {
+      currentPage: p.page,
+      totalPages: p.totalPages,
+      totalElements: p.totalElements,
+      pageSize: p.size,
     },
   };
 }
@@ -125,188 +114,99 @@ function scheduleToBackend(s: CampaignSchedule): {
 export async function listCampaigns(
   params: ListCampaignsParams,
 ): Promise<CampaignListResponse> {
-  return ifMock<CampaignListResponse>(
-    "campaign",
-    async () => {
-      const mockParams: CampaignListMockParams = {
-        projectId: params.projectId,
+  const res = await api.get<PageResponse<CampaignListItem>>(
+    `/api/v1/projects/${params.projectId}/campaigns`,
+    {
+      params: {
         status: params.status,
         channel: params.channel,
         q: params.q,
-        page: params.page,
-        size: params.size,
+        page: params.page ?? 0,
+        size: params.size ?? 20,
         sort: params.sort,
-      };
-      return listCampaignsMock(mockParams);
-    },
-    async () => {
-      const res = await api.get<CampaignListResponse>(
-        `/api/v1/projects/${params.projectId}/campaigns`,
-        {
-          params: {
-            status: params.status,
-            channel: params.channel,
-            q: params.q,
-            page: params.page ?? 0,
-            size: params.size ?? 20,
-            sort: params.sort ?? "createdAt,desc",
-          },
-        },
-      );
-      return res.data;
+      },
     },
   );
+  return toListResponse(res.data);
 }
 
 /** GET /api/v1/projects/{projectId}/campaigns/{campaignId} — VIEWER↑ */
 export async function getCampaign(
   projectId: number,
   campaignId: number,
-): Promise<CampaignDetailMock> {
-  return ifMock<CampaignDetailMock>(
-    "campaign",
-    async () => getCampaignMock(campaignId),
-    async () => {
-      const res = await api.get<CampaignDetailMock>(
-        `/api/v1/projects/${projectId}/campaigns/${campaignId}`,
-      );
-      return res.data;
-    },
+): Promise<CampaignDetail> {
+  const res = await api.get<CampaignDetail>(
+    `/api/v1/projects/${projectId}/campaigns/${campaignId}`,
   );
+  return res.data;
 }
 
-/** POST /api/v1/projects/{projectId}/campaigns — EDITOR↑ */
+/**
+ * POST /api/v1/projects/{projectId}/campaigns — EDITOR↑.
+ * 백엔드는 `{ campaignId }` 만 반환하므로 상세는 호출 측에서 재조회한다.
+ */
 export async function createCampaign(
+  projectId: number,
   req: CreateCampaignRequest,
-): Promise<CampaignDetailMock> {
-  return ifMock<CampaignDetailMock>(
-    "campaign",
-    async () => {
-      const mockReq: CreateCampaignMockRequest = {
-        projectId: req.projectId,
-        campaignName: req.campaignName,
-        campaignDescription: req.campaignDescription,
-        campaignType: req.campaignType,
-        channel: req.channel,
-        segmentId: req.segmentId,
-        messageTemplateId: req.messageTemplateId,
-        schedule: req.schedule,
-        isTempSave: req.isTempSave,
-        meta: req.meta,
-      };
-      return createCampaignMock(mockReq);
-    },
-    async () => {
-      const body = {
-        campaignName: req.campaignName,
-        campaignType: req.campaignType,
-        campaignDescription: req.campaignDescription,
-        channel: req.channel,
-        segmentId: req.segmentId,
-        messageTemplateId: req.messageTemplateId,
-        ...scheduleToBackend(req.schedule),
-        schedule: req.schedule, // backend가 어떤 형태든 양쪽 다 보냄
-        isTempSave: req.isTempSave,
-      };
-      const res = await api.post<CampaignDetailMock>(
-        `/api/v1/projects/${req.projectId}/campaigns`,
-        body,
-      );
-      return res.data;
-    },
+): Promise<CampaignCreateResponse> {
+  const res = await api.post<CampaignCreateResponse>(
+    `/api/v1/projects/${projectId}/campaigns`,
+    req,
   );
+  return res.data;
 }
 
-/** PUT /api/v1/projects/{projectId}/campaigns/{campaignId} — EDITOR↑ */
+/**
+ * PATCH /api/v1/projects/{projectId}/campaigns/{campaignId} — EDITOR↑.
+ * PUT-like PATCH — 모든 필드 항상 명시.
+ */
 export async function updateCampaign(
+  projectId: number,
   campaignId: number,
   req: UpdateCampaignRequest,
-): Promise<CampaignDetailMock> {
-  return ifMock<CampaignDetailMock>(
-    "campaign",
-    async () => {
-      const mockReq: UpdateCampaignMockRequest = {
-        projectId: req.projectId,
-        campaignName: req.campaignName,
-        campaignDescription: req.campaignDescription,
-        campaignType: req.campaignType,
-        channel: req.channel,
-        segmentId: req.segmentId,
-        messageTemplateId: req.messageTemplateId,
-        schedule: req.schedule,
-        isTempSave: req.isTempSave,
-        meta: req.meta,
-      };
-      return updateCampaignMock(campaignId, mockReq);
-    },
-    async () => {
-      const body = {
-        campaignName: req.campaignName,
-        campaignType: req.campaignType,
-        campaignDescription: req.campaignDescription,
-        channel: req.channel,
-        segmentId: req.segmentId,
-        messageTemplateId: req.messageTemplateId,
-        ...scheduleToBackend(req.schedule),
-        schedule: req.schedule,
-        isTempSave: req.isTempSave,
-      };
-      const res = await api.put<CampaignDetailMock>(
-        `/api/v1/projects/${req.projectId}/campaigns/${campaignId}`,
-        body,
-      );
-      return res.data;
-    },
+): Promise<CampaignCreateResponse> {
+  const res = await api.patch<CampaignCreateResponse>(
+    `/api/v1/projects/${projectId}/campaigns/${campaignId}`,
+    req,
   );
+  return res.data;
 }
 
-/** DELETE /api/v1/projects/{projectId}/campaigns/{campaignId} — EDITOR↑ (soft delete) */
+/** DELETE /api/v1/projects/{projectId}/campaigns/{campaignId} — EDITOR↑ (soft delete). */
 export async function deleteCampaign(
   projectId: number,
   campaignId: number,
-): Promise<DeleteCampaignResponse> {
-  return ifMock<DeleteCampaignResponse>(
-    "campaign",
-    async () => deleteCampaignMock(campaignId),
-    async () => {
-      await api.delete(`/api/v1/projects/${projectId}/campaigns/${campaignId}`);
-      return { campaignId };
-    },
-  );
+): Promise<void> {
+  await api.delete(`/api/v1/projects/${projectId}/campaigns/${campaignId}`);
 }
 
-/** POST /api/v1/projects/{projectId}/campaigns/{campaignId}/start — EDITOR↑ */
-export async function startCampaign(
+/** PATCH /api/v1/projects/{projectId}/campaigns/{campaignId}/status — EDITOR↑. */
+export async function transitionCampaignStatus(
   projectId: number,
   campaignId: number,
-): Promise<CampaignDetailMock> {
-  return ifMock<CampaignDetailMock>(
-    "campaign",
-    async () => startCampaignMock(campaignId),
-    async () => {
-      const res = await api.post<CampaignDetailMock>(
-        `/api/v1/projects/${projectId}/campaigns/${campaignId}/start`,
-      );
-      return res.data;
-    },
+  status: CampaignStatus,
+): Promise<StatusTransitionResponse> {
+  const res = await api.patch<StatusTransitionResponse>(
+    `/api/v1/projects/${projectId}/campaigns/${campaignId}/status`,
+    { status },
   );
+  return res.data;
 }
 
-/** POST /api/v1/projects/{projectId}/campaigns/{campaignId}/pause — EDITOR↑ (P1) */
-export async function pauseCampaign(
+/** `ACTIVE`로 상태 전이. */
+export function startCampaign(
   projectId: number,
   campaignId: number,
-): Promise<CampaignDetailMock> {
-  return ifMock<CampaignDetailMock>(
-    "campaign",
-    async () => pauseCampaignMock(campaignId),
-    async () => {
-      const res = await api.post<CampaignDetailMock>(
-        `/api/v1/projects/${projectId}/campaigns/${campaignId}/pause`,
-      );
-      return res.data;
-    },
-  );
+): Promise<StatusTransitionResponse> {
+  return transitionCampaignStatus(projectId, campaignId, "ACTIVE");
+}
+
+/** `PAUSED`로 상태 전이. */
+export function pauseCampaign(
+  projectId: number,
+  campaignId: number,
+): Promise<StatusTransitionResponse> {
+  return transitionCampaignStatus(projectId, campaignId, "PAUSED");
 }
 
 // ---------- 도메인 enum re-export (편의) ----------
@@ -315,6 +215,4 @@ export type {
   CampaignType,
   Channel,
   SendMode,
-  RepeatType,
-  ExecutionStatus,
 };

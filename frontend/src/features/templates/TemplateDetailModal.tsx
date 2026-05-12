@@ -11,21 +11,8 @@ import TemplateFormModal from "./TemplateFormModal";
 /**
  * Sprint 4 — 템플릿 상세 모달.
  *
- * mock-fallback (GET /templates/{id} 미구현). DRAFT 일 때만 [수정] [삭제] 버튼 활성화.
- * EDITOR 미만(VIEWER) 은 두 버튼이 보이지 않는다.
+ * 백엔드 GET /templates/{id} 실 API. EDITOR 이상이면 수정·삭제 가능.
  */
-
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "초안",
-  READY: "준비완료",
-  ARCHIVED: "보관",
-};
-
-const STATUS_TONE: Record<string, string> = {
-  DRAFT: "warning",
-  READY: "success",
-  ARCHIVED: "default",
-};
 
 export interface TemplateDetailModalProps {
   projectId: number;
@@ -66,13 +53,14 @@ export default function TemplateDetailModal({
       <TemplateFormModal
         mode="edit"
         projectId={projectId}
-        templateId={data.messageTemplateId}
+        templateId={templateId}
         initialValues={{
           messageTemplateName: data.messageTemplateName,
+          messageTemplateDescription: data.messageTemplateDescription,
           channel: data.channel,
+          messageTemplateTitle: data.messageTemplateTitle,
           messageTemplateBody: data.messageTemplateBody,
-          description: data.description,
-          title: data.title,
+          messageTemplateImageUrl: data.messageTemplateImageUrl ?? undefined,
         }}
         onClose={close}
       />
@@ -90,7 +78,7 @@ export default function TemplateDetailModal({
     });
     if (!ok) return;
     try {
-      await deleteMut.mutateAsync(data.messageTemplateId);
+      await deleteMut.mutateAsync(templateId);
       toast("템플릿이 삭제되었습니다", "success");
       onClose();
     } catch (err) {
@@ -104,7 +92,7 @@ export default function TemplateDetailModal({
     }
   };
 
-  const editable = !!data && data.status === "DRAFT";
+  const editable = !!data;
 
   return (
     <div
@@ -155,11 +143,6 @@ export default function TemplateDetailModal({
             }}
           >
             {data && <ChannelBadge channel={data.channel} />}
-            {data && (
-              <Tag tone={STATUS_TONE[data.status] ?? "default"} dot style={{}}>
-                {STATUS_LABEL[data.status] ?? data.status}
-              </Tag>
-            )}
           </div>
         </div>
       </div>
@@ -202,17 +185,31 @@ export default function TemplateDetailModal({
 
       {data && (
         <>
-          {data.description && (
-            <Section title="설명">
-              <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.6 }}>
-                {data.description}
-              </p>
-            </Section>
-          )}
+          <Section title="설명">
+            <p style={{ margin: 0, fontSize: 13, color: "#475569", lineHeight: 1.6 }}>
+              {data.messageTemplateDescription}
+            </p>
+          </Section>
 
-          {data.title && (
-            <Section title="제목">
-              <p style={{ margin: 0, fontSize: 13, color: "#1f2937" }}>{data.title}</p>
+          <Section title="제목">
+            <p style={{ margin: 0, fontSize: 13, color: "#1f2937" }}>
+              {data.messageTemplateTitle}
+            </p>
+          </Section>
+
+          {data.messageTemplateImageUrl && (
+            <Section title="이미지 URL">
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 12,
+                  color: "#3b5bdb",
+                  fontFamily: "var(--font-mono)",
+                  wordBreak: "break-all",
+                }}
+              >
+                {data.messageTemplateImageUrl}
+              </p>
             </Section>
           )}
 
@@ -253,10 +250,11 @@ export default function TemplateDetailModal({
           </Section>
 
           <Section title="메타">
-            <Row label="생성자" value={data.createdBy} />
+            <Row label="생성자" value={data.memberName} />
+            <Row label="프로젝트" value={data.projectName} />
             <Row label="생성일" value={fmtDateTime(data.createdAt)} />
             <Row label="수정일" value={fmtDateTime(data.updatedAt)} />
-            <Row label="템플릿 ID" value={`#${data.messageTemplateId}`} mono />
+            <Row label="템플릿 ID" value={`#${templateId}`} mono />
           </Section>
 
           <div
@@ -279,9 +277,6 @@ export default function TemplateDetailModal({
                   size="md"
                   onClick={onClickDelete}
                   disabled={!editable || deleteMut.isPending}
-                  title={
-                    !editable ? "DRAFT 상태의 템플릿만 삭제할 수 있습니다" : undefined
-                  }
                   style={{}}
                 >
                   {deleteMut.isPending ? "삭제 중..." : "삭제"}
@@ -291,9 +286,6 @@ export default function TemplateDetailModal({
                   size="md"
                   onClick={onClickEdit}
                   disabled={!editable}
-                  title={
-                    !editable ? "DRAFT 상태의 템플릿만 수정할 수 있습니다" : undefined
-                  }
                   style={{}}
                 >
                   수정
