@@ -85,23 +85,10 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
   );
 
   // edit 모드 hydrate
+  // ⚠️ 백엔드 CampaignDetailResponse 에 schedule / segmentName / messageTemplateName 미노출 (D-1 보류).
+  // schedule 은 위저드 default(immediate), 이름들은 빈 문자열로 두고 사용자가 재선택하도록 유도.
   useEffect(() => {
     if (mode !== "edit" || !editTarget) return;
-    let schedule: ScheduleInput;
-    if (editTarget.schedule.type === "immediate") {
-      schedule = { type: "immediate" };
-    } else if (editTarget.schedule.type === "scheduled") {
-      schedule = { type: "scheduled", scheduledAt: editTarget.schedule.scheduledAt };
-    } else {
-      schedule = {
-        type: "recurring",
-        repeatType: editTarget.schedule.repeatType,
-        repeatTime: editTarget.schedule.repeatTime,
-        repeatDayOfWeek: editTarget.schedule.repeatDayOfWeek,
-        repeatDayOfMonth: editTarget.schedule.repeatDayOfMonth,
-        recurringCount: editTarget.schedule.recurringCount,
-      };
-    }
     const draft: WizardDraft = {
       ...initialDraft,
       campaignName: editTarget.campaignName,
@@ -109,10 +96,10 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
       campaignType: editTarget.campaignType,
       channel: editTarget.channel,
       segmentId: editTarget.segmentId,
-      segmentName: editTarget.segmentName,
-      schedule,
+      segmentName: null,
+      schedule: { type: "immediate" },
       messageTemplateId: editTarget.messageTemplateId,
-      messageTemplateName: editTarget.messageTemplateName,
+      messageTemplateName: null,
       dirty: false,
     };
     dispatch({ type: "hydrate", draft, campaignId: editTarget.campaignId });
@@ -197,30 +184,6 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
     dispatch({ type: "set/step", step: target });
   };
 
-  const buildSchedulePayload = (): CreateCampaignRequest["schedule"] => {
-    const s = state.draft.schedule;
-    if (s.type === "scheduled") {
-      // 사용자 입력은 datetime-local. UTC ISO 로 직렬화.
-      const iso = s.scheduledAt && !s.scheduledAt.includes("Z")
-        ? toUtcIso(s.scheduledAt)
-        : s.scheduledAt;
-      return { type: "scheduled", scheduledAt: iso };
-    }
-    if (s.type === "recurring") {
-      // mock 의 ScheduleRecurring 은 nextRunAt 필수 — 없으면 빈 문자열로 (mock 측에서 +1h 로 채움).
-      return {
-        type: "recurring",
-        repeatType: s.repeatType,
-        repeatTime: s.repeatTime,
-        repeatDayOfWeek: s.repeatDayOfWeek,
-        repeatDayOfMonth: s.repeatDayOfMonth,
-        recurringCount: s.recurringCount,
-        nextRunAt: "",
-      };
-    }
-    return { type: "immediate" };
-  };
-
   const finalizeCreate = async (startAfter: boolean): Promise<void> => {
     if (projectId == null) return;
     // 6단계 종합 검증
@@ -250,21 +213,13 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
 
     setSubmitting(true);
     try {
+      // 백엔드 CampaignCreateRequest / CampaignUpdateRequest 는 4개 필드만 수신.
+      // schedule / campaignType / channel / isTempSave 는 미지원 (D-1, D-4 보류).
       const req: CreateCampaignRequest = {
-        projectId,
         campaignName: state.draft.campaignName.trim(),
         campaignDescription: state.draft.campaignDescription.trim(),
-        campaignType: state.draft.campaignType,
-        channel: state.draft.channel,
-        segmentId: state.draft.segmentId,
         messageTemplateId: state.draft.messageTemplateId as number,
-        schedule: buildSchedulePayload(),
-        isTempSave: !startAfter,
-        meta: {
-          messageTemplateName: state.draft.messageTemplateName ?? undefined,
-          segmentName: state.draft.segmentName,
-          createdBy: member?.email,
-        },
+        segmentId: state.draft.segmentId,
       };
 
       let result;
