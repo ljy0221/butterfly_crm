@@ -8,7 +8,6 @@ import {
   PageHeader,
   SearchInput,
   Select,
-  Tag,
 } from "@/components/common";
 import { ApiError } from "@/api/types";
 import { confirmDialog, openModal, toast } from "@/lib/ui-bus";
@@ -30,19 +29,9 @@ import TemplateFormModal from "./TemplateFormModal";
  * - 카드 클릭 → 상세 모달, ⋯ 메뉴 → 수정/삭제(EDITOR 이상).
  * - VIEWER 는 [+ 새 템플릿] / ⋯ 메뉴 / 수정-삭제 모두 비노출.
  * - 빈/로딩/에러 상태 분리 처리.
+ *
+ * 백엔드는 페이징만 지원하므로 채널·검색은 클라이언트 사이드 필터.
  */
-
-const STATUS_LABEL: Record<string, string> = {
-  DRAFT: "초안",
-  READY: "준비완료",
-  ARCHIVED: "보관",
-};
-
-const STATUS_TONE: Record<string, string> = {
-  DRAFT: "warning",
-  READY: "success",
-  ARCHIVED: "default",
-};
 
 type ChannelFilter = "ALL" | Channel;
 
@@ -106,8 +95,21 @@ export default function Templates() {
   );
   const deleteMut = useDeleteTemplateMutation(projectId ?? -1);
 
-  const items = data?.templates ?? [];
-  const totalPages = data?.totalPages ?? 1;
+  // 백엔드는 페이징만 지원 — 채널/검색 필터는 받아온 페이지 내에서 클라이언트 사이드로.
+  const allItems = data?.messageTemplates ?? [];
+  const items = useMemo(() => {
+    const lowerQ = q.trim().toLowerCase();
+    return allItems.filter((item) => {
+      if (channelFilter !== "ALL" && item.channel !== channelFilter) return false;
+      if (lowerQ) {
+        const hay =
+          `${item.messageTemplateName} ${item.messageTitle ?? ""}`.toLowerCase();
+        if (!hay.includes(lowerQ)) return false;
+      }
+      return true;
+    });
+  }, [allItems, channelFilter, q]);
+  const totalPages = data?.pageInfo.totalPages ?? 1;
 
   const openCreate = (): void => {
     if (!projectId) return;
@@ -134,12 +136,6 @@ export default function Templates() {
         mode="edit"
         projectId={projectId}
         templateId={item.messageTemplateId}
-        initialValues={{
-          messageTemplateName: item.messageTemplateName,
-          channel: item.channel,
-          messageTemplateBody: item.messageTemplateBody,
-          description: item.description,
-        }}
         onClose={close}
       />
     ));
@@ -384,7 +380,8 @@ function TemplateCard({
   onEdit,
   onDelete,
 }: TemplateCardProps) {
-  const editable = item.status === "DRAFT";
+  // 백엔드 목록 응답에 status 없음 — 수정·삭제는 EDITOR 권한이면 항상 허용.
+  const editable = true;
 
   return (
     <div
@@ -472,27 +469,15 @@ function TemplateCard({
               }
               items={[
                 {
-                  label: editable ? "수정" : "수정 (DRAFT만)",
+                  label: "수정",
                   icon: Icon.edit(12),
-                  onClick: () => {
-                    if (!editable) {
-                      toast("DRAFT 상태의 템플릿만 수정할 수 있습니다", "warning");
-                      return;
-                    }
-                    onEdit();
-                  },
+                  onClick: onEdit,
                 },
                 { divider: true },
                 {
-                  label: editable ? "삭제" : "삭제 (DRAFT만)",
+                  label: "삭제",
                   icon: Icon.trash(12),
-                  onClick: () => {
-                    if (!editable) {
-                      toast("DRAFT 상태의 템플릿만 삭제할 수 있습니다", "warning");
-                      return;
-                    }
-                    onDelete();
-                  },
+                  onClick: onDelete,
                   danger: true,
                 },
               ]}
@@ -513,7 +498,7 @@ function TemplateCard({
           minHeight: 36,
         }}
       >
-        {item.description || item.messageTemplateBody}
+        {item.messageTitle}
       </div>
 
       <div
@@ -526,9 +511,6 @@ function TemplateCard({
         }}
       >
         <ChannelBadge channel={item.channel} />
-        <Tag tone={STATUS_TONE[item.status] ?? "default"} dot style={{}}>
-          {STATUS_LABEL[item.status] ?? item.status}
-        </Tag>
       </div>
 
       <div
@@ -542,7 +524,7 @@ function TemplateCard({
           borderTop: "1px solid #f1f5f9",
         }}
       >
-        <span>{shortenEmail(item.createdBy)}</span>
+        <span>{shortenEmail(item.memberName)}</span>
         <span>·</span>
         <span>{fmtDate(item.createdAt)}</span>
       </div>

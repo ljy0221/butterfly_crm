@@ -4,12 +4,11 @@ import { z } from "zod";
  * Sprint 4 — Message Template Zod 스키마.
  *
  * 백엔드 검증 규칙(record + @NotBlank + Channel enum + 도메인 validate())에 맞춰 작성.
- *  - POST /api/v1/templates 의 MessageTemplateCreateRequest
+ *  - POST /api/v1/projects/{projectId}/templates 의 MessageTemplateCreateRequest
  *  - 변수 자동 추출 정규식 `\{\{(\w+)\}\}` 은 백엔드와 동일 형식.
  *
- * 참고: 백엔드는 `messageTemplateName`, `channel`, `messageTemplateBody` 만 받지만
- * UI 단에서는 description / title 같은 보조 필드를 mock store에만 봉합한다.
- * 따라서 zod에서도 mock-only 필드는 .optional() 로 둔다.
+ * S14P31B101-233 이후 description / title / imageUrl 모두 백엔드 본 필드.
+ * description: @NotBlank max 500, title: @NotBlank max 255, imageUrl: optional max 500.
  */
 
 // ---------- 도메인 enum ----------
@@ -26,61 +25,49 @@ export const ChannelSchema = z.enum([
 ]);
 export type Channel = z.infer<typeof ChannelSchema>;
 
-/**
- * mock-only. 백엔드 MessageTemplate 엔티티에는 status 필드 없음.
- * Sprint 5+에서 추가 예정.
- */
-export const TemplateStatusSchema = z.enum(["DRAFT", "READY", "ARCHIVED"]);
-export type TemplateStatus = z.infer<typeof TemplateStatusSchema>;
-
 // ---------- 필드 단위 스키마 ----------
 
 export const nameSchema = z
   .string()
   .min(1, "템플릿 이름은 필수입니다")
-  .max(50, "템플릿 이름은 50자 이내여야 합니다");
+  .max(255, "템플릿 이름은 255자 이내여야 합니다");
 
 export const titleSchema = z
   .string()
-  .max(100, "제목은 100자 이내여야 합니다")
-  .optional();
+  .min(1, "제목은 필수입니다")
+  .max(255, "제목은 255자 이내여야 합니다");
 
 export const bodySchema = z
   .string()
   .min(1, "메시지 본문은 필수입니다")
-  .max(1000, "메시지 본문은 1000자 이내여야 합니다");
+  .max(10000, "메시지 본문은 10000자 이내여야 합니다");
 
 export const descriptionSchema = z
   .string()
-  .max(200, "설명은 200자 이내여야 합니다")
+  .min(1, "설명은 필수입니다")
+  .max(500, "설명은 500자 이내여야 합니다");
+
+export const imageUrlSchema = z
+  .string()
+  .max(500, "이미지 URL은 500자 이내여야 합니다")
   .optional();
 
 // ---------- 폼 스키마 ----------
 
 /**
- * 생성 폼 — 실제 POST 요청 페이로드와 mock 봉합 필드 동시 보유.
- * 실 API에는 messageTemplateName/channel/messageTemplateBody 만 전달.
+ * 생성/수정 폼 — 백엔드 MessageTemplateCreateRequest record 와 동일 필드.
  */
 export const createTemplateSchema = z.object({
   messageTemplateName: nameSchema,
+  messageTemplateDescription: descriptionSchema,
   channel: ChannelSchema,
+  messageTemplateTitle: titleSchema,
   messageTemplateBody: bodySchema,
-  // mock-only
-  description: descriptionSchema,
-  title: titleSchema,
+  messageTemplateImageUrl: imageUrlSchema,
 });
 export type CreateTemplateInput = z.infer<typeof createTemplateSchema>;
 
-/**
- * 수정 폼 — 모두 mock(백엔드 PUT 미구현).
- */
-export const updateTemplateSchema = z.object({
-  messageTemplateName: nameSchema,
-  channel: ChannelSchema,
-  messageTemplateBody: bodySchema,
-  description: descriptionSchema,
-  title: titleSchema,
-});
+export const updateTemplateSchema = createTemplateSchema;
 export type UpdateTemplateInput = z.infer<typeof updateTemplateSchema>;
 
 // ---------- 헬퍼 ----------
