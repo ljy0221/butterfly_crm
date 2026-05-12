@@ -20,7 +20,6 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -35,7 +34,7 @@ import java.util.stream.Stream;
 /**
  * Segment rebuild 메시지를 받아 segment_members를 빌드하는 worker. butterfly-worker에서만 활성화.
  *
- * <p>흐름 (PR3 완성형):
+ * <p>흐름:
  * <ol>
  *   <li>{@code markBuildingIfPossible} CAS로 점유 — 다른 worker 신선 처리 중이면 ack 후 종료
  *   <li>segment 조회 (Codex 안전장치 b: 빌드 중 soft-delete 시 fail)
@@ -46,10 +45,22 @@ import java.util.stream.Stream;
  *   <li>{@code completeBuildIfOwner}로 estimated_count 갱신 + token/heartbeat 정리
  * </ol>
  *
+ * <p><b>트랜잭션 경계 (S14P31B101-243 Phase 1):</b>
+ * {@code consume()} 메서드에는 의도적으로 {@code @Transactional} 을 걸지 않는다.
+ * 각 repository 호출 (CAS UPDATE / findById / saveAll chunk / heartbeat / complete) 은
+ * Spring Data JPA 의 {@code SimpleJpaRepository} 가 자체적으로 짧은 트랜잭션을 시작·커밋한다.
+ * 이렇게 해야 530초 짜리 filtered EVENT EXISTS 쿼리가 진행되는 동안 segments 행 X-lock 과
+ * connection 을 점유하지 않으므로 OLTP 락 카스케이드(ALTER metadata lock, segment_members 경합)를
+ * 방지한다. {@code condition_tree} 는 {@code @Convert} 즉시 deserialize 이므로 detached 후에도 안전.
+ *
+ * <p>장애 복구: 메시지 처리 도중 worker 가 죽으면 {@code build_token} 잔재 + heartbeat 정지 →
+ * {@code SegmentBuildStaleCron} 이 staleThreshold 후 FAILED 로 강등 → 다음 rebuild 가 정상 진입.
+ *
  * <p><b>v1 한계</b> (PreviewService 동기화):
  * <ul>
  *   <li>filter 없는 EVENT 단독만 EventAggReader 호출, mixed/filtered EVENT는 SQL로 처리
  *   <li>{@code expires_at}은 항상 null (cumulative 의미). Period 기반 만료 정책은 후속 task
+ *   <li>partial segment_members 잔재 정리는 Phase 2 영역 (build_token 컬럼 + READY-only 조회)
  * </ul>
  */
 @Slf4j
@@ -81,7 +92,6 @@ public class SegmentBuildJob {
             topics = SegmentRebuildMessage.TOPIC,
             groupId = GROUP_ID,
             containerFactory = "segmentRebuildKafkaListenerContainerFactory")
-    @Transactional
     public void consume(SegmentRebuildMessage message) {
         Long segmentId = message.segmentId();
         String token = UUID.randomUUID().toString();
