@@ -4,6 +4,7 @@ import com.b101.butterfly.segment.messaging.EventOccurredMessage;
 import com.b101.butterfly.segment.messaging.SegmentBuildErrorRecoverer;
 import com.b101.butterfly.segment.messaging.SegmentRebuildMessage;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Profile;
@@ -48,7 +49,10 @@ public class SegmentKafkaConsumerConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
+    // segment 패키지를 스캔하지 않는 컨텍스트(예: EventTestApplication)에선 recoverer 빈이 없어
+    // @AutoConfiguration 로드 시 NoSuchBeanDefinitionException — @ConditionalOnBean 로 가드.
     @Bean
+    @ConditionalOnBean(SegmentBuildErrorRecoverer.class)
     public ConcurrentKafkaListenerContainerFactory<String, SegmentRebuildMessage>
             segmentRebuildKafkaListenerContainerFactory(
                     ConsumerFactory<String, SegmentRebuildMessage>
