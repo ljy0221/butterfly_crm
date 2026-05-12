@@ -8,10 +8,11 @@ import com.b101.butterfly.notification.service.NotificationLogService;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/projects/{projectId}")
+@RequestMapping("/api/v1/projects/{projectId}")
 @RequiredArgsConstructor
 public class NotificationLogController {
 
@@ -22,6 +23,7 @@ public class NotificationLogController {
      * GET /api/projects/{projectId}/campaigns/{campaignId}/logs?channel=PUSH&status=SENT&page=0&size=20
      */
     @GetMapping("/campaigns/{campaignId}/logs")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<PageResponse<NotificationLogResponse>> getCampaignLogs(
             @PathVariable Long projectId,
             @PathVariable Long campaignId,
@@ -39,6 +41,7 @@ public class NotificationLogController {
      * GET /api/projects/{projectId}/logs/{logId}
      */
     @GetMapping("/logs/{logId}")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<NotificationLogDetailResponse> getLogDetail(
             @PathVariable Long projectId,
             @PathVariable Long logId) {
@@ -51,6 +54,7 @@ public class NotificationLogController {
      * GET /api/projects/{projectId}/users/{userId}/logs?page=0&size=20
      */
     @GetMapping("/users/{userId}/logs")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<PageResponse<NotificationLogResponse>> getUserLogs(
             @PathVariable Long projectId,
             @PathVariable Long userId,

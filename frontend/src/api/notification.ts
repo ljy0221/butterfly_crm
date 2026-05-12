@@ -10,14 +10,14 @@ import type { PageResponse } from "./types";
  * Sprint 7 — Notification API.
  *
  * 백엔드 (전부 실 API, 8개):
- *  - PUT    /api/projects/{pid}/credentials/{channel}
- *  - GET    /api/projects/{pid}/credentials/{channel}
- *  - DELETE /api/projects/{pid}/credentials/{channel}
- *  - POST   /api/projects/{pid}/fcm/send
- *  - DELETE /api/projects/{pid}/fcm/credentials/cache
- *  - GET    /api/projects/{pid}/campaigns/{cid}/logs
- *  - GET    /api/projects/{pid}/logs/{logId}
- *  - GET    /api/projects/{pid}/users/{userId}/logs
+ *  - PUT    /api/v1/projects/{pid}/credentials/{channel}
+ *  - GET    /api/v1/projects/{pid}/credentials/{channel}
+ *  - DELETE /api/v1/projects/{pid}/credentials/{channel}
+ *  - POST   /api/v1/projects/{pid}/fcm/send
+ *  - DELETE /api/v1/projects/{pid}/fcm/credentials/cache
+ *  - GET    /api/v1/projects/{pid}/campaigns/{cid}/logs
+ *  - GET    /api/v1/projects/{pid}/logs/{logId}
+ *  - GET    /api/v1/projects/{pid}/users/{userId}/logs
  *
  * 응답은 client.ts 인터셉터가 ApiResponse<T> 래퍼를 자동 unwrap.
  */
@@ -101,7 +101,7 @@ export async function saveCredential(
   req: ChannelCredentialRequest,
 ): Promise<void> {
   await api.put<null>(
-    `/api/projects/${projectId}/credentials/${channel}`,
+    `/api/v1/projects/${projectId}/credentials/${channel}`,
     req,
   );
 }
@@ -111,7 +111,7 @@ export async function getCredential(
   channel: CredentialChannel,
 ): Promise<string> {
   const res = await api.get<string>(
-    `/api/projects/${projectId}/credentials/${channel}`,
+    `/api/v1/projects/${projectId}/credentials/${channel}`,
   );
   return res.data;
 }
@@ -121,7 +121,7 @@ export async function deleteCredential(
   channel: CredentialChannel,
 ): Promise<void> {
   await api.delete<null>(
-    `/api/projects/${projectId}/credentials/${channel}`,
+    `/api/v1/projects/${projectId}/credentials/${channel}`,
   );
 }
 
@@ -132,14 +132,14 @@ export async function sendFcm(
   req: FcmSendRequest,
 ): Promise<FcmSendResponse> {
   const res = await api.post<FcmSendResponse>(
-    `/api/projects/${projectId}/fcm/send`,
+    `/api/v1/projects/${projectId}/fcm/send`,
     req,
   );
   return res.data;
 }
 
 export async function invalidateFcmCache(projectId: number): Promise<void> {
-  await api.delete<null>(`/api/projects/${projectId}/fcm/credentials/cache`);
+  await api.delete<null>(`/api/v1/projects/${projectId}/fcm/credentials/cache`);
 }
 
 // ---------- 3. logs ----------
@@ -157,7 +157,7 @@ export async function listCampaignLogs(
   params: CampaignLogsParams = {},
 ): Promise<PageResponse<NotificationLogResponse>> {
   const res = await api.get<PageResponse<NotificationLogResponse>>(
-    `/api/projects/${projectId}/campaigns/${campaignId}/logs`,
+    `/api/v1/projects/${projectId}/campaigns/${campaignId}/logs`,
     {
       params: {
         channel: params.channel,
@@ -181,7 +181,7 @@ export async function listUserLogs(
   params: UserLogsParams = {},
 ): Promise<PageResponse<NotificationLogResponse>> {
   const res = await api.get<PageResponse<NotificationLogResponse>>(
-    `/api/projects/${projectId}/users/${userId}/logs`,
+    `/api/v1/projects/${projectId}/users/${userId}/logs`,
     {
       params: {
         page: params.page ?? 0,
@@ -197,7 +197,7 @@ export async function getLogDetail(
   logId: number,
 ): Promise<NotificationLogDetailResponse> {
   const res = await api.get<NotificationLogDetailResponse>(
-    `/api/projects/${projectId}/logs/${logId}`,
+    `/api/v1/projects/${projectId}/logs/${logId}`,
   );
   return res.data;
 }

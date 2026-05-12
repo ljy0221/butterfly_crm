@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/projects/{projectId}/fcm")
+@RequestMapping("/api/v1/projects/{projectId}/fcm")
 @RequiredArgsConstructor
 public class FcmController {
 
