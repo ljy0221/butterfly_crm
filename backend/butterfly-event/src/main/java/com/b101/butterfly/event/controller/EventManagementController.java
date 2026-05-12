@@ -10,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +22,7 @@ public class EventManagementController {
 
     private final EventManagementService eventManagementService;
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/api/v1/projects/{projectId}/users/{userId}/events")
     public ResponseEntity<ApiResponse<PageResponse<UserEventResponse>>> getUserEvents(
             @PathVariable Long projectId,
@@ -34,7 +35,7 @@ public class EventManagementController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/api/v1/projects/{projectId}/events")
     public ResponseEntity<ApiResponse<PageResponse<ProjectEventResponse>>> getProjectEvents(
             @PathVariable Long projectId,
