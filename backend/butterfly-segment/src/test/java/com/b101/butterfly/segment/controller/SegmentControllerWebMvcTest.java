@@ -29,6 +29,8 @@ import com.b101.butterfly.segment.service.SegmentUsersService;
 import com.b101.butterfly.segment.service.preview.PreviewService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +38,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -75,6 +79,23 @@ class SegmentControllerWebMvcTest {
     @MockitoBean private PreviewService previewService;
     @MockitoBean private SegmentRebuildService segmentRebuildService;
     @MockitoBean private SegmentUsersService segmentUsersService;
+
+    /**
+     * 슬라이스 테스트는 {@code LocalAuthFilter} 가 없으므로 SecurityContext 가 비어있다.
+     * 컨트롤러의 {@code currentMemberId()} 가 {@code Authentication.getName()} 을 파싱하므로
+     * 테스트마다 memberId="17" 인 Authentication 을 주입한다.
+     */
+    @BeforeEach
+    void setSecurityContext() {
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken("17", "", List.of()));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
 
     @Test
     @DisplayName("POST /segments — 정상 요청은 201 + ApiResponse 래핑")
