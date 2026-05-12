@@ -26,13 +26,14 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,7 +42,11 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>Phase 4 — CRUD/즐겨찾기는 서비스 호출. Preview/Users/Rebuild/Campaigns/Favorites는 Phase 5~8.
  *
- * <p>{@code X-Member-Id} 헤더는 auth 모듈 합류 전 임시 인증. 추후 {@code @AuthenticationPrincipal}로 교체.
+ * <p>인증: {@link SecurityContextHolder} 의 {@link Authentication#getName()} 에서 memberId 추출.
+ * {@code butterfly-segment} 는 {@code butterfly-auth} 의존이 없어 {@code CustomUserDetails} 직접
+ * import 불가 — 가이드(2026-05-12)에 따라 SecurityContext 방식 채택.
+ * 로컬 테스트에서는 {@code LocalAuthFilter} 가 {@code X-Member-Id} 헤더로 SecurityContext 를
+ * 채워주므로 호출 측 동작은 동일.
  */
 @RestController
 @RequestMapping("/api/v1/projects/{projectId}/segments")
@@ -64,28 +69,24 @@ public class SegmentController {
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ResponseEntity<ApiResponse<CreateSegmentResponse>> create(
             @PathVariable Long projectId,
-            @RequestHeader("X-Member-Id") Long memberId,
             @Valid @RequestBody CreateSegmentRequest request) {
-        CreateSegmentResponse response = segmentService.create(projectId, memberId, request);
+        CreateSegmentResponse response =
+                segmentService.create(projectId, currentMemberId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
     @GetMapping
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<PageResponse<SegmentSummaryResponse>> list(
-            @PathVariable Long projectId,
-            @RequestHeader("X-Member-Id") Long memberId,
-            Pageable pageable) {
-        return ApiResponse.ok(segmentService.list(projectId, memberId, pageable));
+            @PathVariable Long projectId, Pageable pageable) {
+        return ApiResponse.ok(segmentService.list(projectId, currentMemberId(), pageable));
     }
 
     @GetMapping("/{segmentId}")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<SegmentDetailResponse> detail(
-            @PathVariable Long projectId,
-            @PathVariable Long segmentId,
-            @RequestHeader("X-Member-Id") Long memberId) {
-        return ApiResponse.ok(segmentService.detail(projectId, segmentId, memberId));
+            @PathVariable Long projectId, @PathVariable Long segmentId) {
+        return ApiResponse.ok(segmentService.detail(projectId, segmentId, currentMemberId()));
     }
 
     @PutMapping("/{segmentId}")
@@ -93,18 +94,16 @@ public class SegmentController {
     public ApiResponse<SegmentDetailResponse> update(
             @PathVariable Long projectId,
             @PathVariable Long segmentId,
-            @RequestHeader("X-Member-Id") Long memberId,
             @Valid @RequestBody UpdateSegmentRequest request) {
-        return ApiResponse.ok(segmentService.update(projectId, segmentId, memberId, request));
+        return ApiResponse.ok(
+                segmentService.update(projectId, segmentId, currentMemberId(), request));
     }
 
     @DeleteMapping("/{segmentId}")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ApiResponse<Void> delete(
-            @PathVariable Long projectId,
-            @PathVariable Long segmentId,
-            @RequestHeader("X-Member-Id") Long memberId) {
-        segmentService.delete(projectId, segmentId, memberId);
+            @PathVariable Long projectId, @PathVariable Long segmentId) {
+        segmentService.delete(projectId, segmentId, currentMemberId());
         return ApiResponse.ok();
     }
 
@@ -127,13 +126,11 @@ public class SegmentController {
     @PostMapping("/{segmentId}/rebuild")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     public ResponseEntity<ApiResponse<RebuildResponse>> rebuild(
-            @PathVariable Long projectId,
-            @PathVariable Long segmentId,
-            @RequestHeader("X-Member-Id") Long memberId) {
+            @PathVariable Long projectId, @PathVariable Long segmentId) {
         RebuildResponse response =
                 segmentRebuildServiceProvider
                         .getObject()
-                        .requestRebuild(projectId, segmentId, memberId);
+                        .requestRebuild(projectId, segmentId, currentMemberId());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok(response));
     }
 
@@ -146,29 +143,36 @@ public class SegmentController {
 
     @GetMapping("/favorites")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
-    public ApiResponse<FavoritesResponse> favorites(
-            @PathVariable Long projectId,
-            @RequestHeader("X-Member-Id") Long memberId) {
-        return ApiResponse.ok(segmentFavoriteService.list(projectId, memberId));
+    public ApiResponse<FavoritesResponse> favorites(@PathVariable Long projectId) {
+        return ApiResponse.ok(segmentFavoriteService.list(projectId, currentMemberId()));
     }
 
     @PostMapping("/{segmentId}/favorite")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<Void> addFavorite(
-            @PathVariable Long projectId,
-            @PathVariable Long segmentId,
-            @RequestHeader("X-Member-Id") Long memberId) {
-        segmentFavoriteService.addFavorite(projectId, segmentId, memberId);
+            @PathVariable Long projectId, @PathVariable Long segmentId) {
+        segmentFavoriteService.addFavorite(projectId, segmentId, currentMemberId());
         return ApiResponse.ok();
     }
 
     @DeleteMapping("/{segmentId}/favorite")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     public ApiResponse<Void> removeFavorite(
-            @PathVariable Long projectId,
-            @PathVariable Long segmentId,
-            @RequestHeader("X-Member-Id") Long memberId) {
-        segmentFavoriteService.removeFavorite(projectId, segmentId, memberId);
+            @PathVariable Long projectId, @PathVariable Long segmentId) {
+        segmentFavoriteService.removeFavorite(projectId, segmentId, currentMemberId());
         return ApiResponse.ok();
+    }
+
+    /**
+     * SecurityContext 의 인증 정보에서 memberId 를 추출한다.
+     *
+     * <p>auth 모듈의 {@code CustomUserDetails.getUsername()} 이 {@code String.valueOf(memberId)} 를
+     * 반환하므로 {@link Authentication#getName()} 으로 안전하게 얻는다. {@link SecurityContextHolder}
+     * 를 직접 사용해 Spring Security 의 {@code AuthenticationArgumentResolver} 등록 여부와 무관하게
+     * 동작하며, segment → auth 직접 의존을 피해 모듈 슬라이스 cycle 을 차단한다.
+     */
+    private Long currentMemberId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return Long.parseLong(auth.getName());
     }
 }
