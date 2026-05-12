@@ -4,7 +4,6 @@ import type {
   ListTemplatesParams,
   MessageTemplateCreateRequest,
   MessageTemplateCreateResponse,
-  MessageTemplateDeleteResponse,
   MessageTemplateDetailResponse,
   MessageTemplateListResponse,
   MessageTemplateUpdateRequest,
@@ -54,18 +53,14 @@ export function useTemplateDetailQuery(
 ) {
   return useQuery<MessageTemplateDetailResponse>({
     queryKey: templateKeys.detail(projectId ?? -1, id ?? -1),
-    queryFn: () => templateApi.getTemplate(id as number),
+    queryFn: () =>
+      templateApi.getTemplate(projectId as number, id as number),
     enabled: enabled && projectId != null && id != null,
   });
 }
 
 export interface CreateTemplateVariables {
   req: MessageTemplateCreateRequest;
-  meta: {
-    description?: string;
-    title?: string;
-    createdBy: string;
-  };
 }
 
 export function useCreateTemplateMutation(projectId: number) {
@@ -75,7 +70,7 @@ export function useCreateTemplateMutation(projectId: number) {
     unknown,
     CreateTemplateVariables
   >({
-    mutationFn: ({ req, meta }) => templateApi.createTemplate(req, meta),
+    mutationFn: ({ req }) => templateApi.createTemplate(projectId, req),
     onSuccess: () => {
       qc.invalidateQueries({
         queryKey: templateKeys.listsForProject(projectId),
@@ -92,11 +87,12 @@ export interface UpdateTemplateVariables {
 export function useUpdateTemplateMutation(projectId: number) {
   const qc = useQueryClient();
   return useMutation<
-    MessageTemplateDetailResponse,
+    MessageTemplateCreateResponse,
     unknown,
     UpdateTemplateVariables
   >({
-    mutationFn: ({ id, req }) => templateApi.updateTemplate(id, req),
+    mutationFn: ({ id, req }) =>
+      templateApi.updateTemplate(projectId, id, req),
     onSuccess: (_data, { id }) => {
       qc.invalidateQueries({
         queryKey: templateKeys.listsForProject(projectId),
@@ -110,8 +106,8 @@ export function useUpdateTemplateMutation(projectId: number) {
 
 export function useDeleteTemplateMutation(projectId: number) {
   const qc = useQueryClient();
-  return useMutation<MessageTemplateDeleteResponse, unknown, number>({
-    mutationFn: (id) => templateApi.deleteTemplate(id),
+  return useMutation<void, unknown, number>({
+    mutationFn: (id) => templateApi.deleteTemplate(projectId, id),
     onSuccess: (_data, id) => {
       qc.invalidateQueries({
         queryKey: templateKeys.listsForProject(projectId),

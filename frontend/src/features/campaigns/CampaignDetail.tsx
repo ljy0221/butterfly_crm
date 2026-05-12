@@ -470,7 +470,7 @@ function CampaignDetailBody({
           {template ? (
             <MobilePreviewPane
               channel={campaign.channel}
-              title={template.title ?? template.description ?? campaign.campaignName}
+              title={template.messageTemplateTitle ?? campaign.campaignName}
               body={template.messageTemplateBody}
             />
           ) : (

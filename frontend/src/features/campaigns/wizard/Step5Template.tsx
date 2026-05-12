@@ -34,14 +34,17 @@ export default function Step5Template({
     sort: "createdAt,desc",
   });
 
-  const templates = (data?.templates ?? []).filter((t) => {
-    const ql = q.trim().toLowerCase();
-    if (!ql) return true;
-    return (
-      t.messageTemplateName.toLowerCase().includes(ql) ||
-      t.messageTemplateBody.toLowerCase().includes(ql)
-    );
-  });
+  // 백엔드는 채널 필터를 받지 않으므로 클라이언트에서 필터링.
+  const templates = (data?.messageTemplates ?? [])
+    .filter((t) => t.channel === draft.channel)
+    .filter((t) => {
+      const ql = q.trim().toLowerCase();
+      if (!ql) return true;
+      return (
+        t.messageTemplateName.toLowerCase().includes(ql) ||
+        (t.messageTitle ?? "").toLowerCase().includes(ql)
+      );
+    });
 
   const selected: MessageTemplateListItem | undefined = templates.find(
     (t) => t.messageTemplateId === draft.messageTemplateId,
@@ -187,7 +190,7 @@ export default function Step5Template({
                     minHeight: 30,
                   }}
                 >
-                  {t.messageTemplateBody}
+                  {t.messageTitle}
                 </div>
               </button>
             );
@@ -198,8 +201,8 @@ export default function Step5Template({
           {selected ? (
             <MobilePreviewPane
               channel={selected.channel}
-              title={selected.description}
-              body={selected.messageTemplateBody}
+              title={selected.messageTitle}
+              body={selected.messageTitle}
             />
           ) : (
             <div

@@ -84,7 +84,7 @@ export default function Step6Review({
           {template ? (
             <MobilePreviewPane
               channel={draft.channel}
-              title={template.title ?? template.description}
+              title={template.messageTemplateTitle}
               body={template.messageTemplateBody}
             />
           ) : (
