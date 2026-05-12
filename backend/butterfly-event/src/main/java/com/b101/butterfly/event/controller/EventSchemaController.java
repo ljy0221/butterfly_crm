@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,7 +20,7 @@ public class EventSchemaController {
 
     private final EventSchemaService eventSchemaService;
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'ADMIN')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
     @PostMapping
     public ResponseEntity<ApiResponse<EventSchemaResponse>> createSchema(
             @PathVariable Long projectId,
@@ -31,7 +32,7 @@ public class EventSchemaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'ADMIN')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
     @PutMapping
     public ResponseEntity<ApiResponse<EventSchemaResponse>> updateSchema(
             @PathVariable Long projectId,
@@ -43,7 +44,7 @@ public class EventSchemaController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/current")
     public ResponseEntity<ApiResponse<EventSchemaResponse>> getCurrentSchema(
             @PathVariable Long projectId,
@@ -53,7 +54,7 @@ public class EventSchemaController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<EventSchemaResponse>>> listSchemas(
             @PathVariable Long projectId,
