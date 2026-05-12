@@ -14,7 +14,6 @@ dependencies {
     implementation project(':butterfly-campaign')
     implementation project(':butterfly-notification')
     implementation project(':butterfly-reporting')
-    implementation project(':butterfly-worker')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-security'
