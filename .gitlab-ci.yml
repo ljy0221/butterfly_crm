@@ -91,7 +91,12 @@ integration-test:
   stage: test
   image: eclipse-temurin:21-jdk
   rules:
-    - changes:
+    # MR pipeline에서는 제외 (S14P31B101-240). PR 피드백 시간 단축, develop 머지 시점이
+    # 회귀 가드 역할. 작성자가 의심스러우면 로컬 `./gradlew integrationTest`로 확인.
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: never
+    - if: $CI_COMMIT_BRANCH
+      changes:
         - backend/**/*
         - .gitlab-ci.yml
   services:
