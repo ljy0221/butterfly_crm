@@ -23,6 +23,7 @@ workflow:
 stages:
   - test
   - package
+  - update-manifest
 
 variables:
   BACKEND_DIR: backend
@@ -205,6 +206,73 @@ package:
     - echo "Building image for module $MODULE"
     - 'echo "Target: ${GHCR_NAMESPACE}/${MODULE}:${CI_COMMIT_SHORT_SHA}"'
     - ./gradlew :${MODULE}:jib --build-cache --no-daemon
+
+# ==========================================================================
+# Step 5 (S14P31B101-214): update-manifest
+# ==========================================================================
+# develop 브랜치에서 backend image가 GHCR에 push된 후, deploy/k8s/overlays/dev/
+# kustomization.yaml의 newTag를 방금 push된 $CI_COMMIT_SHORT_SHA로 갱신해서
+# git develop에 자동 commit. Step 6 ArgoCD가 이 commit을 polling으로 감지해
+# 클러스터에 동기화하는 GitOps 흐름의 마지막 자동화 단계.
+#
+# 무한루프 방지 안전장치 두 가지:
+#   - commit message에 [skip ci]: GitLab이 pipeline 안 만듦
+#   - git push -o ci.skip: 서버 측에서 명시 (이중화)
+update-manifest:
+  stage: update-manifest
+  image: alpine:3.21
+  rules:
+    # develop push에서만 실행 (MR/feature/main 모두 skip)
+    # CI bot이 만든 commit은 [skip ci] message로 자동 제외됨
+    - if: $CI_COMMIT_REF_NAME == "develop"
+  needs:
+    # package matrix 두 잡(butterfly-api, butterfly-worker) 모두 완료 후
+    - job: package
+      artifacts: false
+  variables:
+    OVERLAY_PATH: deploy/k8s/overlays/dev/kustomization.yaml
+    KUSTOMIZE_VERSION: v5.4.3
+  before_script:
+    # 필수 도구 설치 (alpine 기본 미포함)
+    - apk add --no-cache git curl bash
+    - curl -sLo /tmp/kustomize.tar.gz
+        "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz"
+    - tar -xzf /tmp/kustomize.tar.gz -C /usr/local/bin
+    - chmod +x /usr/local/bin/kustomize
+    - kustomize version
+    # CI Variable 검증 (protected branch에서만 노출되므로 빈 값이면 즉시 실패)
+    - 'test -n "$GIT_PUSH_TOKEN" || (echo "ERROR: GIT_PUSH_TOKEN not set — develop이 protected branch인지 확인"; exit 1)'
+    - 'test -n "$GHCR_NAMESPACE" || (echo "ERROR: GHCR_NAMESPACE not set"; exit 1)'
+    # Git author + token 인증된 push URL 설정
+    - git config user.name "${GIT_USER_NAME:-gitlab-ci-bot}"
+    - git config user.email "${GIT_USER_EMAIL:-2026b101@gmail.com}"
+    - git remote set-url origin "https://oauth2:${GIT_PUSH_TOKEN}@lab.ssafy.com/${CI_PROJECT_PATH}.git"
+    # CI clone은 detached HEAD라 push 대상 브랜치 명시
+    - git fetch origin "$CI_COMMIT_REF_NAME"
+    - git checkout "$CI_COMMIT_REF_NAME"
+    - git pull --ff-only origin "$CI_COMMIT_REF_NAME"
+  script:
+    - cd deploy/k8s/overlays/dev
+    - echo "Bumping image tags to $CI_COMMIT_SHORT_SHA"
+    # GHCR_NAMESPACE는 backend/build.gradle와 동일하게 host 포함 형식 사용
+    # (build.gradle line 92~117: image = "${registryNamespace}/${project.name}")
+    - kustomize edit set image
+        "butterfly-api=${GHCR_NAMESPACE}/butterfly-api:${CI_COMMIT_SHORT_SHA}"
+        "butterfly-worker=${GHCR_NAMESPACE}/butterfly-worker:${CI_COMMIT_SHORT_SHA}"
+    - cd "$CI_PROJECT_DIR"
+    - echo "--- kustomization.yaml diff ---"
+    - git --no-pager diff "$OVERLAY_PATH" || true
+    # 변경 없으면 skip (kustomize edit이 동일 값 set 시 no-op)
+    - |
+      if git diff --quiet "$OVERLAY_PATH"; then
+        echo "No image tag change — skip commit (idempotent)"
+        exit 0
+      fi
+    - git add "$OVERLAY_PATH"
+    - git commit -m "chore(ci): bump butterfly-api/worker image to ${CI_COMMIT_SHORT_SHA} [skip ci]"
+    # -o ci.skip + [skip ci] 이중화로 무한루프 방지
+    - git push -o ci.skip origin "$CI_COMMIT_REF_NAME"
+    - echo "Pushed manifest update to ${CI_COMMIT_REF_NAME}"
 
 # ==========
 # Frontend
