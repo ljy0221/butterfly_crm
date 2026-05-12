@@ -1,5 +1,6 @@
 package com.b101.butterfly.reporting.report.controller;
 
+import com.b101.butterfly.auth.security.CustomUserDetails;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.report.dto.SegmentChannelMatrixQuery;
@@ -11,9 +12,9 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -74,8 +75,7 @@ public class SegmentChannelMatrixController {
      *     <li>본문 첫 바이트는 UTF-8 BOM (Excel 한글 인식)</li>
      * </ul>
      *
-     * <p>{@code X-Member-Id}는 본 export를 audit하기 위한 행위자 식별자 — auth 모듈 합류 후
-     * {@code @AuthenticationPrincipal}로 교체 예정 (다른 컨트롤러와 일관).
+     * <p>행위자 식별자는 {@link CustomUserDetails}에서 추출 — audit 트레일 기록용.
      */
     @GetMapping(value = "/export", produces = "text/csv;charset=UTF-8")
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")
@@ -87,10 +87,11 @@ public class SegmentChannelMatrixController {
             @RequestParam(required = false) Set<Long> segmentIds,
             @RequestParam(required = false) SegmentChannelMatrixQuery.SortBy sortBy,
             @RequestParam(required = false, defaultValue = "false") boolean ascending,
-            @RequestHeader(value = "X-Member-Id", required = false) Long actorMemberId,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
             HttpServletRequest request,
             HttpServletResponse response
     ) throws IOException {
+        Long actorMemberId = userDetails != null ? userDetails.getMemberId() : null;
         SegmentChannelMatrixQuery query = new SegmentChannelMatrixQuery(
                 projectId, from, to, channels, segmentIds, sortBy, ascending
         );
