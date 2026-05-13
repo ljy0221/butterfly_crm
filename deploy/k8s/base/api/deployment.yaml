@@ -39,9 +39,10 @@ spec:
               name: http
           env:
             # backend가 @Profile("api")로 EventProducer 등 빈을 게이팅함.
-            # 'prod' 같은 임의 profile이 아니라 backend가 인지하는 'api'로 활성화.
+            # + 'prod' profile은 SecureSecurityConfig(@Profile("prod")) 활성화 → JWT 인증 + @PreAuthorize 인가.
+            # prod 없으면 SecurityConfig(@Profile("!prod"))가 permitAll + LocalAuthFilter가 X-Member-Id 헤더로 인증 우회.
             - name: SPRING_PROFILES_ACTIVE
-              value: "api"
+              value: "api,prod"
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:mysql://mysql.butterfly.svc.cluster.local:3306/butterfly?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul"
             - name: SPRING_DATASOURCE_USERNAME
