@@ -1,12 +1,7 @@
 import React from "react";
 import { toast } from "../../lib/ui-bus";
 
-const INITIAL = [
-  { id: 1, t: "3분 전", title: "캠페인 발송 완료", desc: "여름 프리오더 사전 안내 · 24,102건 성공", kind: "success", unread: true },
-  { id: 2, t: "1시간 전", title: "FCM 토큰 오류 증가", desc: "지난 1시간 동안 실패율 4.2% (임계치 3%)", kind: "warn", unread: true },
-  { id: 3, t: "어제", title: "세그먼트 재계산 완료", desc: "VIP · 최근 60일 재구매 없음 · 예상 모수 12,482명", kind: "info", unread: false },
-  { id: 4, t: "2일 전", title: "신규 멤버 합류", desc: "박지우님이 Editor 권한으로 합류했습니다.", kind: "info", unread: false },
-];
+const INITIAL = [];
 
 const KIND_COLOR = { success: "#16a34a", warn: "#f59e0b", info: "#3b5bdb" };
 
@@ -56,6 +51,11 @@ export default function NotificationsPanel({ close, onNavigate }) {
       </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
+        {items.length === 0 && (
+          <div style={{ padding: 48, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
+            새 알림이 없습니다
+          </div>
+        )}
         {items.map((n) => (
           <div
             key={n.id}
@@ -86,20 +86,6 @@ export default function NotificationsPanel({ close, onNavigate }) {
         ))}
       </div>
 
-      <div style={{ padding: "10px 16px", borderTop: "1px solid #f1f5f9", textAlign: "center" }}>
-        <span
-          onClick={() => {
-            close();
-            onNavigate("설정");
-          }}
-          style={{
-            fontSize: 12, color: "#3b5bdb",
-            cursor: "pointer", fontWeight: 600,
-          }}
-        >
-          알림 설정 →
-        </span>
-      </div>
     </div>
   );
 }

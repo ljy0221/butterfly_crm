@@ -1,22 +1,17 @@
 import React from "react";
 import { Icon } from "../common/Icon.jsx";
 import Tag from "../common/Tag.jsx";
-import { toast } from "../../lib/ui-bus";
 
 const ITEMS = [
   { k: "대시보드", l: "대시보드로 이동", kind: "페이지" },
   { k: "이벤트", l: "이벤트 목록", kind: "페이지" },
-  { k: "고객", l: "고객 목록", kind: "페이지" },
   { k: "세그먼트", l: "세그먼트 목록", kind: "페이지" },
   { k: "세그먼트-신규", l: "새 세그먼트 만들기", kind: "액션" },
   { k: "캠페인", l: "캠페인 목록", kind: "페이지" },
   { k: "캠페인-신규", l: "새 캠페인 만들기", kind: "액션" },
-  { k: "자동화", l: "자동화 플로우", kind: "페이지" },
   { k: "템플릿", l: "메시지 템플릿", kind: "페이지" },
   { k: "분석", l: "분석 리포트", kind: "페이지" },
   { k: "설정", l: "설정", kind: "페이지" },
-  { k: "이벤트-상세:purchase", l: "purchase 이벤트 스키마", kind: "이벤트" },
-  { k: "캠페인-상세:cmp_4821", l: "장바구니 이탈 리타게팅 · 4월", kind: "캠페인" },
 ];
 
 export default function CommandPalette({ close, onNavigate }) {
@@ -31,7 +26,6 @@ export default function CommandPalette({ close, onNavigate }) {
   const go = (it) => {
     close();
     onNavigate(it.k);
-    toast(`${it.l}`, "info");
   };
 
   return (
