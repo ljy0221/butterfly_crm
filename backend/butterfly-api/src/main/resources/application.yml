@@ -10,10 +10,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # HikariCP — 60초 이상 connection checkout 시 leak 의심 경고 로그 (S14P31B101-243).
-    # tx 경계 정리 후에도 안전판으로 유지.
+    # HikariCP — leak 의심 경고 임계치 (S14P31B101-243 도입, S14P31B101-251 후속 조정).
+    # SegmentBuildJob 의 filtered EVENT EXISTS 쿼리가 worst-case 530초 동안 connection 을
+    # 정당하게 점유하므로 60초 threshold 는 false positive 를 양산. query.timeout(540s) 보다
+    # 살짝 큰 600초로 정렬 — 진짜 leak(timeout 이후에도 잡고 있음) 은 여전히 잡힌다.
     hikari:
-      leak-detection-threshold: 60000
+      leak-detection-threshold: 600000
 
   # JPA
   # ddl-auto=update는 베이스라인 안정화까지의 한시 정책 (ADR-0013).
