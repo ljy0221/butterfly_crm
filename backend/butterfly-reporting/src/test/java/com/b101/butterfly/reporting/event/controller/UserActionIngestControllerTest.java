@@ -17,6 +17,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -76,6 +77,7 @@ class UserActionIngestControllerTest {
 
     @Nested
     @WebMvcTest(controllers = UserActionIngestController.class)
+    @ActiveProfiles("api")
     @Import(TestSecurity.class)
     @DisplayName("스프링 표준 예외 (handler 미등록 슬라이스)")
     class StandardSpringErrors {
@@ -125,6 +127,7 @@ class UserActionIngestControllerTest {
 
     @Nested
     @WebMvcTest(controllers = UserActionIngestController.class)
+    @ActiveProfiles("api")
     @Import({TestSecurity.class, GlobalExceptionHandler.class})
     @DisplayName("도메인 BusinessException (GlobalExceptionHandler 슬라이스)")
     class BusinessExceptions {
