@@ -6,6 +6,7 @@ import com.b101.butterfly.event.service.EventManagementService;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Profile("api")
 @RequiredArgsConstructor
 public class EventManagementController {
 

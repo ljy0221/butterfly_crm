@@ -4,6 +4,7 @@ import com.b101.butterfly.global.error.CommonErrorCode;
 import com.b101.butterfly.global.error.ErrorCode;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.ErrorResponse;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * 도메인 한정 advice로 분리해 다른 모듈 영향 없이 처리한다.
  */
 @RestControllerAdvice(basePackages = "com.b101.butterfly.segment")
+@Profile("api")
 public class SegmentValidationExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -4,6 +4,7 @@ import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.reporting.report.dto.DashboardOverviewResponse;
 import com.b101.butterfly.reporting.report.service.DashboardOverviewService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +28,7 @@ import java.time.LocalDate;
  * 쓰지 못하도록 방어.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/projects/{projectId}/dashboard")
 @RequiredArgsConstructor
 public class DashboardOverviewController {

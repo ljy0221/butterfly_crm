@@ -6,6 +6,7 @@ import com.b101.butterfly.notification.dto.response.CallbackResponse;
 import com.b101.butterfly.notification.service.NotificationCallbackService;
 import com.b101.butterfly.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
  * 기기에서 알림 도달/클릭 시 호출. API Key 인증 (X-API-Key 헤더).
  */
 @RestController
+@Profile("api")
 @RequestMapping("/sdk/v1/notifications")
 @RequiredArgsConstructor
 public class NotificationCallbackController {

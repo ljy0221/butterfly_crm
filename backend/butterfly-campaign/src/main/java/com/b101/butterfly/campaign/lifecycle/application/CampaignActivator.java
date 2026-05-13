@@ -13,6 +13,7 @@ import com.b101.butterfly.global.error.BusinessException;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * <p>publish 실패 시 트랜잭션 롤백 → Campaign DRAFT 복원 + Execution row 미생성.
  */
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 public class CampaignActivator {
 

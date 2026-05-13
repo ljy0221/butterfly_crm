@@ -8,6 +8,7 @@ import com.b101.butterfly.reporting.notification.service.NotificationLogIngestRe
 import com.b101.butterfly.reporting.notification.service.NotificationLogIngestService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
  * `X-Internal-Token` 헤더를 검증한다 ({@link InternalTokenGuard}).
  */
 @RestController
+@Profile("api")
 @RequestMapping("/internal/notification-logs")
 @RequiredArgsConstructor
 public class NotificationLogIngestController {

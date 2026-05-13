@@ -10,6 +10,7 @@ import com.b101.butterfly.reporting.report.service.CampaignFunnelService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,6 +37,7 @@ import java.time.format.DateTimeFormatter;
  * <p>OWNER 권한 필요 — 다른 reports API와 동일한 SpEL 표현식 사용.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/projects/{projectId}/reports/campaign-funnel")
 @RequiredArgsConstructor
 public class CampaignFunnelController {
