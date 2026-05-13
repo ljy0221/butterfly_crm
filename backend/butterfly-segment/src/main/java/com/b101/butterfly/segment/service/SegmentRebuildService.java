@@ -7,8 +7,7 @@ import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
-import com.b101.butterfly.segment.messaging.SegmentRebuildMessage;
-import com.b101.butterfly.segment.messaging.SegmentRebuildProducer;
+import com.b101.butterfly.segment.messaging.SegmentRebuildAcceptedEvent;
 import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +49,6 @@ public class SegmentRebuildService {
 
     private final SegmentRepository segmentRepository;
     private final ConditionTreeHasher conditionTreeHasher;
-    private final SegmentRebuildProducer segmentRebuildProducer;
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -60,12 +58,18 @@ public class SegmentRebuildService {
      * <ol>
      *   <li>segment 조회 (soft-deleted 자동 제외)
      *   <li>BUILDING 신선도 검증 — 신선하면 {@code SEGMENT_409_BUILD_IN_PROGRESS}, stale은 허용
-     *   <li>{@code segment.markPending()} — UX 즉시 반영용. 멱등
+     *   <li>{@code segment.markPending()} — UX 즉시 반영용. 멱등 (token/heartbeat 도 reset)
      *   <li>conditionTreeHash 계산
-     *   <li>Kafka 메시지 발행 (broker ack까지 동기 대기)
-     *   <li>audit {@code SEGMENT_REBUILD_REQUESTED} 발행
+     *   <li>{@link SegmentRebuildAcceptedEvent} 발행 — Kafka publish 는 AFTER_COMMIT listener 에서 처리
+     *   <li>audit {@code SEGMENT_REBUILD_REQUESTED} 발행 (AFTER_COMMIT listener)
      *   <li>응답 반환 (buildStatus = PENDING — worker가 markBuildingIfPossible CAS로 BUILDING 전이)
      * </ol>
+     *
+     * <p><b>S14P31B101-269</b>: Kafka publish 가 트랜잭션 내부 inline 호출에서 AFTER_COMMIT 으로 분리됨.
+     * 이전엔 publish 가 트랜잭션 안에서 발사되어 worker 가 메시지를 consume → markBuildingIfPossible
+     * 로 BUILDING + token 마킹 → commit 한 직후, 본 트랜잭션이 commit 되면서 JPA dirty flush 가 worker
+     * 변경을 덮어쓰는 lost update 가 발생했다. AFTER_COMMIT 으로 옮기면 worker 가 메시지를 받는 시점에
+     * DB 가 이미 일관 상태라 race 가 사라진다.
      */
     @Transactional
     public RebuildResponse requestRebuild(Long projectId, Long segmentId, Long memberId) {
@@ -88,8 +92,9 @@ public class SegmentRebuildService {
                 conditionTreeHasher.hash(projectId, segment.getConditionTree());
         Instant requestedAt = Instant.now();
 
-        segmentRebuildProducer.publishRebuild(
-                new SegmentRebuildMessage(
+        // Kafka publish 는 AFTER_COMMIT listener (SegmentRebuildProducer.onRebuildAccepted) 에서 처리.
+        eventPublisher.publishEvent(
+                new SegmentRebuildAcceptedEvent(
                         segmentId, projectId, memberId, requestedAt, conditionTreeHash));
 
         eventPublisher.publishEvent(

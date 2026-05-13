@@ -11,8 +11,7 @@ import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
-import com.b101.butterfly.segment.messaging.SegmentRebuildMessage;
-import com.b101.butterfly.segment.messaging.SegmentRebuildProducer;
+import com.b101.butterfly.segment.messaging.SegmentRebuildAcceptedEvent;
 import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -43,7 +42,6 @@ class SegmentRebuildServiceTest {
 
     @Mock private SegmentRepository segmentRepository;
     @Mock private ConditionTreeHasher conditionTreeHasher;
-    @Mock private SegmentRebuildProducer segmentRebuildProducer;
     @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks private SegmentRebuildService segmentRebuildService;
@@ -63,16 +61,16 @@ class SegmentRebuildServiceTest {
         RebuildResponse response =
                 segmentRebuildService.requestRebuild(PROJECT_ID, SEGMENT_ID, MEMBER_ID);
 
-        // Kafka 메시지 발행 검증
-        ArgumentCaptor<SegmentRebuildMessage> msgCaptor =
-                ArgumentCaptor.forClass(SegmentRebuildMessage.class);
-        verify(segmentRebuildProducer).publishRebuild(msgCaptor.capture());
-        SegmentRebuildMessage msg = msgCaptor.getValue();
-        assertThat(msg.segmentId()).isEqualTo(SEGMENT_ID);
-        assertThat(msg.projectId()).isEqualTo(PROJECT_ID);
-        assertThat(msg.requestedBy()).isEqualTo(MEMBER_ID);
-        assertThat(msg.requestedAt()).isNotNull();
-        assertThat(msg.conditionTreeHash()).isEqualTo(STUB_HASH);
+        // SegmentRebuildAcceptedEvent 발행 검증 (AFTER_COMMIT listener 가 Kafka publish).
+        ArgumentCaptor<SegmentRebuildAcceptedEvent> acceptedCaptor =
+                ArgumentCaptor.forClass(SegmentRebuildAcceptedEvent.class);
+        verify(eventPublisher).publishEvent(acceptedCaptor.capture());
+        SegmentRebuildAcceptedEvent accepted = acceptedCaptor.getValue();
+        assertThat(accepted.segmentId()).isEqualTo(SEGMENT_ID);
+        assertThat(accepted.projectId()).isEqualTo(PROJECT_ID);
+        assertThat(accepted.memberId()).isEqualTo(MEMBER_ID);
+        assertThat(accepted.requestedAt()).isNotNull();
+        assertThat(accepted.conditionTreeHash()).isEqualTo(STUB_HASH);
 
         // audit 발행 검증
         ArgumentCaptor<AuditRecordedEvent> auditCaptor =
@@ -106,7 +104,7 @@ class SegmentRebuildServiceTest {
                                 assertThat(e.getErrorCode())
                                         .isEqualTo(SegmentErrorCode.SEGMENT_404_NOT_FOUND));
 
-        verify(segmentRebuildProducer, never()).publishRebuild(any());
+        verify(eventPublisher, never()).publishEvent(any(SegmentRebuildAcceptedEvent.class));
         verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
     }
 
@@ -128,7 +126,7 @@ class SegmentRebuildServiceTest {
                                                 SegmentErrorCode
                                                         .SEGMENT_409_BUILD_IN_PROGRESS));
 
-        verify(segmentRebuildProducer, never()).publishRebuild(any());
+        verify(eventPublisher, never()).publishEvent(any(SegmentRebuildAcceptedEvent.class));
         verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
     }
 
@@ -142,7 +140,7 @@ class SegmentRebuildServiceTest {
 
         segmentRebuildService.requestRebuild(PROJECT_ID, SEGMENT_ID, MEMBER_ID);
 
-        verify(segmentRebuildProducer).publishRebuild(any());
+        verify(eventPublisher).publishEvent(any(SegmentRebuildAcceptedEvent.class));
         verify(eventPublisher).publishEvent(any(AuditRecordedEvent.class));
     }
 
@@ -155,7 +153,7 @@ class SegmentRebuildServiceTest {
 
         segmentRebuildService.requestRebuild(PROJECT_ID, SEGMENT_ID, MEMBER_ID);
 
-        verify(segmentRebuildProducer).publishRebuild(any());
+        verify(eventPublisher).publishEvent(any(SegmentRebuildAcceptedEvent.class));
     }
 
     @Test
@@ -167,7 +165,7 @@ class SegmentRebuildServiceTest {
 
         segmentRebuildService.requestRebuild(PROJECT_ID, SEGMENT_ID, MEMBER_ID);
 
-        verify(segmentRebuildProducer).publishRebuild(any());
+        verify(eventPublisher).publishEvent(any(SegmentRebuildAcceptedEvent.class));
     }
 
     private Segment sampleSegment(BuildStatus status, LocalDateTime heartbeatAt) {
