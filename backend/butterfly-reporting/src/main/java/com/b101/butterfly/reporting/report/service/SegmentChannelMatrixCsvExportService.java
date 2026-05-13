@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
  * streaming/임계 처리가 필요 없다 — 메모리에서 바로 직렬화한다 (펀널 CSV와 동일 패턴).
  */
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 public class SegmentChannelMatrixCsvExportService {
 

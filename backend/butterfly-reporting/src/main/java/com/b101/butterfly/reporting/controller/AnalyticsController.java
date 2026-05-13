@@ -12,6 +12,7 @@ import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 애너테이션은 생략한다. 향후 EDITOR 이상이 요구되는 엔드포인트가 추가되면 메서드 레벨에서 override.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/api/projects/{projectId}")
 @RequiredArgsConstructor
 @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")

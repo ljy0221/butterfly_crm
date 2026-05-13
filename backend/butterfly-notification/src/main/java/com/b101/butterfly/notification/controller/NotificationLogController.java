@@ -8,10 +8,12 @@ import com.b101.butterfly.notification.service.NotificationLogService;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/projects/{projectId}")
 @RequiredArgsConstructor
 public class NotificationLogController {

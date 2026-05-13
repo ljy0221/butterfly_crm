@@ -11,6 +11,7 @@ import com.b101.butterfly.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -39,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 클라이언트 위조 방지 위해 X-Member-Id 헤더는 더 이상 신뢰하지 않음.
  */
 @RestController
+@Profile("api")
 @Validated
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/projects/{projectId}/templates")

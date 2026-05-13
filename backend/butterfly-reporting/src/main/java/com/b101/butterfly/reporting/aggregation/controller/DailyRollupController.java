@@ -6,6 +6,7 @@ import com.b101.butterfly.reporting.aggregation.dto.DailyRollupResponse;
 import com.b101.butterfly.reporting.aggregation.service.DailyRollupService;
 import com.b101.butterfly.reporting.notification.controller.InternalTokenGuard;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -22,6 +23,7 @@ import java.time.LocalDate;
  * {@link InternalTokenGuard}가 X-Internal-Token 헤더로 내부 호출 여부를 검증한다.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/internal/stats/rollup/daily")
 @RequiredArgsConstructor
 public class DailyRollupController {

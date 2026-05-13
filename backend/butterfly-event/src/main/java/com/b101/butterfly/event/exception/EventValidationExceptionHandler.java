@@ -4,6 +4,7 @@ import com.b101.butterfly.global.error.CommonErrorCode;
 import com.b101.butterfly.global.error.ErrorCode;
 import com.b101.butterfly.global.response.ApiResponse;
 import com.b101.butterfly.global.response.ErrorResponse;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(basePackages = "com.b101.butterfly.event")
+@Profile("api")
 public class EventValidationExceptionHandler {
 
     @ExceptionHandler({

@@ -11,6 +11,7 @@ import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 세그먼트 존재 여부는 cross-module 의존이라 본 단계에서는 검증하지 않음 (추후 SegmentExistencePort 도입).
  */
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 public class CampaignCreator {
 

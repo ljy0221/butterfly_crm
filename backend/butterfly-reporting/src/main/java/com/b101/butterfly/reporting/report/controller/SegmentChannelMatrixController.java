@@ -10,6 +10,7 @@ import com.b101.butterfly.reporting.report.service.SegmentChannelMatrixService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +39,7 @@ import java.util.Set;
  * <p>응답은 {@link ApiResponse}로 래핑된 {@link SegmentChannelMatrixResponse}.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/projects/{projectId}/reports/segment-channel-matrix")
 @RequiredArgsConstructor
 public class SegmentChannelMatrixController {

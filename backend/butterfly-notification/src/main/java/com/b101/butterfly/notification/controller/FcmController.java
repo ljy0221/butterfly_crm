@@ -6,9 +6,11 @@ import com.b101.butterfly.notification.service.fcm.FcmAppManager;
 import com.b101.butterfly.notification.service.fcm.FcmService;
 import com.b101.butterfly.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/projects/{projectId}/fcm")
 @RequiredArgsConstructor
 public class FcmController {

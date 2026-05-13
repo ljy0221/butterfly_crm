@@ -8,6 +8,7 @@ import com.b101.butterfly.reporting.event.service.UserActionIngestService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 다른 프로젝트 logId 사용 시도를 차단한다 (ADR-0017 §"도메인 검증").
  */
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/events/actions")
 @RequiredArgsConstructor
 public class UserActionIngestController {

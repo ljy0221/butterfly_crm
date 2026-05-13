@@ -11,6 +11,7 @@ import com.b101.butterfly.event.service.EventCategoryService;
 import com.b101.butterfly.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -35,6 +36,7 @@ import java.util.List;
  * <p>{@code @PreAuthorize} 는 auth 통합 후 활성화 (다른 event 컨트롤러와 동일한 TODO 패턴).
  */
 @RestController
+@Profile("api")
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/projects/{projectId}/events/categories")
 public class EventCategoryController {
