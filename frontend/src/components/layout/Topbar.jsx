@@ -113,17 +113,10 @@ export default function Topbar({ crumbs, onToggleSidebar, onNavigate }) {
           width: 32, height: 32,
           border: "1px solid #e2e8f0", borderRadius: 8, background: "#fff",
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#64748b", cursor: "pointer", position: "relative",
+          color: "#64748b", cursor: "pointer",
         }}
       >
         {Icon.bell(16)}
-        <span
-          style={{
-            position: "absolute", top: 6, right: 6,
-            width: 7, height: 7, borderRadius: 999,
-            background: "#ef4444", border: "2px solid #fff",
-          }}
-        />
       </button>
 
       <div style={{ width: 12 }} />

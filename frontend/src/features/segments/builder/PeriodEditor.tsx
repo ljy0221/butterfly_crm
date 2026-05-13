@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import type { Period } from "@/schemas/segment";
 
 /**
@@ -39,6 +40,16 @@ export default function PeriodEditor({
   onChange,
   disabled,
 }: PeriodEditorProps) {
+  // 입력 중 빈 문자열을 허용하기 위한 로컬 state
+  const [localDays, setLocalDays] = useState(String(value.type === "relative" ? value.days : 30));
+
+  // 외부에서 value.days가 바뀌면 동기화 (탭 전환 등)
+  useEffect(() => {
+    if (value.type === "relative") {
+      setLocalDays(String(value.days));
+    }
+  }, [value]);
+
   const switchType = (next: Period["type"]): void => {
     if (next === value.type) return;
     if (next === "relative") {
@@ -107,14 +118,22 @@ export default function PeriodEditor({
             type="number"
             min={1}
             max={3650}
-            value={value.days}
+            value={localDays}
             disabled={disabled}
-            onChange={(e) =>
-              onChange({
-                type: "relative",
-                days: Math.max(1, Math.min(3650, Number(e.target.value) || 1)),
-              })
-            }
+            onChange={(e) => {
+              const raw = e.target.value;
+              setLocalDays(raw);
+              const n = Number(raw);
+              if (raw !== "" && Number.isFinite(n) && n >= 1) {
+                onChange({ type: "relative", days: Math.min(3650, n) });
+              }
+            }}
+            onBlur={() => {
+              const n = Number(localDays);
+              const clamped = !Number.isFinite(n) || n < 1 ? 1 : Math.min(3650, n);
+              setLocalDays(String(clamped));
+              onChange({ type: "relative", days: clamped });
+            }}
             style={{ ...inputStyle, width: 80 }}
           />
           <span style={{ color: "#64748b" }}>일</span>
