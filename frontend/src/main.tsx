@@ -30,3 +30,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+// CD 자동화 검증 marker (S14P31B101-274) — 2026-05-13
