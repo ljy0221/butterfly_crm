@@ -40,10 +40,13 @@ spec:
             #   - EventConsumer(@Profile("worker")): worker에서 활성
             #   - EventProducer(@Profile("api")): butterfly-event 모듈의 EventCollectController가
             #     이를 의존하는데 worker가 EventCollectController까지 component scan함 → api도 필요
+            #   - SecureSecurityConfig(@Profile("prod")): prod로 SecurityConfig(!prod)/LocalAuthFilter
+            #     인증 우회 빈을 비활성화. worker는 web-application-type=none이라 SecurityFilterChain
+            #     실제 효과는 0이지만 JwtTokenProvider 빈 의존 정합성 위해 함께 활성.
             # 정석은 controller들에 @Profile("api") 추가하는 것 (backend 후속 작업 TODO).
             # 일단 worker에도 api profile 추가 + lazy-initialization으로 부팅 통과.
             - name: SPRING_PROFILES_ACTIVE
-              value: "worker,api"
+              value: "worker,api,prod"
             # worker는 web-application-type=none이라 controller가 호출 안 됨.
             # 그런데 reporting/event 모듈의 controller가 component scan에 잡혀서 의존성 검증 실패.
             # lazy-initialization=true로 빈 instantiate를 사용 시점까지 지연 → 부팅 통과.
@@ -70,6 +73,13 @@ spec:
               value: "kafka-0.kafka.butterfly.svc.cluster.local:9092"
             - name: SPRING_DATA_REDIS_HOST
               value: "redis.butterfly.svc.cluster.local"
+            # prod profile 활성 시 JwtTokenProvider 빈이 component scan되며 의존됨.
+            # JWT_SECRET 없으면 빈 초기화 실패로 부팅 중단. api와 동일 secret 참조.
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: jwt-secret
             # Flyway는 butterfly-api만 실행 (이중 마이그레이션 방지)
             - name: SPRING_FLYWAY_ENABLED
               value: "false"
