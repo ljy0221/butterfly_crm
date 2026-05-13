@@ -194,14 +194,14 @@ public class SegmentBuildJob {
         for (Long userId : (Iterable<Long>) userIdStream::iterator) {
             buffer.add(SegmentMember.builder().segmentId(segmentId).userId(userId).build());
             if (buffer.size() >= CHUNK_SIZE) {
-                segmentMemberRepository.saveAll(buffer);
+                segmentMemberRepository.bulkInsert(buffer);
                 total += buffer.size();
                 buffer.clear();
                 segmentRepository.updateHeartbeat(segmentId, token, LocalDateTime.now());
             }
         }
         if (!buffer.isEmpty()) {
-            segmentMemberRepository.saveAll(buffer);
+            segmentMemberRepository.bulkInsert(buffer);
             total += buffer.size();
         }
         return total;
