@@ -60,6 +60,16 @@ public class ConditionTreeToSqlConverter {
 
     public SqlFragment convert(GroupNode root, EventQueryContext context) {
         AtomicInteger counter = new AtomicInteger();
+
+        // S14P31B101-269: root 가 OR-of-filtered-EVENT-same-bucket 일 때 outer users 를
+        // 거치지 않고 events 한 번 scan + SUM(CASE) 로 결합. dependent EXISTS 패턴 회피.
+        if (isMergeableFilteredEventOrGroup(root)) {
+            SqlFragment merged = mergedFilteredEventGroupFragment(root, counter, context);
+            Map<String, Object> params = new HashMap<>(merged.params());
+            params.put("projectId", context.projectId());
+            return new SqlFragment(merged.sql(), params);
+        }
+
         SqlFragment body = walk(root, counter, context);
 
         Map<String, Object> params = new HashMap<>(body.params());
@@ -69,6 +79,84 @@ public class ConditionTreeToSqlConverter {
                 "SELECT u.user_id FROM users u WHERE u.project_id = :projectId AND ("
                         + body.sql()
                         + ")";
+        return new SqlFragment(sql, params);
+    }
+
+    /**
+     * root GroupNode 가 single-scan 최적화 대상인지 판정.
+     *
+     * <p>모두 만족해야 함: logic=OR, conditions≥2, 모두 EventNode, 모두 filter 비어있지 않음,
+     * 모두 같은 categoryId, 모두 같은 period. 한 leaf 안의 filter 들은 AND 결합되며 leaf 간은
+     * OR 로 묶여 SUM(CASE)..>=minCount 들의 OR HAVING 로 표현 가능.
+     */
+    private static boolean isMergeableFilteredEventOrGroup(GroupNode root) {
+        if (root.logic() != LogicOp.OR) return false;
+        List<ConditionNode> children = root.conditions();
+        if (children == null || children.size() < 2) return false;
+
+        Long firstCat = null;
+        Period firstPeriod = null;
+        for (ConditionNode child : children) {
+            if (!(child instanceof EventNode e)) return false;
+            if (e.filters() == null || e.filters().isEmpty()) return false;
+            if (firstCat == null) {
+                firstCat = e.categoryId();
+                firstPeriod = e.period();
+                continue;
+            }
+            if (!firstCat.equals(e.categoryId())) return false;
+            if (!firstPeriod.equals(e.period())) return false;
+        }
+        return true;
+    }
+
+    /**
+     * OR-of-filtered-EVENT-same-bucket 트리를 단일 events scan SQL 로 컴파일.
+     *
+     * <pre>{@code
+     * SELECT ev.user_id FROM events ev
+     *  WHERE ev.project_id = :projectId AND ev.category_id = :eventCategoryId0 [date]
+     *  GROUP BY ev.user_id
+     *  HAVING SUM(CASE WHEN <leaf0 filters AND-결합> THEN 1 ELSE 0 END) >= :eventMinCount0
+     *      OR SUM(CASE WHEN <leaf1 filters AND-결합> THEN 1 ELSE 0 END) >= :eventMinCount1
+     *      ...
+     * }</pre>
+     */
+    private SqlFragment mergedFilteredEventGroupFragment(
+            GroupNode root, AtomicInteger counter, EventQueryContext context) {
+        EventNode firstLeaf = (EventNode) root.conditions().get(0);
+        int sharedIdx = counter.getAndIncrement();
+        String catParam = "eventCategoryId" + sharedIdx;
+        SqlFragment dateFragment = rawEventDateFragment(firstLeaf.period(), sharedIdx, context);
+
+        Map<String, Object> params = new HashMap<>(dateFragment.params());
+        params.put(catParam, firstLeaf.categoryId());
+
+        List<String> havingClauses = new ArrayList<>();
+        for (int leafIdx = 0; leafIdx < root.conditions().size(); leafIdx++) {
+            EventNode leaf = (EventNode) root.conditions().get(leafIdx);
+            List<String> filterExprs = new ArrayList<>();
+            for (int f = 0; f < leaf.filters().size(); f++) {
+                SqlFragment ff = eventFilterFragment(leaf.filters().get(f), leafIdx, f);
+                // eventFilterFragment 가 " AND <expr>" 형태로 반환 — leading " AND " 제거.
+                String exprOnly = ff.sql().startsWith(" AND ") ? ff.sql().substring(5) : ff.sql();
+                filterExprs.add(exprOnly);
+                params.putAll(ff.params());
+            }
+            String allFilters = String.join(" AND ", filterExprs);
+            String minCountParam = "eventMinCount" + leafIdx;
+            havingClauses.add(
+                    "SUM(CASE WHEN " + allFilters + " THEN 1 ELSE 0 END) >= :" + minCountParam);
+            params.put(minCountParam, leaf.minCount());
+        }
+
+        String sql =
+                "SELECT ev.user_id FROM events ev"
+                        + " WHERE ev.project_id = :projectId"
+                        + " AND ev.category_id = :" + catParam
+                        + dateFragment.sql()
+                        + " GROUP BY ev.user_id"
+                        + " HAVING " + String.join(" OR ", havingClauses);
         return new SqlFragment(sql, params);
     }
 
