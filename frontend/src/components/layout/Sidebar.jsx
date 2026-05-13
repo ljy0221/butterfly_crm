@@ -3,19 +3,15 @@ import { Icon } from "../common/Icon.jsx";
 import Avatar from "../common/Avatar.jsx";
 import { CRM_DATA } from "../../data/mock.js";
 import { useAuthStore } from "@/stores/auth";
-import { useProjectStore } from "@/stores/project";
 
 export default function Sidebar({ active, onNavigate, collapsed }) {
   // NAV(메뉴 구조)는 mock 그대로, USER/PROJECT는 실 store에서 가져온다.
   const { NAV } = CRM_DATA;
   const member = useAuthStore((s) => s.member);
-  const project = useProjectStore((s) => s.current);
   const w = collapsed ? 64 : 240;
 
   const userName = member?.name ?? "Guest";
   const userRole = member?.role ?? "";
-  const projectName = project?.name ?? (member?.role === "ADMIN" ? "Butterfly 운영진" : "프로젝트 미선택");
-  const projectPlan = project?.role ?? "—"; // 플랜 정보가 없으면 사용자 role 표시
 
   return (
     <aside
@@ -62,43 +58,6 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
         )}
       </div>
 
-      {/* Project switcher */}
-      {!collapsed && (
-        <div
-          style={{
-            margin: "6px 16px 10px", padding: "10px 12px",
-            background: "rgba(255,255,255,.04)",
-            border: "1px solid rgba(255,255,255,.06)",
-            borderRadius: 8, cursor: "pointer",
-            display: "flex", alignItems: "center", gap: 10,
-          }}
-        >
-          <div
-            style={{
-              width: 22, height: 22, borderRadius: 5,
-              background: "#e9d5ff", color: "#7c3aed",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 10, fontWeight: 700,
-            }}
-          >
-            S
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div
-              style={{
-                color: "#fff", fontSize: 12, fontWeight: 600,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}
-            >
-              {projectName}
-            </div>
-            <div style={{ color: "#94a3b8", fontSize: 10 }}>
-              {project ? `Production · ${projectPlan}` : "—"}
-            </div>
-          </div>
-          <span style={{ color: "#94a3b8" }}>{Icon.chevronDown(12)}</span>
-        </div>
-      )}
 
       <div
         style={{

@@ -54,106 +54,120 @@ export default function ModalHost() {
 
   if (!modal && !confirm) return null;
 
-  const onBackdropClick = () => {
-    setConfirm((c) => {
-      if (c) c.res(false);
-      return null;
-    });
-    if (dismissible) {
-      setModal(null);
-      setModalOptions({});
-    }
-  };
+  const backdropStyle = (zIndex) => ({
+    position: "fixed", inset: 0,
+    background: "rgba(15,23,42,.40)",
+    zIndex,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    padding: 40,
+    animation: "fadeIn 160ms ease-out",
+  });
 
   return (
-    <div
-      style={{
-        position: "fixed", inset: 0,
-        background: "rgba(15,23,42,.40)",
-        zIndex: 9000,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 40,
-        animation: "fadeIn 160ms ease-out",
-      }}
-      onClick={onBackdropClick}
-    >
+    <>
       <style>{`
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
         @keyframes popIn { from { opacity: 0; transform: scale(.96) translateY(6px) } to { opacity: 1; transform: scale(1) translateY(0) } }
       `}</style>
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          animation: "popIn 180ms cubic-bezier(.2,.7,.3,1)",
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
-      >
-        {modal &&
-          modal({
-            close: () => {
+
+      {modal && (
+        <div
+          style={backdropStyle(9000)}
+          onClick={() => {
+            if (dismissible) {
               setModal(null);
               setModalOptions({});
-            },
-          })}
-        {confirm && (
+            }
+          }}
+        >
           <div
+            onClick={(e) => e.stopPropagation()}
             style={{
-              width: 420,
-              background: "#fff",
-              borderRadius: 14,
-              boxShadow: "0 24px 64px -8px rgba(0,0,0,.25)",
-              padding: 24,
+              animation: "popIn 180ms cubic-bezier(.2,.7,.3,1)",
+              maxHeight: "90vh",
+              overflow: "auto",
             }}
+          >
+            {modal({
+              close: () => {
+                setModal(null);
+                setModalOptions({});
+              },
+            })}
+          </div>
+        </div>
+      )}
+
+      {confirm && (
+        <div
+          style={backdropStyle(9100)}
+          onClick={() => {
+            confirm.res(false);
+            setConfirm(null);
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ animation: "popIn 180ms cubic-bezier(.2,.7,.3,1)" }}
           >
             <div
               style={{
-                fontSize: 16, fontWeight: 700, color: "#1f2937",
-                fontFamily: "var(--font-display)",
+                width: 420,
+                background: "#fff",
+                borderRadius: 14,
+                boxShadow: "0 24px 64px -8px rgba(0,0,0,.25)",
+                padding: 24,
               }}
             >
-              {confirm.opts.title || "확인"}
-            </div>
-            {confirm.opts.message && (
               <div
                 style={{
-                  marginTop: 8, fontSize: 13, color: "#64748b", lineHeight: 1.6,
-                  whiteSpace: "pre-wrap",
+                  fontSize: 16, fontWeight: 700, color: "#1f2937",
+                  fontFamily: "var(--font-display)",
                 }}
               >
-                {confirm.opts.message}
+                {confirm.opts.title || "확인"}
               </div>
-            )}
-            <div
-              style={{
-                marginTop: 20, display: "flex", gap: 8, justifyContent: "flex-end",
-              }}
-            >
-              <Button
-                variant="ghost"
-                size="md"
-                onClick={() => {
-                  confirm.res(false);
-                  setConfirm(null);
+              {confirm.opts.message && (
+                <div
+                  style={{
+                    marginTop: 8, fontSize: 13, color: "#64748b", lineHeight: 1.6,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {confirm.opts.message}
+                </div>
+              )}
+              <div
+                style={{
+                  marginTop: 20, display: "flex", gap: 8, justifyContent: "flex-end",
                 }}
               >
-                {confirm.opts.cancelText || "취소"}
-              </Button>
-              <Button
-                variant={confirm.opts.tone === "danger" ? "primary" : "primaryStrong"}
-                size="md"
-                style={confirm.opts.tone === "danger" ? { background: "#dc2626" } : {}}
-                onClick={() => {
-                  confirm.res(true);
-                  setConfirm(null);
-                }}
-              >
-                {confirm.opts.confirmText || "확인"}
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="md"
+                  onClick={() => {
+                    confirm.res(false);
+                    setConfirm(null);
+                  }}
+                >
+                  {confirm.opts.cancelText || "취소"}
+                </Button>
+                <Button
+                  variant={confirm.opts.tone === "danger" ? "primary" : "primaryStrong"}
+                  size="md"
+                  style={confirm.opts.tone === "danger" ? { background: "#dc2626" } : {}}
+                  onClick={() => {
+                    confirm.res(true);
+                    setConfirm(null);
+                  }}
+                >
+                  {confirm.opts.confirmText || "확인"}
+                </Button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </>
   );
 }

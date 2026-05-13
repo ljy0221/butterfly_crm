@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Sidebar, Topbar } from "@/components/layout";
 import { ToastHost, ModalHost } from "@/components/feedback";
@@ -22,6 +22,8 @@ export default function AppLayout() {
     navigate(labelToPath(label, project.projectId));
   };
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   const active = pathToActiveLabel(location.pathname);
 
   const crumbs = useMemo(() => {
@@ -38,13 +40,11 @@ export default function AppLayout() {
         overflow: "hidden",
       }}
     >
-      <Sidebar active={active} onNavigate={handleNavigate} collapsed={false} />
+      <Sidebar active={active} onNavigate={handleNavigate} collapsed={sidebarCollapsed} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Topbar
           crumbs={crumbs}
-          onToggleSidebar={() => {
-            /* TODO: sidebar collapse state */
-          }}
+          onToggleSidebar={() => setSidebarCollapsed((c) => !c)}
           onNavigate={handleNavigate}
         />
         <main

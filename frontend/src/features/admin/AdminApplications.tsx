@@ -36,7 +36,7 @@ const STATUS_LABEL: Record<ApplicationStatus, string> = {
 
 export default function AdminApplications() {
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "ALL">(
-    "ALL",
+    "PENDING",
   );
   const [page, setPage] = useState(0);
 
@@ -160,7 +160,10 @@ export default function AdminApplications() {
                     color: "var(--fg-secondary)",
                   }}
                 >
-                  📭 승인 대기 중인 신청서가 없습니다
+                  {statusFilter === "PENDING" && "대기 중인 신청서가 없습니다"}
+                  {statusFilter === "APPROVED" && "승인된 신청서가 없습니다"}
+                  {statusFilter === "REJECTED" && "반려된 신청서가 없습니다"}
+                  {statusFilter === "ALL" && "신청서가 없습니다"}
                 </td>
               </tr>
             )}

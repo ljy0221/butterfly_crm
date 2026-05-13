@@ -1,8 +1,9 @@
 import { Icon } from "../common/Icon.jsx";
 import Avatar from "../common/Avatar.jsx";
 import Tag from "../common/Tag.jsx";
-import { confirmDialog, toast } from "../../lib/ui-bus";
+import { confirmDialog, openModal, toast } from "../../lib/ui-bus";
 import { useAuthStore } from "@/stores/auth";
+import HelpCenterModal from "./HelpCenterModal";
 import { useProjectStore } from "@/stores/project";
 import * as authApi from "@/api/auth";
 
@@ -100,7 +101,7 @@ export default function UserMenuModal({ close, onNavigate }: Props) {
             icon: Icon.search(13),
             onClick: () => {
               close();
-              toast("도움말 센터를 준비 중입니다", "info");
+              openModal(({ close: c }) => <HelpCenterModal close={c} />);
             },
           },
           { divider: true },
