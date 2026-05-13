@@ -30,7 +30,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Table(name = "campaigns")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLDelete(sql = "UPDATE campaigns SET is_deleted = true, deleted_at = NOW() WHERE campaign_id = ?")
+@SQLDelete(sql = "UPDATE campaigns SET is_deleted = true, deleted_at = NOW() WHERE campaign_id = ? AND version = ?")
 @SQLRestriction("is_deleted = false")
 public class Campaign extends SoftDeletedDomain {
 

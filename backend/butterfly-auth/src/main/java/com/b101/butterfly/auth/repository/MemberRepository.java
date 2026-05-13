@@ -22,7 +22,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     @Query(value = "SELECT COUNT(*) FROM members WHERE email = :email", nativeQuery = true)
     int countByEmailIncludingDeleted(@Param("email") String email);
 
-    String findNameById(Long id);
+    @Query("SELECT m.name FROM Member m WHERE m.id = :id")
+    String findNameById(@Param("id") Long id);
 
     List<Member> findAllByProjectIdAndStatus(Long projectId, MemberStatus status);
 }

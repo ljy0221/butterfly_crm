@@ -3,6 +3,8 @@ package com.b101.butterfly.tenant.repository;
 import com.b101.butterfly.tenant.entity.Project;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
@@ -14,5 +16,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     Optional<Project> findByPublicApiKey(String publicApiKey);
 
-    String findNameById(Long projectId);
+    @Query("SELECT p.name FROM Project p WHERE p.id = :projectId")
+    String findNameById(@Param("projectId") Long projectId);
 }
