@@ -12,7 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
-public interface SegmentMemberRepository extends JpaRepository<SegmentMember, SegmentMemberId> {
+public interface SegmentMemberRepository
+        extends JpaRepository<SegmentMember, SegmentMemberId>, SegmentMemberRepositoryCustom {
 
     long countBySegmentId(Long segmentId);
 

@@ -92,7 +92,7 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("EVENT-only 트리 — materializeEventMatchesIntoSegment 단일 호출, saveAll 미호출")
+    @DisplayName("EVENT-only 트리 — materializeEventMatchesIntoSegment 단일 호출, bulkInsert 미호출")
     void eventOnlyTree() {
         Segment segment = sampleSegment(eventTree());
         stubClaimAndHash(segment);
@@ -107,7 +107,7 @@ class SegmentBuildJobTest {
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
         verify(eventAggReader).materializeEventMatchesIntoSegment(eq(SEGMENT_ID), any(), any());
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
-        verify(segmentMemberRepository, never()).saveAll(any());
+        verify(segmentMemberRepository, never()).bulkInsert(any());
         verify(sqlConverter, never()).convert(any(), any(EventQueryContext.class));
         verify(userDirectoryReader, never()).queryUserIds(any(), any());
 
@@ -162,7 +162,7 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("chunk 경계 처리 — 1500건 → saveAll 2번 (1000+500), heartbeat 1번")
+    @DisplayName("chunk 경계 처리 — 1500건 → bulkInsert 2번 (1000+500), heartbeat 1번")
     void chunkBoundary() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
@@ -176,10 +176,10 @@ class SegmentBuildJobTest {
 
         segmentBuildJob.consume(message(HASH));
 
-        // saveAll 정확히 2번 (1000-건 chunk + 500-건 chunk).
+        // bulkInsert 정확히 2번 (1000-건 chunk + 500-건 chunk).
         // 단, production은 buffer 참조를 재사용하므로 ArgumentCaptor로 chunk 크기 검증은 부정확
         // → 호출 횟수 + total count로 검증.
-        verify(segmentMemberRepository, times(2)).saveAll(any());
+        verify(segmentMemberRepository, times(2)).bulkInsert(any());
         // 첫 chunk(1000건 도달) 후 heartbeat 갱신 1회 (마지막 500건은 chunk 미달이라 갱신 X)
         verify(segmentRepository, times(1)).updateHeartbeat(eq(SEGMENT_ID), any(), any());
 
@@ -190,7 +190,7 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("결과 0건 — saveAll 미호출 (빈 buffer), completeBuild count=0")
+    @DisplayName("결과 0건 — bulkInsert 미호출 (빈 buffer), completeBuild count=0")
     void zeroResults() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
@@ -203,7 +203,7 @@ class SegmentBuildJobTest {
         segmentBuildJob.consume(message(HASH));
 
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
-        verify(segmentMemberRepository, never()).saveAll(any());
+        verify(segmentMemberRepository, never()).bulkInsert(any());
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
                 .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
