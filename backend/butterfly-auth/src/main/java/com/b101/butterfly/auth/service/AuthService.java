@@ -19,6 +19,7 @@ import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.global.event.AuditRecordedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 @SuppressWarnings("null")

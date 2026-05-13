@@ -7,6 +7,7 @@ import com.b101.butterfly.reporting.aggregation.service.HourlyAggregator;
 import com.b101.butterfly.reporting.notification.controller.InternalTokenGuard;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 정책이 1차 방어선, 본 가드가 2차.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/internal/stats/aggregate/hourly")
 @RequiredArgsConstructor
 public class HourlyAggregatorController {

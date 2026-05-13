@@ -11,6 +11,7 @@ import com.b101.butterfly.reporting.report.dto.SegmentChannelMatrixRow;
 import com.b101.butterfly.reporting.report.port.CampaignSegmentInfo;
 import com.b101.butterfly.reporting.report.port.CampaignSegmentPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
  * <p>ADR-0014 모듈 경계: campaign/segment 도메인을 직접 import하지 않고 SPI 포트로만 접근.
  */
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 public class SegmentChannelMatrixService {
 

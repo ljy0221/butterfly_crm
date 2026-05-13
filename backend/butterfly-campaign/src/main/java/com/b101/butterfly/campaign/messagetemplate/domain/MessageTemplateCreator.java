@@ -5,9 +5,11 @@ import com.b101.butterfly.campaign.messagetemplate.port.MemberExistencePort;
 import com.b101.butterfly.campaign.messagetemplate.port.ProjectExistencePort;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 public class MessageTemplateCreator {
 

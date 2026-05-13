@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * S14P31B101-124 (124-A) HourlyAggregatorController MockMvc 슬라이스 테스트.
  */
 @WebMvcTest(controllers = HourlyAggregatorController.class)
+@ActiveProfiles("api")
 @Import({InternalTokenGuard.class, HourlyAggregatorControllerTest.TestSecurity.class})
 @TestPropertySource(properties = "butterfly.internal.token=test-internal-token")
 class HourlyAggregatorControllerTest {

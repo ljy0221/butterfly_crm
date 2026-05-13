@@ -11,6 +11,7 @@ import com.b101.butterfly.reporting.audit.service.AuditLogQueryService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -38,6 +39,7 @@ import java.time.format.DateTimeFormatter;
  * 처리는 인증 통합 후 별도 PR에서 메서드 레벨로 확장한다.
  */
 @RestController
+@Profile("api")
 @RequestMapping("/api/v1/audit-logs")
 @RequiredArgsConstructor
 public class AuditLogController {

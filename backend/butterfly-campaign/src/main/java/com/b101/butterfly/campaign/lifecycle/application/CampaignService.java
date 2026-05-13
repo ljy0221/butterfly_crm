@@ -18,6 +18,7 @@ import com.b101.butterfly.campaign.lifecycle.port.SegmentReadinessPort;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * 본 클래스는 command → 도메인 메서드 위임만 담당한다.
  */
 @Service
+@Profile("api")
 @RequiredArgsConstructor
 public class CampaignService {
 
