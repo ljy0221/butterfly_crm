@@ -6,11 +6,9 @@ spring:
     password: butterfly
 
   jpa:
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        highlight_sql: true
+    # show-sql / format_sql / highlight_sql 은 운영 빌드 시 매 statement 마다 처리 비용이 발생해
+    # 530초짜리 filtered EVENT EXISTS 같은 long-running 쿼리에서 부하 가중 (S14P31B101-250).
+    # 디버그가 필요하면 로컬에서 일시적으로 켜고, 라이브러리 모듈 main 에는 두지 않는다.
     hibernate:
       ddl-auto: validate
 
