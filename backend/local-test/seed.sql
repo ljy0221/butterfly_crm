@@ -11,16 +11,12 @@ VALUES
   (1, 'Test Project', 'BN-1', 'AUTH-1', 1, 'pak_test_1', 'PRO', NOW(), NOW());
 
 INSERT INTO message_templates (
-  member_id, project_id,
-  message_templates_name, message_templates_description, channel,
-  message_templates_title, message_templates_body, message_templates_image_url,
+  member_id, project_id, channel,
   message_template_name, message_template_description,
   message_template_title, message_template_body, message_template_image_url,
   required_variables, created_at, updated_at
 ) VALUES (
-  1, 1,
-  'CampaignFlow Template', 'E2E test template', 'PUSH',
-  'Hello from campaign flow', 'Sent via worker pipeline', NULL,
+  1, 1, 'PUSH',
   'CampaignFlow Template', 'E2E test template',
   'Hello from campaign flow', 'Sent via worker pipeline', NULL,
   JSON_ARRAY(), NOW(), NOW()

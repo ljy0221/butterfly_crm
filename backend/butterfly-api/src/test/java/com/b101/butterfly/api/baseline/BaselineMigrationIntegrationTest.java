@@ -30,7 +30,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - V11: campaign_executions.send_completed_at NULL 허용
  * - V12: campaign_executions.send_started_at NULL 허용
  * - V13: members.member_status 컬럼 추가 (PENDING/ACTIVE)
- * - flyway_schema_history: 13 row
+ * - V14: message_templates 의 legacy plural 컬럼 5개 drop (S14P31B101-254) — 도메인 매핑(singular) 정렬
+ * - flyway_schema_history: 14 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
@@ -72,12 +73,12 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
     }
 
     @Test
-    void schema_history_13개_row_성공_상태() {
-        // V1 ~ V13
+    void schema_history_14개_row_성공_상태() {
+        // V1 ~ V14
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(13);
+        assertThat(count).isEqualTo(14);
     }
 
     @Test
@@ -127,6 +128,18 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 "AND column_name = 'member_status'",
                 Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(1);
+    }
+
+    @Test
+    void v14_message_templates_legacy_plural_컬럼_제거() {
+        // V1 baseline 이 둔 plural 5개 (S14P31B101-254). singular 매핑(JPA 엔티티) 과 정렬.
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'message_templates' " +
+                "AND column_name IN ('message_templates_name', 'message_templates_description', " +
+                "'message_templates_title', 'message_templates_body', 'message_templates_image_url')",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(count).isEqualTo(0);
     }
 
     @Test
