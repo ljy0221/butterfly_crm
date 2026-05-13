@@ -24,6 +24,12 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+        # JDBC batch insert — SegmentBuildJob chunk 1000건 1번에 묶어 RTT 절감 (S14P31B101-251).
+        # SegmentMember 가 composite PK(@IdClass) 라 IDENTITY 가 아니므로 batch 풀파워 사용 가능.
+        jdbc:
+          batch_size: 1000
+        order_inserts: true
+        order_updates: true
       # runaway query 안전판 — 540초 초과 시 SQL 중단 (S14P31B101-243).
       # filtered EVENT EXISTS 의 worst-case (~530s) 보다 약간 여유 있게 설정.
       jakarta.persistence.query.timeout: 540000
