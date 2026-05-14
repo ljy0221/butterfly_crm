@@ -4,3 +4,6 @@ docker-compose-local.yml
 # environment variables
 .env
 .env.local
+
+# S14P31B101-294 — 측정용 환경 (JWT 등 개인별 값 포함, test-data.env.example 만 추적)
+scripts/measure/test-data.env
