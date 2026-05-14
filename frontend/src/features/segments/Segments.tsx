@@ -95,9 +95,9 @@ export default function Segments() {
     if (!trimmed) return all;
     return all.filter(
       (s) =>
-        s.name.toLowerCase().includes(trimmed) ||
-        s.description.toLowerCase().includes(trimmed) ||
-        s.createdBy.name.toLowerCase().includes(trimmed),
+        s.name?.toLowerCase().includes(trimmed) ||
+        s.description?.toLowerCase().includes(trimmed) ||
+        s.createdBy?.name?.toLowerCase().includes(trimmed),
     );
   }, [data, q]);
 
@@ -194,18 +194,13 @@ export default function Segments() {
           />
           <Select
             value={sort}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-              setSort(e.target.value);
+            options={SORT_OPTIONS}
+            onChange={(v: string) => {
+              setSort(v);
               setPage(0);
             }}
             style={{ minWidth: 160 }}
-          >
-            {SORT_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </Select>
+          />
           {isFetching && !isLoading && (
             <span style={{ fontSize: 11, color: "#94a3b8" }}>
               새로고침 중...
@@ -431,14 +426,26 @@ function Row({
           e.stopPropagation();
           onToggleFavorite();
         }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "#facc15";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "#94a3b8";
+        }}
         role="button"
         aria-label={
           segment.favorited ? "즐겨찾기에서 제거" : "즐겨찾기에 추가"
         }
         tabIndex={0}
-        style={{ cursor: "pointer", lineHeight: 0 }}
+        style={{
+          width: 16,
+          height: 16,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        {Icon.star(segment.favorited, 14)}
+        {Icon.star(segment.favorited, 16)}
       </div>
       <div style={{ minWidth: 0, paddingRight: 8 }}>
         <div

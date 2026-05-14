@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
 
+import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
+import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
@@ -89,6 +91,12 @@ class CampaignSendPipelineIntegrationTest {
 
     @MockitoBean
     private UserContactPort userContactPort;
+
+    @MockitoBean
+    private UserTagLookupPort userTagLookupPort;
+
+    @MockitoBean
+    private CampaignExecutionResultRecorder campaignExecutionResultRecorder;
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;

@@ -41,7 +41,7 @@ export default function Step5Template({
       const ql = q.trim().toLowerCase();
       if (!ql) return true;
       return (
-        t.messageTemplateName.toLowerCase().includes(ql) ||
+        (t.messageTemplateName ?? "").toLowerCase().includes(ql) ||
         (t.messageTitle ?? "").toLowerCase().includes(ql)
       );
     });

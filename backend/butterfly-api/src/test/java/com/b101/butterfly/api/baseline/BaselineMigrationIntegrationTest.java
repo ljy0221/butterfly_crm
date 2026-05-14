@@ -31,7 +31,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - V12: campaign_executions.send_started_at NULL 허용
  * - V13: members.member_status 컬럼 추가 (PENDING/ACTIVE)
  * - V14: message_templates 의 legacy plural 컬럼 5개 drop (S14P31B101-254) — 도메인 매핑(singular) 정렬
- * - flyway_schema_history: 14 row
+ * - V15: campaign_executions 의 결과 통계 3개 컬럼 (sent_count/failed_count/fail_reason) drop (S14P31B101-282)
+ * - flyway_schema_history: 15 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
@@ -73,12 +74,12 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
     }
 
     @Test
-    void schema_history_14개_row_성공_상태() {
-        // V1 ~ V14
+    void schema_history_15개_row_성공_상태() {
+        // V1 ~ V15
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(14);
+        assertThat(count).isEqualTo(15);
     }
 
     @Test
@@ -138,6 +139,18 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 "WHERE table_schema = ? AND table_name = 'message_templates' " +
                 "AND column_name IN ('message_templates_name', 'message_templates_description', " +
                 "'message_templates_title', 'message_templates_body', 'message_templates_image_url')",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void v15_campaign_executions_결과_통계_컬럼_제거() {
+        // V1 baseline 이 둔 sent_count/failed_count/fail_reason 3개 (S14P31B101-282).
+        // worker→campaign 결과 통보 미구현으로 placeholder 였던 컬럼 — 도메인 정합성 정리.
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'campaign_executions' " +
+                "AND column_name IN ('sent_count', 'failed_count', 'fail_reason')",
                 Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(0);
     }

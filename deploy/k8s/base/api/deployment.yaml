@@ -39,9 +39,12 @@ spec:
               name: http
           env:
             # backend가 @Profile("api")로 EventProducer 등 빈을 게이팅함.
-            # 'prod' 같은 임의 profile이 아니라 backend가 인지하는 'api'로 활성화.
+            # + 'prod' profile은 SecureSecurityConfig(@Profile("prod")) 활성화 → JWT 인증 + @PreAuthorize 인가.
+            # prod 없으면 SecurityConfig(@Profile("!prod"))의 permitAll + LocalAuthFilter가 X-Member-Id 헤더로 인증 우회.
+            # devtools 제거(S14P31B101-281 7d49775) 후 Jib runtimeClasspath에서 RestartClassLoader 사라져
+            # @Profile("prod") 평가가 정상 진행 → SecureSecurityConfig 빈 등록 가능.
             - name: SPRING_PROFILES_ACTIVE
-              value: "api"
+              value: "api,prod"
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:mysql://mysql.butterfly.svc.cluster.local:3306/butterfly?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul"
             - name: SPRING_DATASOURCE_USERNAME
@@ -62,18 +65,37 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: jwt-secret
-            # application.yml의 mail.from / mail.password 는 default 없는 placeholder라
-            # env로 반드시 설정해야 PlaceholderResolutionException 회피.
-            # 14일 시연용 — 실제 메일 발송 안 하므로 dummy 값.
-            - name: MAIL_FROM
-              value: "noreply@butterfly.local"
+            # SMTP — Gmail 통합 (S14P31B101-290).
+            # application.yml의 mail.{host,port,username,password,from,base-url}는 모두
+            # env placeholder. 자격증명은 mail-secret(K8s Secret, 수동 생성)에서 주입.
+            # MAIL_FROM은 Gmail SMTP가 인증된 주소로 강제 rewrite하므로 username과 동일.
+            - name: MAIL_HOST
+              value: "smtp.gmail.com"
+            - name: MAIL_PORT
+              value: "587"
+            - name: MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mail-secret
+                  key: username
             - name: MAIL_PASSWORD
-              value: ""
+              valueFrom:
+                secretKeyRef:
+                  name: mail-secret
+                  key: password
+            - name: MAIL_FROM
+              valueFrom:
+                secretKeyRef:
+                  name: mail-secret
+                  key: username
+            - name: MAIL_BASE_URL
+              value: "https://k14b101.p.ssafy.io"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
               value: "true"
-            # mail은 dummy SMTP(localhost:1025) — 실제 발송 안 함. health check에서 제외.
+            # actuator의 mail health indicator는 매 헬스체크마다 SMTP 핸드셰이크를 시도해
+            # Gmail 일시 장애 시 readiness probe까지 떨어뜨릴 위험이 있어 명시적으로 비활성화.
             # (readiness/liveness 그룹은 기본적으로 mail을 포함 안 해서 probe엔 무관)
             - name: MANAGEMENT_HEALTH_MAIL_ENABLED
               value: "false"

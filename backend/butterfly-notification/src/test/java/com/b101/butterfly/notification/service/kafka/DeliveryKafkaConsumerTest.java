@@ -26,13 +26,13 @@ class DeliveryKafkaConsumerTest {
 
     @InjectMocks private DeliveryKafkaConsumer consumer;
 
-    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null, null);
+    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null);
 
     @Test
     @DisplayName("정상 메시지를 수신하면 deliveryService.deliver()를 호출한다")
     void consume_callsDeliver() {
         DeliveryCommand command = new DeliveryCommand(
-                1L, 100L, Channel.PUSH, MESSAGE, List.of(1L, 2L), null, null);
+                1L, 100L, 999L, Channel.PUSH, MESSAGE, List.of(1L, 2L), null, null);
 
         consumer.consume(command);
 
@@ -45,7 +45,7 @@ class DeliveryKafkaConsumerTest {
         FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
         DeliveryTarget target = new DeliveryTarget(1L, 10L, "token-abc", null, null);
         DeliveryCommand command = new DeliveryCommand(
-                1L, 100L, Channel.PUSH, MESSAGE, null, credential, List.of(target));
+                1L, 100L, 999L, Channel.PUSH, MESSAGE, null, credential, List.of(target));
 
         consumer.consume(command);
 
@@ -56,7 +56,7 @@ class DeliveryKafkaConsumerTest {
     @DisplayName("deliver()에서 예외가 발생하면 그대로 재throw한다")
     void consume_rethrowsException() {
         DeliveryCommand command = new DeliveryCommand(
-                1L, 100L, Channel.PUSH, MESSAGE, List.of(1L), null, null);
+                1L, 100L, 999L, Channel.PUSH, MESSAGE, List.of(1L), null, null);
 
         RuntimeException exception = new RuntimeException("발송 실패");
         doThrow(exception).when(deliveryService).deliver(command);

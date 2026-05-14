@@ -56,8 +56,8 @@ class DeliveryKafkaConsumerIntegrationTest {
         KafkaTemplate<String, DeliveryCommand> kafkaTemplate = createProducer();
 
         DeliveryCommand command = new DeliveryCommand(
-                1L, 100L, Channel.PUSH,
-                new MessagePayload("title", "body", null, null, null),
+                1L, 100L, 999L, Channel.PUSH,
+                new MessagePayload("title", "body", null, null),
                 List.of(1L, 2L),
                 null, null);
 

@@ -7,10 +7,12 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
+import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
@@ -42,6 +44,12 @@ class CampaignSendInstructionProcessorTest {
     @Mock
     private KafkaTemplate<String, DeliveryCommand> deliveryCommandKafkaTemplate;
 
+    @Mock
+    private CampaignExecutionResultRecorder campaignExecutionResultRecorder;
+
+    @Mock
+    private UserTagLookupPort userTagLookupPort;
+
     private CampaignSendInstructionProcessor processor;
 
     @BeforeEach
@@ -50,7 +58,9 @@ class CampaignSendInstructionProcessorTest {
                 messageTemplateLookupPort,
                 segmentMemberLookupPort,
                 userContactPort,
-                deliveryCommandKafkaTemplate
+                userTagLookupPort,
+                deliveryCommandKafkaTemplate,
+                campaignExecutionResultRecorder
         );
     }
 

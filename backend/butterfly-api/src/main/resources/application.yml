@@ -1,6 +1,9 @@
 spring:
   application:
     name: butterfly-api
+  # local 개발용 default profile (매번 환경변수 명시 부담 회피).
+  # production K8s는 SPRING_PROFILES_ACTIVE=api,prod로 override (Spring Boot 우선순위 룰).
+  # K8s env > application.yml이라 본 default는 local 한정 효과, production 영향 0.
   profiles:
     active: api, worker
 

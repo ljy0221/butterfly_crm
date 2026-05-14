@@ -6,9 +6,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecution;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecutionRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignExecutionStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignType;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import java.util.Optional;
@@ -24,12 +28,19 @@ class CampaignExecutionResultRecorderTest {
     private static final Long CAMPAIGN_ID = 10L;
 
     private CampaignExecutionRepository repository;
+    private CampaignRepository campaignRepository;
     private CampaignExecutionResultRecorder recorder;
 
     @BeforeEach
     void setUp() {
         repository = mock(CampaignExecutionRepository.class);
-        recorder = new CampaignExecutionResultRecorder(repository);
+        campaignRepository = mock(CampaignRepository.class);
+        recorder = new CampaignExecutionResultRecorder(repository, campaignRepository);
+        // 기본 stub — ONE_TIME + ACTIVE 캠페인 (자동 ENDED 분기에 들어가도 안전)
+        Campaign oneTimeActive = mock(Campaign.class);
+        given(oneTimeActive.getCampaignType()).willReturn(CampaignType.ONE_TIME);
+        given(oneTimeActive.getCampaignStatus()).willReturn(CampaignStatus.ACTIVE);
+        given(campaignRepository.findByCampaignId(CAMPAIGN_ID)).willReturn(Optional.of(oneTimeActive));
     }
 
     @Nested
@@ -37,17 +48,15 @@ class CampaignExecutionResultRecorderTest {
     class RecordCompletion {
 
         @Test
-        @DisplayName("정상: SEND 상태 실행 회차가 SUCCESS로 전이 + 발송 수 갱신")
+        @DisplayName("정상: SEND 상태 실행 회차가 SUCCESS로 전이")
         void happyPath() {
             CampaignExecution execution = sentExecution();
             given(repository.findById(EXECUTION_ID)).willReturn(Optional.of(execution));
 
-            recorder.recordCompletion(EXECUTION_ID, 100, 5);
+            recorder.recordCompletion(EXECUTION_ID);
 
             assertThat(execution.getCampaignExecutionStatus())
                     .isEqualTo(CampaignExecutionStatus.SUCCESS);
-            assertThat(execution.getSentCount()).isEqualTo(100);
-            assertThat(execution.getFailedCount()).isEqualTo(5);
         }
 
         @Test
@@ -55,7 +64,7 @@ class CampaignExecutionResultRecorderTest {
         void notFound() {
             given(repository.findById(EXECUTION_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> recorder.recordCompletion(EXECUTION_ID, 0, 0))
+            assertThatThrownBy(() -> recorder.recordCompletion(EXECUTION_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.CAMPAIGN_NOT_FOUND);
@@ -67,7 +76,7 @@ class CampaignExecutionResultRecorderTest {
             CampaignExecution readyExecution = CampaignExecution.ready(CAMPAIGN_ID, 1, 0);
             given(repository.findById(EXECUTION_ID)).willReturn(Optional.of(readyExecution));
 
-            assertThatThrownBy(() -> recorder.recordCompletion(EXECUTION_ID, 0, 0))
+            assertThatThrownBy(() -> recorder.recordCompletion(EXECUTION_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
@@ -79,16 +88,15 @@ class CampaignExecutionResultRecorderTest {
     class RecordFailure {
 
         @Test
-        @DisplayName("정상: SEND 상태 실행 회차가 FAIL로 전이 + 실패 사유 기록")
+        @DisplayName("정상: SEND 상태 실행 회차가 FAIL로 전이")
         void happyPath() {
             CampaignExecution execution = sentExecution();
             given(repository.findById(EXECUTION_ID)).willReturn(Optional.of(execution));
 
-            recorder.recordFailure(EXECUTION_ID, "kafka 연결 오류");
+            recorder.recordFailure(EXECUTION_ID);
 
             assertThat(execution.getCampaignExecutionStatus())
                     .isEqualTo(CampaignExecutionStatus.FAIL);
-            assertThat(execution.getFailReason()).isEqualTo("kafka 연결 오류");
         }
 
         @Test
@@ -96,7 +104,7 @@ class CampaignExecutionResultRecorderTest {
         void notFound() {
             given(repository.findById(EXECUTION_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> recorder.recordFailure(EXECUTION_ID, "사유"))
+            assertThatThrownBy(() -> recorder.recordFailure(EXECUTION_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.CAMPAIGN_NOT_FOUND);
@@ -108,7 +116,7 @@ class CampaignExecutionResultRecorderTest {
             CampaignExecution readyExecution = CampaignExecution.ready(CAMPAIGN_ID, 1, 0);
             given(repository.findById(EXECUTION_ID)).willReturn(Optional.of(readyExecution));
 
-            assertThatThrownBy(() -> recorder.recordFailure(EXECUTION_ID, "사유"))
+            assertThatThrownBy(() -> recorder.recordFailure(EXECUTION_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);

@@ -6,6 +6,8 @@ import {
   type ScheduleInput,
 } from "@/schemas/campaign";
 import type { FieldErrorMap, WizardDraft } from "./wizardReducer";
+import DateTimePicker from "@/components/common/DateTimePicker";
+import TimePicker from "@/components/common/TimePicker";
 
 /**
  * Step 4 — 발송 일정.
@@ -117,12 +119,11 @@ export default function Step4Schedule({
 
       {schedule.type === "scheduled" && (
         <Field label="발송 일시" required error={errors.scheduledAt}>
-          <input
-            type="datetime-local"
+          <DateTimePicker
             value={scheduledLocalValue}
             min={scheduledMin}
-            onChange={(e) => onChangeScheduledAt(e.target.value)}
-            style={inputStyle(!!errors.scheduledAt)}
+            onChange={onChangeScheduledAt}
+            invalid={!!errors.scheduledAt}
           />
           <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4 }}>
             현재 브라우저 로컬 시간대로 입력하세요. 저장 시 UTC로 변환됩니다.
@@ -224,11 +225,10 @@ export default function Step4Schedule({
           )}
 
           <Field label="발송 시각" required error={errors.repeatTime}>
-            <input
-              type="time"
+            <TimePicker
               value={schedule.repeatTime}
-              onChange={(e) => onChangeRepeatTime(e.target.value)}
-              style={{ ...inputStyle(!!errors.repeatTime), maxWidth: 160 }}
+              onChange={onChangeRepeatTime}
+              invalid={!!errors.repeatTime}
             />
           </Field>
 

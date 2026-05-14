@@ -46,7 +46,9 @@ public class CampaignSendInstructionConsumer {
         } catch (Exception e) {
             log.error("캠페인 발송 지시 처리 실패: executionId={}, error={}",
                     instruction.executionId(), e.getMessage(), e);
-            // TODO: 실패 시 CampaignExecution 상태 업데이트 (FAIL)
+            // 결과 통보 흐름이 별 트랙 (notification-send-result producer + worker consumer)
+            // 으로 신설되면, 여기서 CampaignExecutionResultRecorder.recordFailure(executionId)
+            // 호출로 SEND → FAIL 전이 가능. 현재는 예외를 그대로 propagate.
             throw e;
         }
     }
