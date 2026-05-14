@@ -25,6 +25,7 @@ import AnalyticsHome from "@/features/analytics/AnalyticsHome";
 import SegmentChannelMatrix from "@/features/analytics/SegmentChannelMatrix";
 import CampaignFunnel from "@/features/analytics/CampaignFunnel";
 import DemoLogin from "@/pages/DemoLogin";
+import UserProfile from "@/features/users/UserProfile";
 
 /**
  * Sprint 1 진행 중 — auth/application 도메인 element 실제 페이지로 교체 완료.
@@ -119,6 +120,10 @@ export const router = createBrowserRouter([
       {
         path: "customers",
         element: <Placeholder title="고객" domain="customer" sprint="Sprint 7" />,
+      },
+      {
+        path: "users/:userId",
+        element: <UserProfile />,
       },
       {
         path: "segments",
