@@ -6,9 +6,11 @@ import com.b101.butterfly.event.dto.response.UserProfileResponse.RecentEvent;
 import com.b101.butterfly.event.dto.response.UserProfileResponse.Summary;
 import com.b101.butterfly.event.entity.Device;
 import com.b101.butterfly.event.entity.Event;
+import com.b101.butterfly.event.entity.EventCategory;
 import com.b101.butterfly.event.entity.User;
 import com.b101.butterfly.event.exception.UserProfileErrorCode;
 import com.b101.butterfly.event.repository.DeviceRepository;
+import com.b101.butterfly.event.repository.EventCategoryRepository;
 import com.b101.butterfly.event.repository.EventRepository;
 import com.b101.butterfly.event.repository.UserRepository;
 import com.b101.butterfly.global.error.BusinessException;
@@ -17,6 +19,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class UserProfileService {
     private final UserRepository userRepository;
     private final DeviceRepository deviceRepository;
     private final EventRepository eventRepository;
+    private final EventCategoryRepository eventCategoryRepository;
 
     public UserProfileResponse getProfile(Long projectId, Long userId) {
         User user = userRepository.findById(userId)
@@ -48,6 +54,8 @@ public class UserProfileService {
         List<Event> recent = eventRepository
                 .findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, userId);
 
+        Map<Long, String> categoryNameById = resolveCategoryNames(projectId, recent);
+
         Summary summary = new Summary(
                 total,
                 recent.isEmpty() ? null : recent.get(0).getOccurredAt(),
@@ -55,7 +63,7 @@ public class UserProfileService {
         );
 
         List<RecentEvent> recentEvents = recent.stream()
-                .map(this::toRecentEvent)
+                .map(e -> toRecentEvent(e, categoryNameById))
                 .toList();
 
         return new UserProfileResponse(
@@ -79,12 +87,23 @@ public class UserProfileService {
         );
     }
 
-    private RecentEvent toRecentEvent(Event e) {
+    private Map<Long, String> resolveCategoryNames(Long projectId, List<Event> events) {
+        if (events.isEmpty()) {
+            return Map.of();
+        }
+        Set<Long> ids = events.stream()
+                .map(Event::getCategoryId)
+                .collect(Collectors.toSet());
+        return eventCategoryRepository.findAllByProjectIdAndIdIn(projectId, ids).stream()
+                .collect(Collectors.toMap(EventCategory::getId, EventCategory::getName));
+    }
+
+    private RecentEvent toRecentEvent(Event e, Map<Long, String> categoryNameById) {
+        String name = categoryNameById.getOrDefault(
+                e.getCategoryId(), String.valueOf(e.getCategoryId()));
         return new RecentEvent(
                 e.getId(),
-                // categoryId를 문자열로 노출. 향후 EventCategoryRepository를 주입해
-                // 카테고리명으로 조회하는 경로로 확장 가능 (시연 범위에서는 categoryId로 충분).
-                String.valueOf(e.getCategoryId()),
+                name,
                 e.getOccurredAt(),
                 e.getEventData()
         );

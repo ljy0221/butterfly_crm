@@ -5,6 +5,7 @@ import com.b101.butterfly.event.entity.Device;
 import com.b101.butterfly.event.entity.Platform;
 import com.b101.butterfly.event.entity.User;
 import com.b101.butterfly.event.repository.DeviceRepository;
+import com.b101.butterfly.event.repository.EventCategoryRepository;
 import com.b101.butterfly.event.repository.EventRepository;
 import com.b101.butterfly.event.repository.UserRepository;
 import com.b101.butterfly.global.error.BusinessException;
@@ -29,6 +30,7 @@ class UserProfileServiceTest {
     @Mock UserRepository userRepository;
     @Mock DeviceRepository deviceRepository;
     @Mock EventRepository eventRepository;
+    @Mock EventCategoryRepository eventCategoryRepository;
 
     @InjectMocks UserProfileService service;
 
@@ -92,5 +94,33 @@ class UserProfileServiceTest {
 
         assertThatThrownBy(() -> service.getProfile(1L, 73L))
                 .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void getProfile_returns_null_device_when_no_device_registered() {
+        Long projectId = 1L;
+        User user = User.builder()
+                .projectId(projectId)
+                .externalId("user-200")
+                .pushOptIn(true)
+                .signedUpAt(LocalDateTime.of(2026, 3, 1, 9, 0))
+                .build();
+        ReflectionTestUtils.setField(user, "id", 200L);
+
+        when(userRepository.findById(200L)).thenReturn(Optional.of(user));
+        when(deviceRepository.findFirstByProjectIdAndUserIdOrderByLastActiveAtDesc(projectId, 200L))
+                .thenReturn(Optional.empty());
+        when(eventRepository.countByProjectIdAndUserId(projectId, 200L)).thenReturn(0L);
+        when(eventRepository.countByProjectIdAndUserIdAndCategoryName(projectId, 200L, "purchase"))
+                .thenReturn(0L);
+        when(eventRepository.findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, 200L))
+                .thenReturn(List.of());
+
+        UserProfileResponse response = service.getProfile(projectId, 200L);
+
+        assertThat(response.device()).isNull();
+        assertThat(response.summary().totalEvents()).isZero();
+        assertThat(response.summary().lastSeenAt()).isNull();
+        assertThat(response.recentEvents()).isEmpty();
     }
 }

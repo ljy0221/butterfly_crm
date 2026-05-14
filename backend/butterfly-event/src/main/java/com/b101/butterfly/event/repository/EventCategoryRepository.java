@@ -15,4 +15,6 @@ public interface EventCategoryRepository extends JpaRepository<EventCategory, Lo
     List<EventCategory> findAllByProjectIdOrderByNameAsc(Long projectId);
 
     boolean existsByProjectIdAndName(Long projectId, String name);
+
+    List<EventCategory> findAllByProjectIdAndIdIn(Long projectId, java.util.Collection<Long> ids);
 }
