@@ -16,6 +16,7 @@ import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
+import com.b101.butterfly.segment.messaging.SegmentRebuildAcceptedEvent;
 import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
@@ -30,6 +31,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,7 +83,10 @@ public class SegmentService {
 
         Map<String, Object> detail = new LinkedHashMap<>();
         detail.put("name", truncateForAudit(saved.getName()));
-        detail.put("conditionTreeHash", auditHash(projectId, saved.getConditionTree()));
+        String fullHash = conditionTreeHasher.hash(projectId, saved.getConditionTree());
+        detail.put(
+                "conditionTreeHash",
+                fullHash.substring(0, AUDIT_HASH_PREFIX_LENGTH));
         detail.put("conditionTreeVersion", saved.getSchemaVersion());
         eventPublisher.publishEvent(
                 AuditRecordedEvent.of(
@@ -93,6 +98,12 @@ public class SegmentService {
                         null,
                         null,
                         detail));
+
+        // S14P31B101-275 — 생성 직후 자동 빌드 trigger. AFTER_COMMIT listener 가 Kafka publish 하므로
+        // segment 저장이 commit 된 후에만 worker 가 메시지 받음 (lost update / race 차단 흐름).
+        eventPublisher.publishEvent(
+                new SegmentRebuildAcceptedEvent(
+                        saved.getId(), projectId, createdBy, Instant.now(), fullHash));
 
         return new CreateSegmentResponse(
                 saved.getId(),
