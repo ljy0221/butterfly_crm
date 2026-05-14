@@ -5,11 +5,13 @@ import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
+import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -34,6 +36,7 @@ public class CampaignSendInstructionProcessor {
     private final MessageTemplateLookupPort messageTemplateLookupPort;
     private final SegmentMemberLookupPort segmentMemberLookupPort;
     private final UserContactPort userContactPort;
+    private final UserTagLookupPort userTagLookupPort;
     private final KafkaTemplate<String, DeliveryCommand> deliveryCommandKafkaTemplate;
     private final CampaignExecutionResultRecorder campaignExecutionResultRecorder;
 
@@ -68,6 +71,12 @@ public class CampaignSendInstructionProcessor {
                 deliveryChannel
         );
 
+        // 3.5. 사용자별 개인화 변수 조회 (user_tags 테이블, S14P31B101-289) — userId → (tagKey → tagValue)
+        Map<Long, Map<String, String>> userTags = userTagLookupPort.getTagsByUserIds(
+                instruction.projectId(),
+                userIds
+        );
+
         // 4. DeliveryCommand 조립
         DeliveryCommand deliveryCommand = new DeliveryCommand(
                 instruction.projectId(),
@@ -78,12 +87,11 @@ public class CampaignSendInstructionProcessor {
                         template.title(),
                         template.body(),
                         template.imageUrl(),
-                        null,  // clickAction
-                        null   // data
+                        null   // data (FCM native payload — 향후 활용)
                 ),
                 userIds,
                 null,  // credential (DeliveryService가 자체 조회)
-                mapToDeliveryTargets(contacts)
+                mapToDeliveryTargets(contacts, userTags)
         );
 
         // 5. delivery-requests 토픽으로 발행
@@ -107,14 +115,18 @@ public class CampaignSendInstructionProcessor {
         };
     }
 
-    private List<DeliveryCommand.DeliveryTarget> mapToDeliveryTargets(List<UserContactInfo> contacts) {
+    private List<DeliveryCommand.DeliveryTarget> mapToDeliveryTargets(
+            List<UserContactInfo> contacts,
+            Map<Long, Map<String, String>> userTags
+    ) {
         return contacts.stream()
                 .map(contact -> new DeliveryCommand.DeliveryTarget(
                         contact.userId(),
                         contact.deviceId(),
                         contact.pushToken(),
                         contact.email(),
-                        contact.phoneNumber()
+                        contact.phoneNumber(),
+                        userTags.getOrDefault(contact.userId(), Map.of())
                 ))
                 .toList();
     }

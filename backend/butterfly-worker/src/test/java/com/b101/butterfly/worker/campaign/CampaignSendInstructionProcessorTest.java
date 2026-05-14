@@ -12,6 +12,7 @@ import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
+import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
@@ -46,6 +47,9 @@ class CampaignSendInstructionProcessorTest {
     @Mock
     private CampaignExecutionResultRecorder campaignExecutionResultRecorder;
 
+    @Mock
+    private UserTagLookupPort userTagLookupPort;
+
     private CampaignSendInstructionProcessor processor;
 
     @BeforeEach
@@ -54,6 +58,7 @@ class CampaignSendInstructionProcessorTest {
                 messageTemplateLookupPort,
                 segmentMemberLookupPort,
                 userContactPort,
+                userTagLookupPort,
                 deliveryCommandKafkaTemplate,
                 campaignExecutionResultRecorder
         );
