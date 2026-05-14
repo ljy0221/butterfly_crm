@@ -1,6 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import { useUserProfileQuery } from "@/hooks/queries/user";
 
+function formatDateTime(iso: string | null): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /**
  * 5/22 시연용 — 사용자 프로필 화면.
  * 세그먼트 빌더 미리보기 결과에서 사용자를 클릭해 진입한다.
@@ -16,9 +24,11 @@ export default function UserProfile() {
     return <div className="p-6 text-sm text-gray-500">로딩 중…</div>;
   }
   if (error) {
+    // eslint-disable-next-line no-console
+    console.error("[UserProfile] fetch failed", error);
     return (
       <div className="p-6 text-sm text-red-600">
-        프로필 조회 실패: {(error as Error).message}
+        프로필을 불러오지 못했습니다.
       </div>
     );
   }
@@ -38,7 +48,7 @@ export default function UserProfile() {
       <header>
         <h1 className="text-2xl font-bold">{data.externalId}</h1>
         <div className="text-sm text-gray-500">
-          가입일: {data.signedUpAt ?? "-"}
+          가입일: {formatDateTime(data.signedUpAt)}
         </div>
       </header>
 
@@ -82,7 +92,7 @@ export default function UserProfile() {
             </div>
             <div>
               <dt className="inline text-gray-500">최근 활동: </dt>
-              <dd className="inline">{data.summary.lastSeenAt ?? "-"}</dd>
+              <dd className="inline">{formatDateTime(data.summary.lastSeenAt)}</dd>
             </div>
             <div>
               <dt className="inline text-gray-500">구매 횟수: </dt>
@@ -102,10 +112,13 @@ export default function UserProfile() {
           )}
           {data.recentEvents.map((e) => (
             <li key={e.eventId} className="p-3 flex gap-4 text-sm">
-              <span className="text-gray-500 w-44 shrink-0">{e.occurredAt}</span>
+              <span className="text-gray-500 w-44 shrink-0">{formatDateTime(e.occurredAt)}</span>
               <span className="font-medium w-32 shrink-0">{e.eventCategory}</span>
-              <span className="text-gray-600 truncate">
-                {e.eventData ? JSON.stringify(e.eventData) : ""}
+              <span
+                className="text-gray-600 truncate"
+                title={e.eventData ? JSON.stringify(e.eventData, null, 2) : ""}
+              >
+                {e.eventData ? JSON.stringify(e.eventData) : "—"}
               </span>
             </li>
           ))}
