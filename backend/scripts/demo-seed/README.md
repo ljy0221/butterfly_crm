@@ -19,6 +19,12 @@
 
 ## 사전 준비
 
+### 0. 백엔드 사전 부팅 필수 (신규 DB 한정)
+
+- **백엔드 사전 부팅 필수**: `channel_credentials` 테이블은 Flyway 마이그레이션이 아니라 `ChannelCredentialEntity` Hibernate `ddl-auto=update`로 생성됩니다.
+  `seed.sh`의 04 단계(FCM credential)를 실행하려면 **butterfly-api 또는 butterfly-worker가 최소 1회 부팅된 적이 있어야 합니다**.
+  새 DB에서 처음 시드할 때는: (1) 백엔드 1회 부팅 → (2) 종료 → (3) `reset-and-seed.sh` 실행 순서로 진행하세요.
+
 ### 1. bcrypt 해시 교체 (필수)
 
 `01-project-and-account.sql` 에 포함된 아래 placeholder 를 실제 해시로 교체해야 합니다.

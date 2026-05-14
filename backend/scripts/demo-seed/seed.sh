@@ -70,6 +70,7 @@ fi
 run_sql "${SCRIPT_DIR}/01-project-and-account.sql"
 run_sql "${SCRIPT_DIR}/02-customers-and-events.sql"
 run_sql "${SCRIPT_DIR}/03-historical-campaigns.sql"
+run_sql "${SCRIPT_DIR}/05-notification-logs.sql"
 
 if [[ "$FCM_READY" == true ]]; then
   run_sql "$RENDERED"

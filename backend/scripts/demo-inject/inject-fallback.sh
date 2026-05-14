@@ -4,15 +4,16 @@
 # API_BASE 가 다르면 URL 을 직접 수정하세요.
 set -euo pipefail
 
+# 백엔드는 Asia/Seoul LocalDateTime — 호스트 TZ 무관하게 KST 고정
 curl -sS \
   -X POST http://localhost:8080/api/v1/events \
   -H "Content-Type: application/json" \
   -H "X-Project-Id: 1" \
   -d "{
     \"userId\": \"user-142\",
-    \"deviceId\": \"dev-fallback-142\",
+    \"deviceId\": \"dev-user-142-placeholder\",
     \"eventCategory\": \"product_view\",
-    \"occurredAt\": \"$(date +"%Y-%m-%dT%H:%M:%S")\",
+    \"occurredAt\": \"$(TZ=Asia/Seoul date +"%Y-%m-%dT%H:%M:%S")\",
     \"eventData\": {\"category\": \"운동화\", \"productId\": \"sku-9847\"}
   }"
 echo

@@ -41,7 +41,7 @@ HTTP_CODE=$(curl -sS \
   --data @- <<JSON
 {
   "userId": "user-142",
-  "deviceId": "dev-fallback-142",
+  "deviceId": "dev-user-142-placeholder",
   "eventCategory": "product_view",
   "occurredAt": "${OCCURRED_AT}",
   "eventData": {
