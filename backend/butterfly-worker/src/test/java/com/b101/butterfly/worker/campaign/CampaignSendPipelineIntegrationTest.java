@@ -9,6 +9,7 @@ import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
+import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
@@ -90,6 +91,9 @@ class CampaignSendPipelineIntegrationTest {
 
     @MockitoBean
     private UserContactPort userContactPort;
+
+    @MockitoBean
+    private UserTagLookupPort userTagLookupPort;
 
     @MockitoBean
     private CampaignExecutionResultRecorder campaignExecutionResultRecorder;

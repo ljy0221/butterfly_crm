@@ -26,7 +26,7 @@ class DeliveryKafkaConsumerTest {
 
     @InjectMocks private DeliveryKafkaConsumer consumer;
 
-    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null, null);
+    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null);
 
     @Test
     @DisplayName("정상 메시지를 수신하면 deliveryService.deliver()를 호출한다")
