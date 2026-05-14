@@ -1,5 +1,7 @@
 package com.b101.butterfly.event.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,6 +32,6 @@ public record UserProfileResponse(
             Long eventId,
             String eventCategory,
             LocalDateTime occurredAt,
-            String properties
+            @JsonRawValue String eventData
     ) {}
 }
