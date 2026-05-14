@@ -156,4 +156,45 @@ class EventRepositoryIntegrationTest extends AbstractMySqlContainerTest {
         assertThat(result).hasSize(3);
         assertThat(result).allMatch(e -> e.getUserId().equals(7L));
     }
+
+    @Test
+    @DisplayName("findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc — 다른 project 이벤트는 제외")
+    void findTop20IsolatesProject() {
+        LocalDateTime base = LocalDateTime.of(2026, 5, 14, 12, 0);
+        Long userId = 7L;
+        // project 100L: 3건
+        for (int i = 0; i < 3; i++) {
+            repository.save(Event.builder()
+                    .eventUuid("uuid-iso-p100-" + i)
+                    .projectId(100L)
+                    .userId(userId)
+                    .categoryId(1L)
+                    .deviceId(42L)
+                    .occurredAt(base.minusSeconds(i))
+                    .schemaVersion(1)
+                    .eventData("{}")
+                    .build());
+        }
+        // project 999L: 2건 (같은 user지만 다른 project이므로 제외되어야 함)
+        for (int i = 0; i < 2; i++) {
+            repository.save(Event.builder()
+                    .eventUuid("uuid-iso-p999-" + i)
+                    .projectId(999L)
+                    .userId(userId)
+                    .categoryId(1L)
+                    .deviceId(42L)
+                    .occurredAt(base.minusSeconds(i))
+                    .schemaVersion(1)
+                    .eventData("{}")
+                    .build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Event> result =
+                repository.findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(100L, userId);
+
+        assertThat(result).hasSize(3);
+        assertThat(result).allMatch(e -> e.getProjectId().equals(100L));
+    }
 }
