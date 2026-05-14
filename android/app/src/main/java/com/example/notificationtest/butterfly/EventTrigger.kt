@@ -23,11 +23,19 @@ object EventTrigger {
 
     private const val TAG = "EventTrigger"
 
+    /**
+     * 5/22 시연용 — 박준호 페르소나 외부 ID.
+     * 백엔드 시드 데이터 (users.external_id) 와 매칭된다.
+     * 운영 빌드에서는 SDK 가 사용자별로 외부 ID 를 주입하는 경로로 교체 필요.
+     */
+    private const val DEMO_USER_ID = "user-142"
+
     @JvmStatic
     fun registerDevice(context: Context, fcmToken: String) {
         val deviceId = DeviceManager.getOrCreateDeviceId(context)
         val request = DeviceRegisterRequest(
             deviceId = deviceId,
+            userId = DEMO_USER_ID,
             platform = "ANDROID",
             pushToken = fcmToken.ifBlank { "no_token" },
             appVersion = "1.0.0",
@@ -44,7 +52,12 @@ object EventTrigger {
 
     @JvmStatic
     fun fireProductView(context: Context) {
-        sendEvent(context, "product_view", mapOf("productId" to "P123", "price" to 19900))
+        sendEvent(context, "product_view", mapOf(
+            "category" to "운동화",
+            "productId" to "sku-9847",
+            "productName" to "데일리 러닝화",
+            "price" to 89000
+        ))
     }
 
     @JvmStatic
@@ -57,6 +70,7 @@ object EventTrigger {
         val deviceId = DeviceManager.getOrCreateDeviceId(context)
         val request = EventCollectRequest(
             deviceId = deviceId,
+            userId = DEMO_USER_ID,
             eventCategory = category,
             occurredAt = nowIsoLocal(),
             eventData = data

@@ -1,5 +1,6 @@
 package com.example.notificationtest.butterfly.network
 
+import com.example.notificationtest.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -7,8 +8,9 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object ApiClient {
 
-    // 에뮬레이터: 10.0.2.2 = 호스트 PC. 실기기는 PC IP로 변경.
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    // 5/22 시연용 — BASE_URL은 BuildConfig 로 외부화 (build.gradle 의 buildConfigField).
+    // 에뮬레이터: 10.0.2.2 = 호스트 PC. 실기기 D-3 리허설에서 LAN IP 로 교체.
+    private val BASE_URL: String = BuildConfig.BUTTERFLY_API_BASE_URL
     private const val PROJECT_ID = "1"
 
     val api: ButterflyApi by lazy {

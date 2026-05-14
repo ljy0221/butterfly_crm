@@ -19,17 +19,27 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", "BUTTERFLY_API_BASE_URL", "\"http://10.0.2.2:8080/\""
     }
 
     buildTypes {
+        debug {
+            buildConfigField "String", "BUTTERFLY_API_BASE_URL", "\"http://10.0.2.2:8080/\""
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "String", "BUTTERFLY_API_BASE_URL", "\"http://10.0.2.2:8080/\""
+            // 시연 D-3 에 LAN IP 로 교체 — 예: "http://192.168.1.10:8080/"
         }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        buildConfig true
     }
 }
 
