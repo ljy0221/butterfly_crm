@@ -1,5 +1,6 @@
 package com.b101.butterfly.worker.config;
 
+import com.b101.butterfly.campaign.lifecycle.port.CampaignExecutionResult;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
@@ -66,5 +67,30 @@ public class WorkerKafkaConfig {
             ProducerFactory<String, DeliveryCommand> producerFactory
     ) {
         return new KafkaTemplate<>(producerFactory);
+    }
+
+    /**
+     * CampaignExecutionResult 메시지 Consumer Factory — notification 측 publisher 가 보낸
+     * per-execution summary 를 받아 SEND → SUCCESS|FAIL 전이를 수행한다 (S14P31B101-284).
+     */
+    @Bean
+    public ConsumerFactory<String, CampaignExecutionResult> campaignExecutionResultConsumerFactory(
+            KafkaProperties properties
+    ) {
+        return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(null));
+    }
+
+    /**
+     * CampaignExecutionResult 메시지 Listener Container Factory.
+     */
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, CampaignExecutionResult>
+    campaignExecutionResultListenerContainerFactory(
+            ConsumerFactory<String, CampaignExecutionResult> consumerFactory
+    ) {
+        ConcurrentKafkaListenerContainerFactory<String, CampaignExecutionResult> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory);
+        return factory;
     }
 }

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.BDDMockito.given;
 
+import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
@@ -89,6 +90,9 @@ class CampaignSendPipelineIntegrationTest {
 
     @MockitoBean
     private UserContactPort userContactPort;
+
+    @MockitoBean
+    private CampaignExecutionResultRecorder campaignExecutionResultRecorder;
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
