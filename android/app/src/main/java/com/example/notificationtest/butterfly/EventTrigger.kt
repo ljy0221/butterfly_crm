@@ -30,6 +30,16 @@ object EventTrigger {
      */
     private const val DEMO_USER_ID = "user-142"
 
+    /**
+     * 5/22 시연용 — 메인 상품 정보 단일 출처.
+     * fireProductView / fireProductViewSilently / firePurchase 가 모두 참조.
+     * 시연 직전 변경 시 이 4 상수만 수정하면 됨.
+     */
+    private const val DEMO_PRODUCT_ID = "sku-9847"
+    private const val DEMO_PRODUCT_NAME = "데일리 러닝화"
+    private const val DEMO_PRODUCT_CATEGORY = "운동화"
+    private const val DEMO_PRODUCT_PRICE = 89000
+
     @JvmStatic
     fun registerDevice(context: Context, fcmToken: String) {
         val deviceId = DeviceManager.getOrCreateDeviceId(context)
@@ -66,30 +76,12 @@ object EventTrigger {
 
     @JvmStatic
     fun fireProductView(context: Context) {
-        sendEvent(context, "product_view", mapOf(
-            "category" to "운동화",
-            "productId" to "sku-9847",
-            "productName" to "데일리 러닝화",
-            "price" to 89000
-        ))
+        sendEvent(context, "product_view", productViewPayload())
     }
 
     @JvmStatic
     fun fireProductViewSilently(context: Context) {
-        val deviceId = DeviceManager.getOrCreateDeviceId(context)
-        val request = EventCollectRequest(
-            deviceId = deviceId,
-            userId = DEMO_USER_ID,
-            eventCategory = "product_view",
-            occurredAt = nowIsoLocal(),
-            eventData = mapOf(
-                "category" to "운동화",
-                "productId" to "sku-9847",
-                "productName" to "데일리 러닝화",
-                "price" to 89000
-            )
-        )
-        ApiClient.api.collectEvent(request).enqueue(silentCallback("product_view"))
+        sendEventSilently(context, "product_view", productViewPayload())
     }
 
     @JvmStatic
@@ -97,10 +89,17 @@ object EventTrigger {
         val orderId = "O-${System.currentTimeMillis()}"
         sendEvent(context, "purchase", mapOf(
             "orderId" to orderId,
-            "productId" to "sku-9847",
-            "totalAmount" to 89000
+            "productId" to DEMO_PRODUCT_ID,
+            "totalAmount" to DEMO_PRODUCT_PRICE
         ))
     }
+
+    private fun productViewPayload(): Map<String, Any> = mapOf(
+        "category" to DEMO_PRODUCT_CATEGORY,
+        "productId" to DEMO_PRODUCT_ID,
+        "productName" to DEMO_PRODUCT_NAME,
+        "price" to DEMO_PRODUCT_PRICE
+    )
 
     private fun sendEvent(context: Context, category: String, data: Map<String, Any>) {
         val deviceId = DeviceManager.getOrCreateDeviceId(context)
@@ -113,6 +112,18 @@ object EventTrigger {
         )
         ApiClient.api.collectEvent(request)
             .enqueue(makeCallback<EventCollectResponse>(context, category))
+    }
+
+    private fun sendEventSilently(context: Context, category: String, data: Map<String, Any>) {
+        val deviceId = DeviceManager.getOrCreateDeviceId(context)
+        val request = EventCollectRequest(
+            deviceId = deviceId,
+            userId = DEMO_USER_ID,
+            eventCategory = category,
+            occurredAt = nowIsoLocal(),
+            eventData = data
+        )
+        ApiClient.api.collectEvent(request).enqueue(silentCallback(category))
     }
 
     private fun nowIsoLocal(): String {
