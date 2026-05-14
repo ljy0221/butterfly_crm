@@ -53,7 +53,9 @@ public class CampaignSendInstructionProcessor {
         if (userIds.isEmpty()) {
             log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
                     instruction.executionId(), instruction.segmentId());
-            // TODO: CampaignExecution 상태 업데이트 (targetCount=0)
+            // 결과 통보 흐름이 별 트랙 (notification-send-result producer + worker consumer)
+            // 으로 신설되면, 여기서 CampaignExecutionResultRecorder.recordFailure(executionId)
+            // 또는 recordCompletion(executionId) 호출 가능. 현재는 row 가 SEND 상태에 머무름.
             return;
         }
 
