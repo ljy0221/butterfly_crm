@@ -1,5 +1,6 @@
 package com.b101.butterfly.worker.campaign;
 
+import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
@@ -13,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 캠페인 발송 지시를 DeliveryCommand로 변환하는 핵심 로직.
@@ -35,10 +35,10 @@ public class CampaignSendInstructionProcessor {
     private final SegmentMemberLookupPort segmentMemberLookupPort;
     private final UserContactPort userContactPort;
     private final KafkaTemplate<String, DeliveryCommand> deliveryCommandKafkaTemplate;
+    private final CampaignExecutionResultRecorder campaignExecutionResultRecorder;
 
     private static final String DELIVERY_REQUESTS_TOPIC = "delivery-requests";
 
-    @Transactional(readOnly = true)
     public void process(CampaignSendInstruction instruction) {
         // 1. 템플릿 조회
         MessageTemplateSnapshot template = messageTemplateLookupPort.lookup(instruction.templateId());
@@ -53,9 +53,10 @@ public class CampaignSendInstructionProcessor {
         if (userIds.isEmpty()) {
             log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
                     instruction.executionId(), instruction.segmentId());
-            // 결과 통보 흐름이 별 트랙 (notification-send-result producer + worker consumer)
-            // 으로 신설되면, 여기서 CampaignExecutionResultRecorder.recordFailure(executionId)
-            // 또는 recordCompletion(executionId) 호출 가능. 현재는 row 가 SEND 상태에 머무름.
+            // segment empty → 발송 시도 0건 → 사양상 FAIL (sent_count == 0).
+            // Kafka publish 를 거치지 않고 직접 Recorder 호출 — notification 측 publisher 가
+            // 호출될 일이 없는 분기이므로 worker 가 종결 책임.
+            campaignExecutionResultRecorder.recordFailure(instruction.executionId());
             return;
         }
 
@@ -71,6 +72,7 @@ public class CampaignSendInstructionProcessor {
         DeliveryCommand deliveryCommand = new DeliveryCommand(
                 instruction.projectId(),
                 instruction.campaignId(),
+                instruction.executionId(),
                 deliveryChannel,
                 new DeliveryCommand.MessagePayload(
                         template.title(),

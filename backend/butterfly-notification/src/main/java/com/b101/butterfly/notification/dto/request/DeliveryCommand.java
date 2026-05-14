@@ -16,6 +16,7 @@ import java.util.List;
 public record DeliveryCommand(
         Long projectId,
         Long campaignId,
+        Long executionId,
         Channel channel,
         MessagePayload message,
         List<Long> userIds,
