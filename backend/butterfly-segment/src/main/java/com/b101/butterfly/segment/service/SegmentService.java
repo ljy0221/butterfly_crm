@@ -19,6 +19,7 @@ import com.b101.butterfly.segment.exception.SegmentErrorCode;
 import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
+import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.segment.service.match.ActiveEventSegmentCache;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
@@ -52,6 +53,7 @@ public class SegmentService {
     private static final int AUDIT_HASH_PREFIX_LENGTH = 8;
 
     private final SegmentRepository segmentRepository;
+    private final SegmentMemberRepository segmentMemberRepository;
     private final SegmentFavoriteRepository segmentFavoriteRepository;
     private final ConditionTreeValidator conditionTreeValidator;
     private final LinkedCampaignChecker linkedCampaignChecker;
@@ -261,6 +263,17 @@ public class SegmentService {
                 memberId != null
                         && segmentFavoriteRepository.existsBySegmentIdAndMemberId(
                                 segment.getId(), memberId);
+        // BUILDING/PENDING 일 때만 실시간 COUNT(*) — 그 외엔 stable estimatedCount 사용 (불필요한 비용 회피).
+        Long currentMemberCount;
+        if (segment.getBuildStatus() == com.b101.butterfly.segment.entity.BuildStatus.BUILDING
+                || segment.getBuildStatus() == com.b101.butterfly.segment.entity.BuildStatus.PENDING) {
+            currentMemberCount = segmentMemberRepository.countBySegmentId(segment.getId());
+        } else {
+            currentMemberCount =
+                    segment.getEstimatedCount() == null
+                            ? null
+                            : segment.getEstimatedCount().longValue();
+        }
         return new SegmentDetailResponse(
                 segment.getId(),
                 segment.getName(),
@@ -271,6 +284,8 @@ public class SegmentService {
                 segment.getEstimatedAt(),
                 segment.getLastBuiltAt(),
                 segment.getBuildStatus(),
+                currentMemberCount,
+                segment.getBuildStartedAt(),
                 creatorOf(segment),
                 segment.getCreatedAt(),
                 segment.getUpdatedAt(),
