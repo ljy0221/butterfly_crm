@@ -1,0 +1,14 @@
+# S14P31B101-294: Grafana datasource 자동 등록
+# Prometheus 컨테이너의 service name 'prometheus' 로 내부 DNS 해석
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 5s

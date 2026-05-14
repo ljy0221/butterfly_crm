@@ -1,0 +1,24 @@
+# S14P31B101-294: Prometheus scrape 설정
+#
+# Spring app actuator metric (Micrometer Prometheus registry) 를 scrape.
+# api 한 process 안에 worker 빈 통합 (S14P31B101-234) — actuator 한 개.
+
+global:
+  scrape_interval: 5s            # 5초 주기 — 부하 테스트 시 세밀한 시계열
+  evaluation_interval: 5s
+  external_labels:
+    monitor: butterfly-portfolio
+
+scrape_configs:
+  - job_name: 'butterfly-app'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - 'host.docker.internal:8080'
+        labels:
+          app: butterfly
+          env: local
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

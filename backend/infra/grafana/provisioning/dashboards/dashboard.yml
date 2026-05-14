@@ -1,0 +1,17 @@
+# S14P31B101-294: Grafana dashboard 자동 import
+# docs/portfolio-graphs/*.json 안의 모든 dashboard JSON 자동 로드
+
+apiVersion: 1
+
+providers:
+  - name: 'campaign-send-hardening'
+    orgId: 1
+    folder: 'Butterfly Portfolio'
+    folderUid: butterfly-portfolio
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false
