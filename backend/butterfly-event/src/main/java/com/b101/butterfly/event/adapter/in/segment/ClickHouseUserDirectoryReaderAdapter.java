@@ -1,8 +1,8 @@
 package com.b101.butterfly.event.adapter.in.segment;
 
+import com.b101.butterfly.event.config.ClickHouseConfig.ClickHouseAccess;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -30,11 +30,8 @@ import java.util.Map;
  *       INSERT IGNORE — cross-DB 라 단일 INSERT-SELECT 직행 불가</li>
  * </ol>
  *
- * <p>{@code materializeUserMatchesIntoSegment} 의 INSERT 단계는 ~5000 건/s (rewriteBatchedStatements
- * 적용 후) — 1M 적재 시 ~200 초. SELECT 단계는 2~3 초. 총 wall time 분 단위 → 수 분.
- *
- * <p>후속 (S14P31B101-275 별도 phase): ClickHouse → CSV → MySQL LOAD DATA 패턴으로 INSERT 부분도
- * 가속 가능. 본 phase 는 측정/도입 검증 목적.
+ * <p>ClickHouse 측 template 은 {@link ClickHouseAccess} wrapper 를 통해 받는다 — Spring Boot 의
+ * autoconfig 가 단일 DataSource / NamedParameterJdbcTemplate 빈만 인식하도록 type-pollution 회피.
  */
 @Slf4j
 @Component
@@ -53,9 +50,9 @@ public class ClickHouseUserDirectoryReaderAdapter implements UserDirectoryReader
     private final NamedParameterJdbcTemplate mysqlJdbcTemplate;
 
     public ClickHouseUserDirectoryReaderAdapter(
-            @Qualifier("clickHouseJdbcTemplate") NamedParameterJdbcTemplate clickHouseJdbcTemplate,
-            @Qualifier("namedParameterJdbcTemplate") NamedParameterJdbcTemplate mysqlJdbcTemplate) {
-        this.clickHouseJdbcTemplate = clickHouseJdbcTemplate;
+            ClickHouseAccess clickHouseAccess,
+            NamedParameterJdbcTemplate mysqlJdbcTemplate) {
+        this.clickHouseJdbcTemplate = clickHouseAccess.jdbcTemplate();
         this.mysqlJdbcTemplate = mysqlJdbcTemplate;
     }
 
