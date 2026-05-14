@@ -54,7 +54,7 @@ const STAGE_COLOR: Record<FunnelStage, string> = {
   CONVERT: "#7c3aed",
 };
 
-export default function CampaignFunnel() {
+export default function CampaignFunnel({ embedded = false }: { embedded?: boolean }) {
   const project = useProjectStore((s) => s.current);
   const projectId = project?.projectId ?? null;
   const role = project?.role ?? "VIEWER";
@@ -77,55 +77,63 @@ export default function CampaignFunnel() {
   });
 
   if (!isOwner) {
-    return <DenyOwnerOnly currentRole={role} />;
+    return <DenyOwnerOnly currentRole={role} embedded={embedded} />;
   }
+
+  const filterBar = (
+    <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      <Menu
+        align="left"
+        trigger={
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Icon.calendar(12)}
+            iconRight={<span style={{ fontSize: 9 }}>▾</span>}
+          >
+            {PERIOD_LABEL[periodKey]}
+          </Button>
+        }
+        items={(Object.keys(PERIOD_LABEL) as PeriodKey[]).map((k) => ({
+          label: PERIOD_LABEL[k],
+          onClick: () => setPeriodKey(k),
+        }))}
+      />
+      <Menu
+        align="left"
+        trigger={
+          <Button
+            variant="secondary"
+            size="sm"
+            iconRight={<span style={{ fontSize: 9 }}>▾</span>}
+          >
+            채널: {channel ? CHANNEL_LABEL[channel] : "전체"}
+          </Button>
+        }
+        items={[
+          { label: "전체", onClick: () => setChannel(undefined) },
+          ...ALL_CHANNELS.map((c) => ({
+            label: CHANNEL_LABEL[c],
+            onClick: () => setChannel(c),
+          })),
+        ]}
+      />
+      <span style={{ alignSelf: "center", fontSize: 12, color: "#94a3b8" }}>
+        {formatPeriod(period.from, period.to)}
+      </span>
+    </div>
+  );
 
   return (
     <div>
-      <PageHeader
-        title="캠페인 단계 펀널"
-        subtitle={`${PERIOD_LABEL[periodKey]} 기준 · ${formatPeriod(period.from, period.to)}`}
-        actions={
-          <>
-            <Menu
-              align="right"
-              trigger={
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={Icon.calendar(12)}
-                  iconRight={<span style={{ fontSize: 9 }}>▾</span>}
-                >
-                  {PERIOD_LABEL[periodKey]}
-                </Button>
-              }
-              items={(Object.keys(PERIOD_LABEL) as PeriodKey[]).map((k) => ({
-                label: PERIOD_LABEL[k],
-                onClick: () => setPeriodKey(k),
-              }))}
-            />
-            <Menu
-              align="right"
-              trigger={
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  iconRight={<span style={{ fontSize: 9 }}>▾</span>}
-                >
-                  채널: {channel ? CHANNEL_LABEL[channel] : "전체"}
-                </Button>
-              }
-              items={[
-                { label: "전체", onClick: () => setChannel(undefined) },
-                ...ALL_CHANNELS.map((c) => ({
-                  label: CHANNEL_LABEL[c],
-                  onClick: () => setChannel(c),
-                })),
-              ]}
-            />
-          </>
-        }
-      />
+      {!embedded && (
+        <PageHeader
+          title="캠페인 단계 펀널"
+          subtitle={`${PERIOD_LABEL[periodKey]} 기준 · ${formatPeriod(period.from, period.to)}`}
+        />
+      )}
+
+      {filterBar}
 
       {/* 가장 큰 이탈 단계 강조 */}
       {funnelQ.data?.biggestDropOffStage && (
@@ -307,22 +315,14 @@ function ErrorBox({ message, onRetry }: ErrorBoxProps) {
   );
 }
 
-function DenyOwnerOnly({ currentRole }: { currentRole: string }) {
+function DenyOwnerOnly({ currentRole, embedded }: { currentRole: string; embedded?: boolean }) {
   return (
     <div>
-      <PageHeader title="캠페인 단계 펀널" />
+      {!embedded && <PageHeader title="캠페인 단계 펀널" />}
       <Card>
-        <div
-          style={{
-            padding: 32,
-            textAlign: "center",
-            color: "#475569",
-          }}
-        >
+        <div style={{ padding: 32, textAlign: "center", color: "#475569" }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>🔒</div>
-          <h3 style={{ fontSize: 16, margin: "0 0 8px" }}>
-            OWNER 권한이 필요합니다
-          </h3>
+          <h3 style={{ fontSize: 16, margin: "0 0 8px" }}>OWNER 권한이 필요합니다</h3>
           <p style={{ fontSize: 13, color: "#64748b", margin: 0 }}>
             캠페인 단계 펀널은 프로젝트 OWNER만 조회할 수 있습니다.
             (현재 권한: <Tag>{currentRole}</Tag>)
