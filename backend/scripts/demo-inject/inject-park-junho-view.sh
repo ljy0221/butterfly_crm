@@ -22,7 +22,8 @@ fi
 : "${API_BASE:?API_BASE 환경변수가 필요합니다 (.env 또는 export)}"
 : "${PROJECT_ID:?PROJECT_ID 환경변수가 필요합니다}"
 
-OCCURRED_AT="$(date -u +"%Y-%m-%dT%H:%M:%S")"
+# 백엔드는 Asia/Seoul LocalDateTime — UTC 가 아닌 로컬 시간 사용
+OCCURRED_AT="$(date +"%Y-%m-%dT%H:%M:%S")"
 EVENT_UUID="$(uuidgen 2>/dev/null | tr '[:upper:]' '[:lower:]' || python3 -c 'import uuid; print(uuid.uuid4())')"
 
 echo "==> 박준호 운동화 product_view 이벤트 주입"

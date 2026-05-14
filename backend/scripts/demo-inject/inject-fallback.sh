@@ -12,7 +12,7 @@ curl -sS \
     \"userId\": \"user-142\",
     \"deviceId\": \"dev-fallback-142\",
     \"eventCategory\": \"product_view\",
-    \"occurredAt\": \"$(date -u +"%Y-%m-%dT%H:%M:%S")\",
+    \"occurredAt\": \"$(date +"%Y-%m-%dT%H:%M:%S")\",
     \"eventData\": {\"category\": \"운동화\", \"productId\": \"sku-9847\"}
   }"
 echo

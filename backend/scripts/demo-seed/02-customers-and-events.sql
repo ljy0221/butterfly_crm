@@ -48,6 +48,15 @@ VALUES (730, 1, 73, 'dev-user-73-ios', 'IOS',
 INSERT INTO users (user_id, project_id, external_id, push_opt_in, signed_up_at, created_at, updated_at)
 VALUES (142, 1, 'user-142', TRUE, '2026-04-25 14:20:00', NOW(), NOW());
 
+-- 박준호 placeholder device — 시연 1시간 전 Android 실기기 등록 시 자연스럽게 교체될 placeholder.
+-- token_valid=FALSE 로 두어 잘못된 토큰으로 FCM 발송 시도가 안 되도록 함.
+INSERT INTO devices (device_id, project_id, user_id, external_id, platform,
+                     push_token, push_token_updated_at,
+                     token_valid, app_version, os_version, last_active_at, created_at)
+VALUES (1420, 1, 142, 'dev-user-142-placeholder', 'ANDROID',
+        'placeholder-token-user-142', NOW(),
+        FALSE, '0.0.0', '0.0', NULL, NOW());
+
 -- ──────────────────────────────────────────────────────────────────────────────
 -- 노이즈 사용자 10명 (user_id 200..209)
 -- ──────────────────────────────────────────────────────────────────────────────
@@ -92,25 +101,24 @@ VALUES
 -- ──────────────────────────────────────────────────────────────────────────────
 -- 박준호 이벤트 — 운동화 product_view 7건
 -- 최근 7일 내 2건 (Day-4, Day-2) → 시연 중 +1회로 3회 진입
--- device FK NOT NULL 이므로 device_id=730 (이지은 디바이스) 임시 사용
--- 실기기 등록 후에는 새 이벤트가 실제 device_id 로 들어옴
+-- device_id=1420 (박준호 전용 placeholder device)
 -- ──────────────────────────────────────────────────────────────────────────────
 INSERT INTO events (project_id, user_id, category_id, device_id, event_uuid,
                     occurred_at, schema_version, event_data, created_at)
 VALUES
-(1, 142, 1, 730, 'demoevt-142-01', NOW() - INTERVAL 25 DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-01', NOW() - INTERVAL 25 DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1101'), NOW()),
-(1, 142, 1, 730, 'demoevt-142-02', NOW() - INTERVAL 20 DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-02', NOW() - INTERVAL 20 DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1102'), NOW()),
-(1, 142, 1, 730, 'demoevt-142-03', NOW() - INTERVAL 17 DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-03', NOW() - INTERVAL 17 DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1103'), NOW()),
-(1, 142, 1, 730, 'demoevt-142-04', NOW() - INTERVAL 12 DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-04', NOW() - INTERVAL 12 DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1104'), NOW()),
-(1, 142, 1, 730, 'demoevt-142-05', NOW() - INTERVAL 9  DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-05', NOW() - INTERVAL 9  DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1105'), NOW()),
-(1, 142, 1, 730, 'demoevt-142-06', NOW() - INTERVAL 4  DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-06', NOW() - INTERVAL 4  DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1106'), NOW()),
-(1, 142, 1, 730, 'demoevt-142-07', NOW() - INTERVAL 2  DAY, 1,
+(1, 142, 1, 1420, 'demoevt-142-07', NOW() - INTERVAL 2  DAY, 1,
  JSON_OBJECT('category','운동화','productId','sku-1107'), NOW());
 
 SET FOREIGN_KEY_CHECKS = 1;

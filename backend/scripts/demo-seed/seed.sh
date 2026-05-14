@@ -20,6 +20,15 @@ run_sql() {
   mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DB" < "$file"
 }
 
+# B2 안전 가드 — bcrypt 해시 placeholder 미교체 감지
+if grep -q 'REPLACE_BCRYPT_HASH_FOR_demo1234' "${SCRIPT_DIR}/01-project-and-account.sql"; then
+  echo "❌ ERROR: bcrypt 해시 placeholder가 교체되지 않았습니다."
+  echo "   README 의 'bcrypt 해시 교체' 단계를 먼저 수행하세요:"
+  echo "   1) htpasswd -bnBC 10 \"\" demo1234 | tr -d ':\\n' 결과 복사"
+  echo "   2) 01-project-and-account.sql 의 \$2a\$10\$REPLACE... 라인을 그 결과로 교체"
+  exit 1
+fi
+
 # ──────────────────────────────────────────────────────────────────────────────
 # FCM credential JSON 치환 (firebase-service-account.json 존재 시)
 # ──────────────────────────────────────────────────────────────────────────────
@@ -29,16 +38,25 @@ RENDERED="${SCRIPT_DIR}/.tmp-04-fcm-credential.sql"
 
 FCM_READY=false
 if [[ -f "$FCM_JSON_FILE" ]]; then
-  if ! command -v jq >/dev/null 2>&1; then
-    echo "WARNING: jq 가 설치되어 있지 않습니다 — FCM credential 시드를 건너뜁니다."
-    echo "         (jq 설치 후 재실행하거나 D-3 리허설에서 수동 적재하세요)"
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "WARNING: python3 가 설치되어 있지 않습니다 — FCM credential 시드를 건너뜁니다."
   else
-    FCM_JSON_INLINE=$(jq -c . "$FCM_JSON_FILE")
-    # SQL 문자열 이스케이프: 작은따옴표 → ''
-    FCM_JSON_ESC=$(printf '%s' "$FCM_JSON_INLINE" | sed "s/'/''/g")
-    awk -v repl="$FCM_JSON_ESC" \
-        '{gsub(/__REPLACE_WITH_SERVICE_ACCOUNT_JSON__/, repl)}1' \
-        "$TEMPLATE" > "$RENDERED"
+    # python3 으로 안전 치환 — JSON 의 \, &, ', " 모두 정상 처리
+    # 1) 한 줄로 압축 (jq 가 있으면 사용, 없으면 그대로)
+    # 2) Python 으로 template placeholder 치환 (sed/awk 의 특수문자 위험 회피)
+    if command -v jq >/dev/null 2>&1; then
+      FCM_JSON_INLINE=$(jq -c . "$FCM_JSON_FILE")
+    else
+      FCM_JSON_INLINE=$(tr -d '\n' < "$FCM_JSON_FILE")
+    fi
+    python3 - "$TEMPLATE" "$RENDERED" "$FCM_JSON_INLINE" <<'PY'
+import sys, pathlib
+template_path, rendered_path, payload = sys.argv[1], sys.argv[2], sys.argv[3]
+content = pathlib.Path(template_path).read_text(encoding='utf-8')
+sql_escaped = payload.replace("'", "''")
+content = content.replace("__REPLACE_WITH_SERVICE_ACCOUNT_JSON__", sql_escaped)
+pathlib.Path(rendered_path).write_text(content, encoding='utf-8')
+PY
     FCM_READY=true
   fi
 else
