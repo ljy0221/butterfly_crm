@@ -73,6 +73,31 @@ H1 cold 측정에서 E 가 16ms 로 비현실적으로 빨라진 게 JVM JIT war
   - 원인 후보: HTTP thread contention / DB lock contention / Kafka publish.get() 직렬화 / Spring transaction 충돌
   - **이게 Throughput 시나리오의 핵심 측정값** — H1~H4 가설로 변화 추적
 
+## Phase B 가설별 측정 결과
+
+### H1 — Partition only (`h1-partition-only/baseline-raw-20260514-232156.*`)
+
+**적용**: WorkerKafkaConfig.CAMPAIGN_SEND_REQUESTED_PARTITIONS_BASELINE = 8 (concurrency 유지=1)
+
+| 시나리오 | BEFORE | H1 | 변화 |
+|---|---:|---:|---|
+| B avg | 632ms | **945ms** | **+49.5%** ⚠️ |
+| B p95 | 1192ms | **1716ms** | +44.0% |
+| E avg | 38.5ms | **21.7ms** | -43.6% |
+| E p95 | 177ms | **30ms** | -83.3% |
+| success | 130/130 | 130/130 | — |
+
+**예상**: "효과 0% — 1 thread 가 모든 partition consume → 병렬 안 됨"
+**실측**: B 오히려 느려짐 (+49%), E 는 빨라짐 (-44%)
+
+**해석 후보** (H2/H3 측정과 cross-check 필요):
+1. **Producer 동기 publish** — partition 8 개 leader 분산 → broker ack 대기 시간 증가 (현재 acks=all + enable.idempotence=true). 같은 broker(localhost) 내 leader 8 개라도 metadata round-trip 증가
+2. **Partition key 효과 없음** — `projectId.toString()="1"` → Kafka default partitioner 가 `hash("1") % 8` → 항상 같은 partition. 8 partition 의 의미 X
+3. **JVM/cache 분산** — partition 8 의 in-memory consumer state 가 8 개 분리 → cache locality 손실
+4. **측정 noise** — 측정 간 idle 시간 차이, system pressure
+
+ADR 가치: 예상과 다른 결과 발견 → H2 (concurrency only) / H3 (둘 다) 측정으로 원인 분석. **포트폴리오의 "실험 → 발견 → 분석" 스토리 자료**.
+
 ## Raw 파일 인벤토리
 
 | 파일 | 용도 |
