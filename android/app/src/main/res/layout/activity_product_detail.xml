@@ -55,11 +55,11 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- 상품 이미지 1:1 -->
+            <!-- 상품 이미지 — 고정 360dp 정사각형 영역 (LinearLayout 안에서 안정적 표시) -->
             <ImageView
                 android:id="@+id/imgProduct"
                 android:layout_width="match_parent"
-                android:layout_height="0dp"
+                android:layout_height="360dp"
                 android:adjustViewBounds="true"
                 android:scaleType="centerCrop"
                 android:src="@drawable/product_running_shoes"
