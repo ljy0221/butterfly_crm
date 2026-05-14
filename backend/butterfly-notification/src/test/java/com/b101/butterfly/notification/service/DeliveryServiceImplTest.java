@@ -35,11 +35,13 @@ class DeliveryServiceImplTest {
     @Mock private DeliveryResultPersister deliveryResultPersister;
     @Mock private ChannelCredentialService channelCredentialService;
     @Mock private UserContactPort userContactPort;
+    @Mock private CampaignExecutionResultPublisher campaignExecutionResultPublisher;
 
     @InjectMocks private DeliveryServiceImpl deliveryService;
 
     private static final Long PROJECT_ID = 1L;
     private static final Long CAMPAIGN_ID = 100L;
+    private static final Long EXECUTION_ID = 999L;
     private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null, null);
 
     @Test
@@ -48,7 +50,7 @@ class DeliveryServiceImplTest {
         FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
         DeliveryTarget target = new DeliveryTarget(1L, 10L, "token-abc", null, null);
         DeliveryCommand command = new DeliveryCommand(
-                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, null, credential, List.of(target));
+                PROJECT_ID, CAMPAIGN_ID, EXECUTION_ID, Channel.PUSH, MESSAGE, null, credential, List.of(target));
 
         ChannelAdapter mockAdapter = stubAdapter();
         when(channelAdapterRegistry.getAdapter(Channel.PUSH)).thenReturn(mockAdapter);
@@ -64,7 +66,7 @@ class DeliveryServiceImplTest {
     @DisplayName("credential과 targets가 null이면 DB에서 조회한다")
     void nullCredentialAndTargets_fetchesFromDb() {
         DeliveryCommand command = new DeliveryCommand(
-                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, List.of(1L, 2L), null, null);
+                PROJECT_ID, CAMPAIGN_ID, EXECUTION_ID, Channel.PUSH, MESSAGE, List.of(1L, 2L), null, null);
 
         FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
         when(channelCredentialService.getCredential(PROJECT_ID, Channel.PUSH)).thenReturn(credential);
@@ -88,7 +90,7 @@ class DeliveryServiceImplTest {
     void emptyTargets_throwsException() {
         FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
         DeliveryCommand command = new DeliveryCommand(
-                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, null, credential, List.of());
+                PROJECT_ID, CAMPAIGN_ID, EXECUTION_ID, Channel.PUSH, MESSAGE, null, credential, List.of());
 
         assertThatThrownBy(() -> deliveryService.deliver(command))
                 .isInstanceOfSatisfying(BusinessException.class, e ->
@@ -102,7 +104,7 @@ class DeliveryServiceImplTest {
         DeliveryTarget target1 = new DeliveryTarget(1L, 10L, "token-1", null, null);
         DeliveryTarget target2 = new DeliveryTarget(2L, 20L, "token-2", null, null);
         DeliveryCommand command = new DeliveryCommand(
-                PROJECT_ID, CAMPAIGN_ID, Channel.PUSH, MESSAGE, null, credential, List.of(target1, target2));
+                PROJECT_ID, CAMPAIGN_ID, EXECUTION_ID, Channel.PUSH, MESSAGE, null, credential, List.of(target1, target2));
 
         ChannelAdapter mockAdapter = stubAdapter();
         when(channelAdapterRegistry.getAdapter(Channel.PUSH)).thenReturn(mockAdapter);
