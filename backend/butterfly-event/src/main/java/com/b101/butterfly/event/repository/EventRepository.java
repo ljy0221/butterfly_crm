@@ -24,6 +24,25 @@ public interface EventRepository extends JpaRepository<Event, Long> {
   /** 시연용 — 특정 (project, user) 의 최근 이벤트 최대 20건, 최신순. */
   List<Event> findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(Long projectId, Long userId);
 
+  /** 시연용 — 특정 (project, user) 의 전체 이벤트 수. */
+  long countByProjectIdAndUserId(Long projectId, Long userId);
+
+  /** 시연용 — 특정 (project, user) 의 카테고리명 기준 이벤트 수. */
+  @Query("""
+      SELECT COUNT(e) FROM Event e
+      WHERE e.projectId = :projectId
+        AND e.userId = :userId
+        AND e.categoryId IN (
+            SELECT c.id FROM EventCategory c
+            WHERE c.projectId = :projectId AND c.name = :categoryName
+        )
+      """)
+  long countByProjectIdAndUserIdAndCategoryName(
+      @Param("projectId") Long projectId,
+      @Param("userId") Long userId,
+      @Param("categoryName") String categoryName
+  );
+
   /**
    * event_uuid 기준 멱등 insert. 중복이면 0, 신규면 1 반환. (events insert 결과로 event_daily_agg 증분 여부를 결정하는 용도)
    */
