@@ -27,9 +27,28 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    flavorDimensions = ["purpose"]
+    productFlavors {
+        demo {
+            dimension = "purpose"
+            resValue "string", "app_name", "Butterfly 데모"
+            buildConfigField "boolean", "IS_QA_BUILD", "false"
+        }
+        qa {
+            dimension = "purpose"
+            applicationIdSuffix ".qa"
+            versionNameSuffix "-qa"
+            resValue "string", "app_name", "Butterfly QA"
+            buildConfigField "boolean", "IS_QA_BUILD", "true"
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        buildConfig = true
+        resValues = true
     }
 }
 
