@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -77,7 +76,6 @@ public class ClickHouseUserDirectoryReaderAdapter implements UserDirectoryReader
             return 0L;
         }
 
-        long inserted = 0L;
         LocalDateTime matchedAt = LocalDateTime.now();
         List<SqlParameterSource> buffer = new ArrayList<>(CHUNK_SIZE);
         long insertStart = System.nanoTime();
@@ -89,14 +87,18 @@ public class ClickHouseUserDirectoryReaderAdapter implements UserDirectoryReader
                             .addValue("matchedAt", matchedAt)
                             .addValue("expiresAt", null));
             if (buffer.size() >= CHUNK_SIZE) {
-                inserted += sumBatch(buffer);
+                executeBatch(buffer);
                 buffer.clear();
             }
         }
         if (!buffer.isEmpty()) {
-            inserted += sumBatch(buffer);
+            executeBatch(buffer);
         }
         long insertMillis = (System.nanoTime() - insertStart) / 1_000_000;
+        // ConnectorJ 의 rewriteBatchedStatements=true 일 때 batchUpdate 의 affected row count 는
+        // SUCCESS_NO_INFO(-2) 가 반환되어 sum 으로 신뢰할 수 없다. 매칭된 userIds.size() 를 그대로
+        // 사용 — INSERT IGNORE 라 race 가 아닌 정상 흐름에선 전부 적재 (deleteBySegmentId 직후).
+        long inserted = userIds.size();
         log.info(
                 "MySQL segment_members INSERT segmentId={} inserted={} in {} ms",
                 segmentId,
@@ -105,10 +107,7 @@ public class ClickHouseUserDirectoryReaderAdapter implements UserDirectoryReader
         return inserted;
     }
 
-    private long sumBatch(List<SqlParameterSource> buffer) {
-        int[] updated =
-                mysqlJdbcTemplate.batchUpdate(
-                        INSERT_SQL, buffer.toArray(SqlParameterSource[]::new));
-        return Arrays.stream(updated).sum();
+    private void executeBatch(List<SqlParameterSource> buffer) {
+        mysqlJdbcTemplate.batchUpdate(INSERT_SQL, buffer.toArray(SqlParameterSource[]::new));
     }
 }
