@@ -28,6 +28,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final DeliveryResultPersister deliveryResultPersister;
     private final ChannelCredentialService channelCredentialService;
     private final UserContactPort userContactPort;
+    private final CampaignExecutionResultPublisher campaignExecutionResultPublisher;
 
     @Override
     public void deliver(DeliveryCommand command) {
@@ -53,8 +54,8 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         // 3. 내부용 command 재조립 (credential + targets 확정)
         DeliveryCommand resolved = new DeliveryCommand(
-                command.projectId(), command.campaignId(), command.channel(),
-                command.message(), command.userIds(), credential, targets);
+                command.projectId(), command.campaignId(), command.executionId(),
+                command.channel(), command.message(), command.userIds(), credential, targets);
 
         ChannelAdapter adapter = channelAdapterRegistry.getAdapter(command.channel());
 
@@ -63,5 +64,10 @@ public class DeliveryServiceImpl implements DeliveryService {
 
         // Phase 2: 결과 저장 — 별도 빈의 @Transactional 메서드 호출
         deliveryResultPersister.persist(resolved, outcomes);
+
+        // Phase 3: per-execution summary 발행 (campaign-execution-result 토픽)
+        //   — worker 측 consumer 가 받아 CampaignExecution.status SEND → SUCCESS|FAIL 전이.
+        //   외부 IO 라 트랜잭션 밖에서 수행 (Phase 1/2 분리와 같은 원칙).
+        campaignExecutionResultPublisher.publish(resolved, outcomes);
     }
 }

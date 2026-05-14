@@ -6,9 +6,13 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
+import com.b101.butterfly.campaign.lifecycle.domain.Campaign;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecution;
 import com.b101.butterfly.campaign.lifecycle.domain.CampaignExecutionRepository;
+import com.b101.butterfly.campaign.lifecycle.domain.CampaignRepository;
 import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignExecutionStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignStatus;
+import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignType;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import java.util.Optional;
@@ -24,12 +28,19 @@ class CampaignExecutionResultRecorderTest {
     private static final Long CAMPAIGN_ID = 10L;
 
     private CampaignExecutionRepository repository;
+    private CampaignRepository campaignRepository;
     private CampaignExecutionResultRecorder recorder;
 
     @BeforeEach
     void setUp() {
         repository = mock(CampaignExecutionRepository.class);
-        recorder = new CampaignExecutionResultRecorder(repository);
+        campaignRepository = mock(CampaignRepository.class);
+        recorder = new CampaignExecutionResultRecorder(repository, campaignRepository);
+        // 기본 stub — ONE_TIME + ACTIVE 캠페인 (자동 ENDED 분기에 들어가도 안전)
+        Campaign oneTimeActive = mock(Campaign.class);
+        given(oneTimeActive.getCampaignType()).willReturn(CampaignType.ONE_TIME);
+        given(oneTimeActive.getCampaignStatus()).willReturn(CampaignStatus.ACTIVE);
+        given(campaignRepository.findByCampaignId(CAMPAIGN_ID)).willReturn(Optional.of(oneTimeActive));
     }
 
     @Nested
