@@ -27,6 +27,7 @@
 import http from 'k6/http';
 import { check } from 'k6';
 import { Trend, Counter } from 'k6/metrics';
+import exec from 'k6/execution';                                   // unique iteration index
 
 const BASE_URL = __ENV.BASE_URL || 'http://host.docker.internal:8080';
 const JWT = __ENV.JWT || '';
@@ -94,12 +95,14 @@ function activate(campaignId, scenarioTag) {
 }
 
 export function activateThroughput() {
-  const idx = __ITER % CAMPAIGN_IDS.length;
+  // exec.scenario.iterationInTest 는 scenario 내에서 unique sequential index — VU 간 충돌 없음.
+  // __ITER 는 VU 의 local count (shared-iterations 에서 VU 마다 0 부터 시작 → 같은 campaign 충돌).
+  const idx = exec.scenario.iterationInTest % CAMPAIGN_IDS.length;
   activate(CAMPAIGN_IDS[idx], 'B-throughput');
 }
 
 export function activateLatencyOne() {
-  const idx = __ITER % LATENCY_CAMPAIGN_IDS.length;
+  const idx = exec.scenario.iterationInTest % LATENCY_CAMPAIGN_IDS.length;
   activate(LATENCY_CAMPAIGN_IDS[idx], 'E-latency');
 }
 
