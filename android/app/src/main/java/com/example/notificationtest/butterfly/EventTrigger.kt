@@ -63,7 +63,11 @@ object EventTrigger {
     @JvmStatic
     fun firePurchase(context: Context) {
         val orderId = "O-${System.currentTimeMillis()}"
-        sendEvent(context, "purchase", mapOf("orderId" to orderId, "totalAmount" to 19900))
+        sendEvent(context, "purchase", mapOf(
+            "orderId" to orderId,
+            "productId" to "sku-9847",
+            "totalAmount" to 89000
+        ))
     }
 
     private fun sendEvent(context: Context, category: String, data: Map<String, Any>) {
