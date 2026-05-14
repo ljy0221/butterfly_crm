@@ -131,3 +131,27 @@ butterfly:
 mail:
   from: ${MAIL_FROM}
   base-url: ${MAIL_BASE_URL:http://localhost:5175}
+
+# S14P31B101-294: Actuator + Micrometer Prometheus — 측정 인프라.
+# 외부 노출 endpoint 는 prometheus + health + info 만 (운영 노출 위험 최소화).
+# `management.metrics.tags` 의 application/env 라벨은 PromQL 필터링 및
+# Grafana dashboard variable 로 사용.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+    prometheus:
+      access: read_only
+  metrics:
+    tags:
+      application: butterfly
+      env: ${SPRING_PROFILES_ACTIVE:local}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
