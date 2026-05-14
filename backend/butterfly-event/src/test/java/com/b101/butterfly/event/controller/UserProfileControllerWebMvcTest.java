@@ -20,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -51,7 +50,7 @@ class UserProfileControllerWebMvcTest {
                 new Summary(47L, LocalDateTime.now(), 0L),
                 List.of()
         );
-        when(userProfileService.getProfile(eq(PROJECT_ID), eq(USER_ID))).thenReturn(response);
+        when(userProfileService.getProfile(PROJECT_ID, USER_ID)).thenReturn(response);
 
         mockMvc.perform(get(URL))
                 .andExpect(status().isOk())
@@ -79,7 +78,7 @@ class UserProfileControllerWebMvcTest {
                                 LocalDateTime.of(2026, 5, 14, 14, 0), "{}")
                 )
         );
-        when(userProfileService.getProfile(eq(PROJECT_ID), eq(USER_ID))).thenReturn(response);
+        when(userProfileService.getProfile(PROJECT_ID, USER_ID)).thenReturn(response);
 
         mockMvc.perform(get(URL))
                 .andExpect(status().isOk())
