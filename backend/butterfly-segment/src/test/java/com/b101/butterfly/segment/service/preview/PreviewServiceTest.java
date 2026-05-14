@@ -110,16 +110,14 @@ class PreviewServiceTest {
     }
 
     @Test
-    @DisplayName("TAG/USER/DEVICE 트리: SQL 변환 → reader 조회 → HLL 캐시")
+    @DisplayName("TAG/USER/DEVICE 트리: SQL 변환 → countUserMatches → exact 캐시 (S14P31B101-275)")
     void cacheMissComputesAndCachesViaSql() {
         GroupNode tree = tagOnlyTree();
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u", Map.of());
         when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
-        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
-                .thenReturn(List.of(1L, 2L, 3L));
-        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(1L, 2L, 3L)), any()))
+        when(userDirectoryReader.countUserMatches(eq(fragment.sql()), eq(fragment.params())))
                 .thenReturn(3L);
 
         PreviewResponse response = previewService.preview(PROJECT_ID, tree);
@@ -127,6 +125,8 @@ class PreviewServiceTest {
         assertThat(response.estimatedCount()).isEqualTo(3);
         verify(conditionTreeValidator).validate(tree);
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
+        verify(userDirectoryReader, never()).queryUserIds(anyString(), anyMap());
+        verify(hllPreviewExecutor).cacheExactCount(eq(HASH), eq(3L), any());
     }
 
     @Test
@@ -148,16 +148,14 @@ class PreviewServiceTest {
     }
 
     @Test
-    @DisplayName("필터가 있는 EVENT 단독 트리: SQL 변환 경로로 처리")
+    @DisplayName("필터가 있는 EVENT 단독 트리: SQL 변환 → countUserMatches (S14P31B101-275)")
     void filteredEventOnlyTreeUsesSqlConverter() {
         GroupNode tree = filteredEventOnlyTree();
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE filtered_event", Map.of());
         when(sqlConverter.convert(eq(tree), any(EventQueryContext.class))).thenReturn(fragment);
-        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
-                .thenReturn(List.of(31L, 32L));
-        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(31L, 32L)), any()))
+        when(userDirectoryReader.countUserMatches(eq(fragment.sql()), eq(fragment.params())))
                 .thenReturn(2L);
 
         PreviewResponse response = previewService.preview(PROJECT_ID, tree);
@@ -165,6 +163,7 @@ class PreviewServiceTest {
         assertThat(response.estimatedCount()).isEqualTo(2);
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
         verify(sqlConverter).convert(eq(tree), any(EventQueryContext.class));
+        verify(hllPreviewExecutor).cacheExactCount(eq(HASH), eq(2L), any());
     }
 
     @Test
@@ -186,16 +185,14 @@ class PreviewServiceTest {
     }
 
     @Test
-    @DisplayName("mixed 트리: SQL 변환 → reader 조회 → HLL 캐시")
+    @DisplayName("mixed 트리: SQL 변환 → countUserMatches → exact 캐시 (S14P31B101-275)")
     void mixedTreeUsesSqlConverter() {
         GroupNode tree = mixedTree();
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE mixed", Map.of());
         when(sqlConverter.convert(eq(tree), any(EventQueryContext.class))).thenReturn(fragment);
-        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
-                .thenReturn(List.of(11L, 12L));
-        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of(11L, 12L)), any()))
+        when(userDirectoryReader.countUserMatches(eq(fragment.sql()), eq(fragment.params())))
                 .thenReturn(2L);
 
         PreviewResponse response = previewService.preview(PROJECT_ID, tree);
@@ -203,20 +200,21 @@ class PreviewServiceTest {
         assertThat(response.estimatedCount()).isEqualTo(2);
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
         verify(sqlConverter).convert(eq(tree), any(EventQueryContext.class));
+        verify(hllPreviewExecutor).cacheExactCount(eq(HASH), eq(2L), any());
     }
 
     @Test
-    @DisplayName("빈 user 결과는 count 0으로 반환된다 (HllExecutor가 sentinel 처리)")
+    @DisplayName("빈 결과는 count 0 으로 반환 + exact 캐시에 sentinel (S14P31B101-275)")
     void emptyResultReturnsZero() {
         when(hasher.hash(eq(PROJECT_ID), any())).thenReturn(HASH);
         when(hllPreviewExecutor.getCachedCount(HASH)).thenReturn(OptionalLong.empty());
         when(sqlConverter.convert(any(), any(EventQueryContext.class)))
                 .thenReturn(new SqlFragment("SELECT u.user_id FROM users u", Map.of()));
-        when(userDirectoryReader.queryUserIds(anyString(), anyMap())).thenReturn(List.of());
-        when(hllPreviewExecutor.computeAndCache(eq(HASH), eq(List.of()), any())).thenReturn(0L);
+        when(userDirectoryReader.countUserMatches(anyString(), anyMap())).thenReturn(0L);
 
         PreviewResponse response = previewService.preview(PROJECT_ID, tagOnlyTree());
 
         assertThat(response.estimatedCount()).isZero();
+        verify(hllPreviewExecutor).cacheExactCount(eq(HASH), eq(0L), any());
     }
 }

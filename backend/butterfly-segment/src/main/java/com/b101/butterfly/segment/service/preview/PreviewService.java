@@ -56,19 +56,21 @@ public class PreviewService {
             return new PreviewResponse((int) cached.getAsLong(), METHOD_HLL, LocalDateTime.now());
         }
 
-        List<Long> userIds = resolveUserIds(projectId, tree);
-        long count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
+        EventQueryContext context =
+                new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
+        long count;
+        if (isFilterlessEventOnlyTree(tree)) {
+            // event_daily_agg 사전 집계 흐름 — 결과가 작아 list → HLL 캐시 유지 (S14P31B101-199 패턴).
+            List<Long> userIds =
+                    resolveByEventPort((EventNode) tree.conditions().get(0), context);
+            count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
+        } else {
+            // S14P31B101-275 — list 전송 비용 없이 SQL count 한 줄로 처리. ClickHouse 활성 시 ~수 초.
+            count = resolveBySqlCount(tree, context);
+            hllPreviewExecutor.cacheExactCount(hash, count, HLL_TTL);
+        }
 
         return new PreviewResponse((int) count, METHOD_HLL, LocalDateTime.now());
-    }
-
-    private List<Long> resolveUserIds(Long projectId, GroupNode tree) {
-        EventQueryContext context = new EventQueryContext(
-                projectId, LocalDate.now(SEOUL), SEOUL);
-        if (isFilterlessEventOnlyTree(tree)) {
-            return resolveByEventPort((EventNode) tree.conditions().get(0), context);
-        }
-        return resolveBySql(tree, context);
     }
 
     private List<Long> resolveByEventPort(EventNode eventNode, EventQueryContext context) {
@@ -79,14 +81,14 @@ public class PreviewService {
         }
     }
 
-    private List<Long> resolveBySql(GroupNode tree, EventQueryContext context) {
+    private long resolveBySqlCount(GroupNode tree, EventQueryContext context) {
         SqlFragment fragment;
         try {
             fragment = sqlConverter.convert(tree, context);
         } catch (EventConditionNotReadyException e) {
             throw new BusinessException(SegmentErrorCode.SEGMENT_501_EVENT_NOT_READY);
         }
-        return userDirectoryReader.queryUserIds(fragment.sql(), fragment.params());
+        return userDirectoryReader.countUserMatches(fragment.sql(), fragment.params());
     }
 
     private static boolean isFilterlessEventOnlyTree(GroupNode tree) {

@@ -14,6 +14,19 @@ public interface UserDirectoryReader {
     List<Long> queryUserIds(String sql, Map<String, Object> params);
 
     /**
+     * 매칭 user_id 의 개수만 카운트 (S14P31B101-275). 미리보기에서 list 전체를 JVM 로 받지 않고
+     * COUNT 쿼리로 결과 수만 받는다.
+     *
+     * <p>MySQL 어댑터: {@code SELECT COUNT(*) FROM (<selectSql>) AS m}
+     * ClickHouse 어댑터: {@code SELECT count() FROM (<selectSql>) AS m}
+     *
+     * @param selectSql {@code SELECT user_id ...} 형태의 SQL (named parameters)
+     * @param params 바인딩 파라미터
+     * @return 매칭 user 수
+     */
+    long countUserMatches(String selectSql, Map<String, Object> params);
+
+    /**
      * filtered/mixed 트리 빌드 최적화 — 매칭 user_id 를 segment_members 에 단일
      * {@code INSERT ... SELECT} statement 로 직접 적재한다 (S14P31B101-269).
      *

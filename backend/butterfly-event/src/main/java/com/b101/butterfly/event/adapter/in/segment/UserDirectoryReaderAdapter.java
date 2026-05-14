@@ -21,6 +21,13 @@ public class UserDirectoryReaderAdapter implements UserDirectoryReader {
         return jdbcTemplate.queryForList(sql, params, Long.class);
     }
 
+    @Override
+    public long countUserMatches(String sql, Map<String, Object> params) {
+        String wrapped = "SELECT COUNT(*) FROM (" + sql + ") AS m";
+        Long count = jdbcTemplate.queryForObject(wrapped, params, Long.class);
+        return count == null ? 0L : count;
+    }
+
     /**
      * {@inheritDoc}
      *

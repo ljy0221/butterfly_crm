@@ -61,6 +61,16 @@ public class ClickHouseUserDirectoryReaderAdapter implements UserDirectoryReader
     }
 
     @Override
+    public long countUserMatches(String sql, Map<String, Object> params) {
+        long start = System.nanoTime();
+        String wrapped = "SELECT count() FROM (" + sql + ") AS m";
+        Long count = clickHouseJdbcTemplate.queryForObject(wrapped, params, Long.class);
+        long ms = (System.nanoTime() - start) / 1_000_000;
+        log.info("ClickHouse preview count = {} in {} ms", count, ms);
+        return count == null ? 0L : count;
+    }
+
+    @Override
     public long materializeUserMatchesIntoSegment(
             Long segmentId, String selectSql, Map<String, Object> params) {
         long start = System.nanoTime();

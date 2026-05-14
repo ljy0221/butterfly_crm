@@ -23,6 +23,8 @@ public class HllPreviewExecutor {
 
     private static final String HLL_KEY_PREFIX = "segment:hll:";
     private static final String EMPTY_KEY_PREFIX = "segment:hll:empty:";
+    /** S14P31B101-275 — ClickHouse/SQL count 흐름의 exact count 캐시 키. HLL 키와 별도. */
+    private static final String EXACT_KEY_PREFIX = "segment:cnt:";
 
     private final StringRedisTemplate redisTemplate;
 
@@ -43,6 +45,15 @@ public class HllPreviewExecutor {
     }
 
     public OptionalLong getCachedCount(String hash) {
+        // 우선순위: exact count (SQL count 흐름) > empty sentinel > HLL approximate
+        String exact = redisTemplate.opsForValue().get(exactKey(hash));
+        if (exact != null) {
+            try {
+                return OptionalLong.of(Long.parseLong(exact));
+            } catch (NumberFormatException ignored) {
+                // 손상된 값 — miss 로 처리해 재계산
+            }
+        }
         if (Boolean.TRUE.equals(redisTemplate.hasKey(emptyKey(hash)))) {
             return OptionalLong.of(0L);
         }
@@ -52,11 +63,27 @@ public class HllPreviewExecutor {
         return OptionalLong.empty();
     }
 
+    /**
+     * SQL count 흐름의 정확값 캐시 (S14P31B101-275). 0 이면 empty sentinel, 그 외엔 exact key 에 저장.
+     */
+    public long cacheExactCount(String hash, long count, Duration ttl) {
+        if (count == 0L) {
+            redisTemplate.opsForValue().set(emptyKey(hash), "1", ttl);
+        } else {
+            redisTemplate.opsForValue().set(exactKey(hash), Long.toString(count), ttl);
+        }
+        return count;
+    }
+
     private static String hllKey(String hash) {
         return HLL_KEY_PREFIX + hash;
     }
 
     private static String emptyKey(String hash) {
         return EMPTY_KEY_PREFIX + hash;
+    }
+
+    private static String exactKey(String hash) {
+        return EXACT_KEY_PREFIX + hash;
     }
 }
