@@ -206,32 +206,22 @@ export default function Templates() {
         />
         <Select
           value={channelFilter}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-            setChannelFilter(e.target.value as ChannelFilter);
+          options={CHANNEL_FILTERS}
+          onChange={(v: string) => {
+            setChannelFilter(v as ChannelFilter);
             setPage(0);
           }}
           style={{ minWidth: 160 }}
-        >
-          {CHANNEL_FILTERS.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-        </Select>
+        />
         <Select
           value={sort}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-            setSort(e.target.value as SortKey);
+          options={SORT_OPTIONS}
+          onChange={(v: string) => {
+            setSort(v as SortKey);
             setPage(0);
           }}
           style={{ minWidth: 140 }}
-        >
-          {SORT_OPTIONS.map((s) => (
-            <option key={s.value} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </Select>
+        />
         {isFetching && !isLoading && (
           <span style={{ fontSize: 11, color: "#94a3b8" }}>새로고침 중...</span>
         )}
