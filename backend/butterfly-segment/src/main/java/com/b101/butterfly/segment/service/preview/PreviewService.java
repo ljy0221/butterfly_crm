@@ -37,6 +37,8 @@ public class PreviewService {
 
     private static final Duration HLL_TTL = Duration.ofHours(24);
     private static final String METHOD_HLL = "HLL";
+    /** S14P31B101-275 — SQL count 흐름은 정확값. frontend 가 "정확 (EXACT)" 로 표시. */
+    private static final String METHOD_EXACT = "EXACT";
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final ConditionTreeValidator conditionTreeValidator;
@@ -51,26 +53,30 @@ public class PreviewService {
 
         String hash = hasher.hash(projectId, tree);
 
-        OptionalLong cached = hllPreviewExecutor.getCachedCount(hash);
+        var cached = hllPreviewExecutor.getCached(hash);
         if (cached.isPresent()) {
-            return new PreviewResponse((int) cached.getAsLong(), METHOD_HLL, LocalDateTime.now());
+            return new PreviewResponse(
+                    (int) cached.get().count(), cached.get().method(), LocalDateTime.now());
         }
 
         EventQueryContext context =
                 new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
         long count;
+        String method;
         if (isFilterlessEventOnlyTree(tree)) {
             // event_daily_agg 사전 집계 흐름 — 결과가 작아 list → HLL 캐시 유지 (S14P31B101-199 패턴).
             List<Long> userIds =
                     resolveByEventPort((EventNode) tree.conditions().get(0), context);
             count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
+            method = METHOD_HLL;
         } else {
-            // S14P31B101-275 — list 전송 비용 없이 SQL count 한 줄로 처리. ClickHouse 활성 시 ~수 초.
+            // S14P31B101-275 — SQL count 한 줄, 정확값 반환. ClickHouse 활성 시 ~수 초.
             count = resolveBySqlCount(tree, context);
             hllPreviewExecutor.cacheExactCount(hash, count, HLL_TTL);
+            method = METHOD_EXACT;
         }
 
-        return new PreviewResponse((int) count, METHOD_HLL, LocalDateTime.now());
+        return new PreviewResponse((int) count, method, LocalDateTime.now());
     }
 
     private List<Long> resolveByEventPort(EventNode eventNode, EventQueryContext context) {

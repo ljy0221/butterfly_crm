@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalLong;
 
 /**
@@ -45,23 +46,33 @@ public class HllPreviewExecutor {
     }
 
     public OptionalLong getCachedCount(String hash) {
-        // 우선순위: exact count (SQL count 흐름) > empty sentinel > HLL approximate
+        return getCached(hash).map(c -> OptionalLong.of(c.count())).orElseGet(OptionalLong::empty);
+    }
+
+    /**
+     * 캐시 조회 — count 와 method 같이 반환. S14P31B101-275 에서 추가.
+     * 우선순위: exact count (SQL count, EXACT) > empty sentinel (EXACT) > HLL approximate (HLL).
+     */
+    public Optional<CachedCount> getCached(String hash) {
         String exact = redisTemplate.opsForValue().get(exactKey(hash));
         if (exact != null) {
             try {
-                return OptionalLong.of(Long.parseLong(exact));
+                return Optional.of(new CachedCount(Long.parseLong(exact), "EXACT"));
             } catch (NumberFormatException ignored) {
                 // 손상된 값 — miss 로 처리해 재계산
             }
         }
         if (Boolean.TRUE.equals(redisTemplate.hasKey(emptyKey(hash)))) {
-            return OptionalLong.of(0L);
+            return Optional.of(new CachedCount(0L, "EXACT"));
         }
         if (Boolean.TRUE.equals(redisTemplate.hasKey(hllKey(hash)))) {
-            return OptionalLong.of(redisTemplate.opsForHyperLogLog().size(hllKey(hash)));
+            return Optional.of(
+                    new CachedCount(redisTemplate.opsForHyperLogLog().size(hllKey(hash)), "HLL"));
         }
-        return OptionalLong.empty();
+        return Optional.empty();
     }
+
+    public record CachedCount(long count, String method) {}
 
     /**
      * SQL count 흐름의 정확값 캐시 (S14P31B101-275). 0 이면 empty sentinel, 그 외엔 exact key 에 저장.
