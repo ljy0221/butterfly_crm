@@ -46,6 +46,20 @@ object EventTrigger {
     }
 
     @JvmStatic
+    fun registerDeviceSilently(context: Context, fcmToken: String) {
+        val deviceId = DeviceManager.getOrCreateDeviceId(context)
+        val request = DeviceRegisterRequest(
+            deviceId = deviceId,
+            userId = DEMO_USER_ID,
+            platform = "ANDROID",
+            pushToken = fcmToken.ifBlank { "no_token" },
+            appVersion = "1.0.0",
+            osVersion = Build.VERSION.RELEASE ?: "unknown"
+        )
+        ApiClient.api.registerDevice(request).enqueue(silentCallback("디바이스 등록"))
+    }
+
+    @JvmStatic
     fun fireAppOpen(context: Context) {
         sendEvent(context, "app_open", mapOf("appVersion" to "1.0.0"))
     }
@@ -58,6 +72,24 @@ object EventTrigger {
             "productName" to "데일리 러닝화",
             "price" to 89000
         ))
+    }
+
+    @JvmStatic
+    fun fireProductViewSilently(context: Context) {
+        val deviceId = DeviceManager.getOrCreateDeviceId(context)
+        val request = EventCollectRequest(
+            deviceId = deviceId,
+            userId = DEMO_USER_ID,
+            eventCategory = "product_view",
+            occurredAt = nowIsoLocal(),
+            eventData = mapOf(
+                "category" to "운동화",
+                "productId" to "sku-9847",
+                "productName" to "데일리 러닝화",
+                "price" to 89000
+            )
+        )
+        ApiClient.api.collectEvent(request).enqueue(silentCallback("product_view"))
     }
 
     @JvmStatic
@@ -112,6 +144,24 @@ object EventTrigger {
             override fun onFailure(call: Call<ApiResponse<T>>, t: Throwable) {
                 Log.e(TAG, "[$label] network error", t)
                 Toast.makeText(context, "[$label] 네트워크 오류: ${t.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+
+    private fun <T> silentCallback(label: String): Callback<ApiResponse<T>> =
+        object : Callback<ApiResponse<T>> {
+            override fun onResponse(
+                call: Call<ApiResponse<T>>,
+                response: Response<ApiResponse<T>>
+            ) {
+                val body = response.body()
+                if (response.isSuccessful && body?.success == true) {
+                    Log.d(TAG, "[silent:$label] OK ${body.data}")
+                } else {
+                    Log.w(TAG, "[silent:$label] FAIL code=${response.code()} err=${body?.error}")
+                }
+            }
+            override fun onFailure(call: Call<ApiResponse<T>>, t: Throwable) {
+                Log.e(TAG, "[silent:$label] network error", t)
             }
         }
 }
