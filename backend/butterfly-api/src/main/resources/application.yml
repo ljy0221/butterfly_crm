@@ -124,6 +124,15 @@ butterfly:
   # worker 부팅 시 missing-bean 으로 컨텍스트가 실패하지 않게 한다.
   reconciliation:
     enabled: true
+  # S14P31B101-275 — ClickHouse PoC 통합. enabled=true 면 SegmentBuildJob 의 filtered/mixed 빌드 경로가
+  # ClickHouse 에 SELECT 발사 후 MySQL segment_members 에 chunk INSERT. 로컬 docker-compose 의
+  # butterfly-clickhouse (port 8123 HTTP, 9000 native) 가 기본.
+  clickhouse:
+    enabled: ${BUTTERFLY_CLICKHOUSE_ENABLED:false}
+    url: ${CLICKHOUSE_URL:jdbc:clickhouse://localhost:8123/butterfly}
+    username: ${CLICKHOUSE_USERNAME:butterfly}
+    password: ${CLICKHOUSE_PASSWORD:butterfly}
+    max-pool-size: ${CLICKHOUSE_MAX_POOL_SIZE:4}
 
 mail:
   from: ${MAIL_FROM}

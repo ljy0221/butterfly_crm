@@ -28,7 +28,9 @@ class ConditionTreeToSqlConverterTest {
     private static final JsonNodeFactory NODE = JsonNodeFactory.instance;
     private static final EventQueryContext EVENT_CONTEXT =
             new EventQueryContext(1L, LocalDate.of(2026, 5, 6), ZoneId.of("Asia/Seoul"));
-    private final ConditionTreeToSqlConverter converter = new ConditionTreeToSqlConverter();
+    private final ConditionTreeToSqlConverter converter =
+            new ConditionTreeToSqlConverter(
+                    new com.b101.butterfly.segment.service.preview.dialect.MysqlSqlDialect());
 
     @Test
     @DisplayName("단일 TAG eq → user_tags EXISTS 서브쿼리")
@@ -275,13 +277,13 @@ class ConditionTreeToSqlConverterTest {
                 .contains("ev.project_id = :projectId")
                 .contains("ev.category_id = :eventCategoryId0")
                 .contains("ev.occurred_at >= :eventFromDate0")
-                .contains("JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterPath0_0)) = :eventFilterVal0_0")
-                .contains("CAST(JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterPath0_1)) AS DECIMAL(30, 10)) >= :eventFilterVal0_1")
+                .contains("JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterVal0_0_path)) = :eventFilterVal0_0")
+                .contains("CAST(JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterVal0_1_path)) AS DECIMAL(30, 10)) >= :eventFilterVal0_1")
                 .contains("GROUP BY ev.user_id")
                 .contains("HAVING COUNT(*) >= :eventMinCount0");
-        assertThat(fragment.params()).containsEntry("eventFilterPath0_0", "$.\"productId\"");
+        assertThat(fragment.params()).containsEntry("eventFilterVal0_0_path", "$.\"productId\"");
         assertThat(fragment.params()).containsEntry("eventFilterVal0_0", "SKU-1");
-        assertThat(fragment.params()).containsEntry("eventFilterPath0_1", "$.\"price\"");
+        assertThat(fragment.params()).containsEntry("eventFilterVal0_1_path", "$.\"price\"");
         assertThat(fragment.params()).containsEntry("eventFilterVal0_1", 30000);
     }
 
@@ -309,7 +311,7 @@ class ConditionTreeToSqlConverterTest {
         assertThat(fragment.sql())
                 .contains("ev.occurred_at >= :eventStartDate0")
                 .contains("ev.occurred_at < :eventEndExclusiveDate0")
-                .contains("JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterPath0_0)) LIKE :eventFilterVal0_0");
+                .contains("JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :eventFilterVal0_0_path)) LIKE :eventFilterVal0_0");
         assertThat(fragment.params()).containsEntry("eventStartDate0", LocalDate.of(2026, 5, 1));
         assertThat(fragment.params())
                 .containsEntry("eventEndExclusiveDate0", LocalDate.of(2026, 5, 6));

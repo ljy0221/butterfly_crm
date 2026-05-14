@@ -11,6 +11,8 @@ dependencies {
     implementation 'org.springframework.security:spring-security-core'
     implementation 'org.springframework.kafka:spring-kafka'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    // S14P31B101-275 — ClickHouse JDBC. butterfly.clickhouse.enabled=true 일 때 사용.
+    implementation 'com.clickhouse:clickhouse-jdbc:0.6.5:all'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation project(':butterfly-testsupport')

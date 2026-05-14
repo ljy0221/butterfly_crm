@@ -13,7 +13,9 @@ import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.domain.condition.UserNode;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
 import com.b101.butterfly.segment.port.EventQueryContext;
+import com.b101.butterfly.segment.service.preview.dialect.SqlDialect;
 import com.fasterxml.jackson.databind.JsonNode;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -34,7 +36,10 @@ import java.util.stream.Collectors;
  * TAG의 {@code key}는 행 데이터(`user_tags.tag_key` 컬럼 값)이므로 placeholder로 안전하게 바인딩.
  */
 @Component
+@RequiredArgsConstructor
 public class ConditionTreeToSqlConverter {
+
+    private final SqlDialect dialect;
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
@@ -323,20 +328,14 @@ public class ConditionTreeToSqlConverter {
         };
     }
 
-    private static SqlFragment eventFilterFragment(EventFilter filter, int eventIdx, int filterIdx) {
-        String pathParam = "eventFilterPath" + eventIdx + "_" + filterIdx;
+    private SqlFragment eventFilterFragment(EventFilter filter, int eventIdx, int filterIdx) {
         String valParam = "eventFilterVal" + eventIdx + "_" + filterIdx;
-        String extracted = "JSON_UNQUOTE(JSON_EXTRACT(ev.event_data, :" + pathParam + "))";
-        String columnExpr =
-                switch (filter.op()) {
-                    case GT, LT, GTE, LTE -> "CAST(" + extracted + " AS DECIMAL(30, 10))";
-                    default -> extracted;
-                };
+        SqlDialect.PredicateFragment pred =
+                dialect.filterPredicate("ev.event_data", filter.key(), filter.op(), valParam);
 
-        Map<String, Object> params = new HashMap<>();
-        params.put(pathParam, jsonPath(filter.key()));
+        Map<String, Object> params = new HashMap<>(pred.extraParams());
         params.put(valParam, eventFilterBindValue(filter.op(), filter.value()));
-        return new SqlFragment(" AND " + opClause(columnExpr, filter.op(), valParam), params);
+        return new SqlFragment(" AND " + pred.sql(), params);
     }
 
     private static String requireKnownKey(
