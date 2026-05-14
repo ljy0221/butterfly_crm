@@ -166,7 +166,7 @@ class CampaignExecutionOptimisticLockIntegrationTest extends AbstractMySqlContai
             assertThatThrownBy(() ->
                     transactionTemplate.execute(status -> {
                         CampaignExecution attached = em.merge(snapshotForFail);
-                        attached.markAsFailed("워커 처리 실패");
+                        attached.markAsFailed();
                         return null;
                     })
             ).satisfiesAnyOf(
