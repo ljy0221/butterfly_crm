@@ -1,8 +1,8 @@
 spring:
   application:
     name: butterfly-api
-  profiles:
-    active: api, worker
+  # profiles.active는 외부화 (K8s env SPRING_PROFILES_ACTIVE 또는 로컬 bootRun 시 환경변수).
+  # application.yml에 박으면 환경별 분기가 yaml에 묶여서 본질적 의도(env 우선)와 충돌.
 
   # MySQL
   datasource:
