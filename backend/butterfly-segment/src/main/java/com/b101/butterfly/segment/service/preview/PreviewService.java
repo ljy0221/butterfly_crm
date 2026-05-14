@@ -53,30 +53,32 @@ public class PreviewService {
 
         String hash = hasher.hash(projectId, tree);
 
-        var cached = hllPreviewExecutor.getCached(hash);
-        if (cached.isPresent()) {
-            return new PreviewResponse(
-                    (int) cached.get().count(), cached.get().method(), LocalDateTime.now());
-        }
-
         EventQueryContext context =
                 new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
-        long count;
-        String method;
+
+        // path 별로 다른 캐시 정책. SQL path 는 exact 만, EventPort path 는 HLL 가능.
         if (isFilterlessEventOnlyTree(tree)) {
             // event_daily_agg 사전 집계 흐름 — 결과가 작아 list → HLL 캐시 유지 (S14P31B101-199 패턴).
+            var cached = hllPreviewExecutor.getCached(hash);
+            if (cached.isPresent()) {
+                return new PreviewResponse(
+                        (int) cached.get().count(), cached.get().method(), LocalDateTime.now());
+            }
             List<Long> userIds =
                     resolveByEventPort((EventNode) tree.conditions().get(0), context);
-            count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
-            method = METHOD_HLL;
-        } else {
-            // S14P31B101-275 — SQL count 한 줄, 정확값 반환. ClickHouse 활성 시 ~수 초.
-            count = resolveBySqlCount(tree, context);
-            hllPreviewExecutor.cacheExactCount(hash, count, HLL_TTL);
-            method = METHOD_EXACT;
+            long count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
+            return new PreviewResponse((int) count, METHOD_HLL, LocalDateTime.now());
         }
 
-        return new PreviewResponse((int) count, method, LocalDateTime.now());
+        // SQL count 흐름 (S14P31B101-275) — exact 캐시 만 조회. HLL 잔재 캐시는 무시하고 정확값 재계산.
+        OptionalLong cachedExact = hllPreviewExecutor.getCachedExact(hash);
+        if (cachedExact.isPresent()) {
+            return new PreviewResponse(
+                    (int) cachedExact.getAsLong(), METHOD_EXACT, LocalDateTime.now());
+        }
+        long count = resolveBySqlCount(tree, context);
+        hllPreviewExecutor.cacheExactCount(hash, count, HLL_TTL);
+        return new PreviewResponse((int) count, METHOD_EXACT, LocalDateTime.now());
     }
 
     private List<Long> resolveByEventPort(EventNode eventNode, EventQueryContext context) {
