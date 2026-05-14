@@ -12,7 +12,10 @@ dependencies {
     implementation 'org.springframework.kafka:spring-kafka'
     runtimeOnly 'com.mysql:mysql-connector-j'
     // S14P31B101-275 — ClickHouse JDBC. butterfly.clickhouse.enabled=true 일 때 사용.
-    implementation 'com.clickhouse:clickhouse-jdbc:0.6.5:all'
+    // jdbc + http-client 두 모듈 분리 — :all classifier 의 shaded jar 는 일부 클래스 누락 사례 있어 비추.
+    implementation 'com.clickhouse:clickhouse-jdbc:0.6.5'
+    implementation 'com.clickhouse:clickhouse-http-client:0.6.5'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.3.1'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation project(':butterfly-testsupport')
