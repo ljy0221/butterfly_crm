@@ -194,18 +194,13 @@ export default function Segments() {
           />
           <Select
             value={sort}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-              setSort(e.target.value);
+            options={SORT_OPTIONS}
+            onChange={(v: string) => {
+              setSort(v);
               setPage(0);
             }}
             style={{ minWidth: 160 }}
-          >
-            {SORT_OPTIONS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </Select>
+          />
           {isFetching && !isLoading && (
             <span style={{ fontSize: 11, color: "#94a3b8" }}>
               새로고침 중...
