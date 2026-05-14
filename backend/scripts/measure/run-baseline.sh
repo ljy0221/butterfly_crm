@@ -28,8 +28,9 @@ else
   exit 1
 fi
 
-OUTPUT_DIR="$REPO_ROOT/docs/portfolio-graphs/baseline-results"
-SNAPSHOT_DIR="$REPO_ROOT/docs/portfolio-graphs/snapshots"
+PORTFOLIO_DIR="${PORTFOLIO_GRAPHS_DIR:-/Users/sylee/Downloads/S14P31B101-Campaign-CRUD-Send/portfolio-graphs}"
+OUTPUT_DIR="$PORTFOLIO_DIR/baseline-results"
+SNAPSHOT_DIR="$PORTFOLIO_DIR/snapshots"
 mkdir -p "$OUTPUT_DIR" "$SNAPSHOT_DIR"
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
@@ -59,7 +60,7 @@ echo ""
 echo "[3/3] 그래프 자동 렌더 fallback (CSV → PNG)"
 python3 "$SCRIPT_DIR/render-graphs.py" \
   --input "$OUTPUT_DIR/baseline-raw-${TIMESTAMP}.csv" \
-  --output "$REPO_ROOT/docs/portfolio-graphs/images/auto-baseline-${TIMESTAMP}" \
+  --output "$PORTFOLIO_DIR/images/auto-baseline-${TIMESTAMP}" \
   --label "Baseline (BEFORE)" || echo "[WARN] render-graphs.py 실패 — matplotlib 의존성 확인"
 
 echo ""

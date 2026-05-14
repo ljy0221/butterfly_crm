@@ -16,7 +16,8 @@ STEP="${STEP:-5}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-OUT_DIR="$REPO_ROOT/docs/portfolio-graphs/snapshots"
+PORTFOLIO_DIR="${PORTFOLIO_GRAPHS_DIR:-/Users/sylee/Downloads/S14P31B101-Campaign-CRUD-Send/portfolio-graphs}"
+OUT_DIR="$PORTFOLIO_DIR/snapshots"
 mkdir -p "$OUT_DIR"
 
 # 측정 핵심 query 들 — name|query 한 쌍씩 정의 (bash 3.2 호환).
