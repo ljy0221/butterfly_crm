@@ -15,14 +15,20 @@
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:theme="@style/Theme.Notificationtest">
+        <!-- 5/22 시연 메인 화면 -->
         <activity
-            android:name=".MainActivity"
+            android:name=".ProductDetailActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 시연자 비상 진입용 (LAUNCHER 아님) -->
+        <activity
+            android:name=".DebugActivity"
+            android:exported="false" />
 
         <receiver
             android:name=".NotificationDismissReceiver"

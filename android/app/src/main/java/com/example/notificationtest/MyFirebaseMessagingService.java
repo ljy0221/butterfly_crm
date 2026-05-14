@@ -44,7 +44,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
     }
 
     private void showNotification(String title, String body) {
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent = new Intent(this, ProductDetailActivity.class);
         intent.putExtra("notification_title", title);
         intent.putExtra("notification_body", body);
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
