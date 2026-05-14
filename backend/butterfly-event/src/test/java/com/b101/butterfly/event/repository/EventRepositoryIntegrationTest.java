@@ -92,4 +92,68 @@ class EventRepositoryIntegrationTest extends AbstractMySqlContainerTest {
 
         assertThat(repository.findAll()).hasSize(2);
     }
+
+    @Test
+    @DisplayName("findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc — 21건 중 최신 20건을 최신순으로 반환")
+    void findTop20ByProjectIdAndUserId() {
+        Long projectId = 100L;
+        Long userId = 7L;
+        LocalDateTime base = LocalDateTime.of(2026, 5, 14, 12, 0);
+
+        for (int i = 0; i < 21; i++) {
+            repository.save(Event.builder()
+                    .eventUuid("uuid-top20-" + i)
+                    .projectId(projectId)
+                    .userId(userId)
+                    .categoryId(1L)
+                    .deviceId(42L)
+                    .occurredAt(base.minusSeconds(i))
+                    .schemaVersion(1)
+                    .eventData("{}")
+                    .build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Event> result =
+                repository.findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, userId);
+
+        assertThat(result).hasSize(20);
+        assertThat(result.get(0).getOccurredAt()).isAfter(result.get(19).getOccurredAt());
+        assertThat(result.get(0).getOccurredAt()).isEqualTo(base);
+        assertThat(result.get(19).getOccurredAt()).isEqualTo(base.minusSeconds(19));
+    }
+
+    @Test
+    @DisplayName("findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc — 다른 user 이벤트는 제외")
+    void findTop20IsolatesUser() {
+        Long projectId = 100L;
+        LocalDateTime base = LocalDateTime.of(2026, 5, 14, 12, 0);
+        // user 7L: 3건
+        for (int i = 0; i < 3; i++) {
+            repository.save(Event.builder()
+                    .eventUuid("uuid-iso-u7-" + i)
+                    .projectId(projectId).userId(7L)
+                    .categoryId(1L).deviceId(42L)
+                    .occurredAt(base.minusSeconds(i))
+                    .schemaVersion(1).eventData("{}").build());
+        }
+        // user 8L: 2건
+        for (int i = 0; i < 2; i++) {
+            repository.save(Event.builder()
+                    .eventUuid("uuid-iso-u8-" + i)
+                    .projectId(projectId).userId(8L)
+                    .categoryId(1L).deviceId(42L)
+                    .occurredAt(base.minusSeconds(i))
+                    .schemaVersion(1).eventData("{}").build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+
+        List<Event> result =
+                repository.findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, 7L);
+
+        assertThat(result).hasSize(3);
+        assertThat(result).allMatch(e -> e.getUserId().equals(7L));
+    }
 }
