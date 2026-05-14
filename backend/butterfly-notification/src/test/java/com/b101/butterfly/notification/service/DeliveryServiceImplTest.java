@@ -42,7 +42,7 @@ class DeliveryServiceImplTest {
     private static final Long PROJECT_ID = 1L;
     private static final Long CAMPAIGN_ID = 100L;
     private static final Long EXECUTION_ID = 999L;
-    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null, null);
+    private static final MessagePayload MESSAGE = new MessagePayload("title", "body", null, null);
 
     @Test
     @DisplayName("credential과 targets가 직접 전달되면 DB 조회 없이 바로 발송한다")

@@ -95,9 +95,9 @@ export default function Segments() {
     if (!trimmed) return all;
     return all.filter(
       (s) =>
-        s.name.toLowerCase().includes(trimmed) ||
-        s.description.toLowerCase().includes(trimmed) ||
-        s.createdBy.name.toLowerCase().includes(trimmed),
+        s.name?.toLowerCase().includes(trimmed) ||
+        s.description?.toLowerCase().includes(trimmed) ||
+        s.createdBy?.name?.toLowerCase().includes(trimmed),
     );
   }, [data, q]);
 

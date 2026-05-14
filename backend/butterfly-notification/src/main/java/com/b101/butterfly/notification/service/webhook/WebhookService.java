@@ -38,7 +38,9 @@ public class WebhookService {
 
         DeliveryCommand.WebhookFormat format = credential.format() != null
                 ? credential.format() : DeliveryCommand.WebhookFormat.DEFAULT;
-        Map<String, Object> payload = buildPayload(format, projectId, campaignId, message, target);
+        // 개인화 변수 치환 (target.variables 비어있으면 동일 인스턴스 반환)
+        DeliveryCommand.MessagePayload personalized = message.personalize(target.variables());
+        Map<String, Object> payload = buildPayload(format, projectId, campaignId, personalized, target);
 
         try {
             RestClient.RequestBodySpec request = deliveryRestClient.post()
@@ -90,9 +92,6 @@ public class WebhookService {
         if (message.imageUrl() != null) {
             payload.put("imageUrl", message.imageUrl());
         }
-        if (message.clickAction() != null) {
-            payload.put("clickAction", message.clickAction());
-        }
         if (message.data() != null) {
             payload.put("data", message.data());
         }
@@ -109,9 +108,6 @@ public class WebhookService {
         if (message.imageUrl() != null && !message.imageUrl().isBlank()) {
             text.append("\n![image](").append(message.imageUrl()).append(")");
         }
-        if (message.clickAction() != null && !message.clickAction().isBlank()) {
-            text.append("\n[자세히 보기](").append(message.clickAction()).append(")");
-        }
         payload.put("text", text.toString());
         payload.put("username", "Butterfly");
         return payload;
@@ -124,9 +120,6 @@ public class WebhookService {
             text.append("*").append(message.title()).append("*\n");
         }
         text.append(message.body());
-        if (message.clickAction() != null && !message.clickAction().isBlank()) {
-            text.append("\n<").append(message.clickAction()).append("|자세히 보기>");
-        }
         payload.put("text", text.toString());
         payload.put("username", "Butterfly");
         if (message.imageUrl() != null && !message.imageUrl().isBlank()) {

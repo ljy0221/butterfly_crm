@@ -38,8 +38,8 @@ export default function Step3Segment({
     if (!ql) return all;
     return all.filter(
       (s) =>
-        s.name.toLowerCase().includes(ql) ||
-        s.description.toLowerCase().includes(ql),
+        s.name?.toLowerCase().includes(ql) ||
+        s.description?.toLowerCase().includes(ql),
     );
   }, [listData?.content, q]);
 
