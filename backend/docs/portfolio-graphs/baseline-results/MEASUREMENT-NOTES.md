@@ -16,7 +16,7 @@
 | **계정** | owner@test.local (password reset to BCrypt `test1234!`) |
 | **데이터** | users 1000, segment_members 1000 (segment_id=1), user_tags 100, campaigns 130 DRAFT |
 
-## 측정 시퀀스 (2회 — 1차 race condition 발견 → 2차 fix)
+## 측정 시퀀스 (3회 — 1차 race condition → 2차 race fix → 3차 JVM warmup 적용)
 
 ### 1차 측정 — 측정 방법론의 결함 발견 (`baseline-raw-20260514-221518.*`)
 
@@ -47,10 +47,29 @@ K6 script 수정: `__ITER` → `exec.scenario.iterationInTest` (scenario 단위 
 | | min | 26ms |
 | **합계** | 130 reqs / 130 success / 0 failure | ~130초 |
 
+### 3차 측정 — JVM warmup phase 적용 (`baseline-raw-20260514-230813.*`) — **정식 BEFORE**
+
+H1 cold 측정에서 E 가 16ms 로 비현실적으로 빨라진 게 JVM JIT warmup 효과 발견. 측정 방법론 추가 진화: K6 에 warmup scenario (10 VU × 100 iter health check, 40s) 추가 → main 시나리오 시작 전 JVM JIT 안정화.
+
+| 시나리오 | metric | 값 |
+|---|---|---|
+| **B (burst 50 VU, 100 iter)** | success | 100/100 ✅ |
+| | avg | **632ms** (↓57% vs 2차 cold) |
+| | p95 | **1192ms** (↓46% vs 2차 cold) |
+| | max | 1258ms |
+| **E (single VU, 30 iter)** | success | 30/30 ✅ |
+| | avg | **38.5ms** (↓50% vs 2차 cold) |
+| | p95 | **177ms** |
+| | max | 298ms |
+| **B/E ratio** | avg | 16.4x — warmed 상태에서도 자원 경합 dominant |
+| | p95 | 6.7x |
+
+이게 **정식 BEFORE** — 모든 가설 (H1~H10) 의 fair 비교 reference point.
+
 ### 해석 — 자원 경합 패턴
 
-- **single VU (E)**: avg 77ms — Spring app + Kafka publish (.get() 동기) + DB transaction
-- **burst 50 VU (B)**: avg 1453ms ← **~19배 느려짐**
+- **single VU (E warmed)**: avg 38.5ms — Spring app + Kafka publish (.get() 동기) + DB transaction
+- **burst 50 VU (B warmed)**: avg 632ms ← **~16배 느려짐**
   - 원인 후보: HTTP thread contention / DB lock contention / Kafka publish.get() 직렬화 / Spring transaction 충돌
   - **이게 Throughput 시나리오의 핵심 측정값** — H1~H4 가설로 변화 추적
 

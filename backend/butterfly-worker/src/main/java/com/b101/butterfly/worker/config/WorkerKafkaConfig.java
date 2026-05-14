@@ -31,7 +31,8 @@ import org.springframework.kafka.core.ProducerFactory;
 @Profile("worker")
 public class WorkerKafkaConfig {
 
-    // S14P31B101-294 Phase A baseline. 가설 H1 (partition only) / H3 (partition+concurrency) 시 변경.
+    // S14P31B101-294 Phase A baseline — partition=1, concurrency=1.
+    // Phase B 의 H1/H3 가설에서 1 → 8 로 변경.
     public static final int CAMPAIGN_SEND_REQUESTED_PARTITIONS_BASELINE = 1;
     public static final int CAMPAIGN_SEND_REQUESTED_REPLICAS = 1;     // local broker
 

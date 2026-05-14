@@ -42,12 +42,22 @@ const failureCount = new Counter('activate_failure');
 
 export const options = {
   scenarios: {
-    // 시나리오 B — Throughput (burst activate)
+    // 시나리오 WARMUP — JVM JIT 안정화 (결과는 분석에서 제외)
+    warmup: {
+      executor: 'shared-iterations',
+      vus: 10,
+      iterations: 100,
+      maxDuration: '40s',
+      tags: { scenario: 'WARMUP' },
+      exec: 'warmupHit',
+    },
+    // 시나리오 B — Throughput (burst activate, warmup 후 시작)
     throughput_burst: {
       executor: 'shared-iterations',
       vus: 50,
       iterations: CAMPAIGN_IDS.length || 100,
       maxDuration: '120s',
+      startTime: '45s',                             // warmup 후 5s gap
       tags: { scenario: 'B-throughput' },
       exec: 'activateThroughput',
     },
@@ -57,7 +67,7 @@ export const options = {
       vus: 1,
       iterations: LATENCY_CAMPAIGN_IDS.length || 30,
       maxDuration: '120s',
-      startTime: '130s',                            // B 종료 후 시작 (gap=10s)
+      startTime: '175s',                            // warmup(45s) + B(120s) + gap(10s)
       tags: { scenario: 'E-latency' },
       exec: 'activateLatencyOne',
     },
@@ -92,6 +102,11 @@ function activate(campaignId, scenarioTag) {
   else failureCount.add(1, { scenario: scenarioTag });
 
   return res;
+}
+
+export function warmupHit() {
+  // GET /actuator/health — 인증 없이 가벼운 호출 (HTTP/Servlet/JVM JIT warmup 충분)
+  http.get(`${BASE_URL}/actuator/health`, { tags: { scenario: 'WARMUP' } });
 }
 
 export function activateThroughput() {
