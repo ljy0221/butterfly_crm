@@ -41,12 +41,23 @@ class ProductDetailActivity : AppCompatActivity() {
         requestNotificationPermission()
 
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
-            val token = if (task.isSuccessful) task.result ?: "no_token" else "no_token"
-            Log.d(TAG, "FCM token (silent register): ${token.take(20)}...")
-            EventTrigger.registerDeviceSilently(this, token)
+            if (task.isSuccessful) {
+                val token = task.result.orEmpty()
+                if (token.isNotEmpty()) {
+                    Log.d(TAG, "FCM token (silent register): ${token.take(20)}...")
+                    EventTrigger.registerDeviceSilently(this, token)
+                } else {
+                    Log.w(TAG, "FCM token empty, skipping silent register")
+                }
+            } else {
+                Log.w(TAG, "FCM token failed, skipping silent register", task.exception)
+            }
         }
 
-        EventTrigger.fireProductViewSilently(this)
+        // savedInstanceState == null 일 때만 — rotation/recreate 시 중복 발사 방지
+        if (savedInstanceState == null) {
+            EventTrigger.fireProductViewSilently(this)
+        }
 
         findViewById<TextView>(R.id.tvOriginalPrice).apply {
             paintFlags = paintFlags or Paint.STRIKE_THRU_TEXT_FLAG

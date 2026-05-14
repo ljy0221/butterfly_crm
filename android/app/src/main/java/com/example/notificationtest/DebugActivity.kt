@@ -30,7 +30,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 class DebugActivity : AppCompatActivity() {
 
     companion object {
-        private const val TAG = "FCM_Main"
+        private const val TAG = "FCM_Debug"
         private const val NOTIFICATION_PERMISSION_CODE = 100
         private const val CHANNEL_ID = "fcm_default_channel"
     }
