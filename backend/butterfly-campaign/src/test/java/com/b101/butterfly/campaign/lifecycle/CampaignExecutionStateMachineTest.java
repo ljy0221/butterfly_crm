@@ -129,14 +129,13 @@ class CampaignExecutionStateMachineTest {
     @DisplayName("markAsFailed (SEND → FAIL)")
     class MarkAsFailed {
         @Test
-        @DisplayName("SEND 상태에서 FAIL로 전이 + reason 기록 + sendCompletedAt 셋팅")
+        @DisplayName("SEND 상태에서 FAIL로 전이 + sendCompletedAt 셋팅")
         void sendToFail() {
             CampaignExecution e = ready();
             e.markAsSent();
-            e.markAsFailed("kafka publish 실패");
+            e.markAsFailed();
             assertThat(e.getCampaignExecutionStatus())
                     .isEqualTo(CampaignExecutionStatus.FAIL);
-            assertThat(e.getFailReason()).isEqualTo("kafka publish 실패");
             assertThat(e.getSendCompletedAt()).isNotNull();
         }
 
@@ -144,7 +143,7 @@ class CampaignExecutionStateMachineTest {
         @DisplayName("READY 상태에서 markAsFailed → INVALID_EXECUTION_TRANSITION")
         void readyToFailRejected() {
             CampaignExecution e = ready();
-            assertThatThrownBy(() -> e.markAsFailed("oops"))
+            assertThatThrownBy(e::markAsFailed)
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
@@ -155,8 +154,8 @@ class CampaignExecutionStateMachineTest {
         void doubleFailRejected() {
             CampaignExecution e = ready();
             e.markAsSent();
-            e.markAsFailed("first");
-            assertThatThrownBy(() -> e.markAsFailed("second"))
+            e.markAsFailed();
+            assertThatThrownBy(e::markAsFailed)
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
@@ -184,7 +183,7 @@ class CampaignExecutionStateMachineTest {
             CampaignExecution e = ready();
             e.markAsSent();
             e.markAsSuccess();
-            assertThatThrownBy(() -> e.markAsFailed("oops"))
+            assertThatThrownBy(e::markAsFailed)
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
                     .isEqualTo(CampaignErrorCode.INVALID_EXECUTION_TRANSITION);
@@ -195,7 +194,7 @@ class CampaignExecutionStateMachineTest {
         void failToSuccessRejected() {
             CampaignExecution e = ready();
             e.markAsSent();
-            e.markAsFailed("err");
+            e.markAsFailed();
             assertThatThrownBy(e::markAsSuccess)
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")

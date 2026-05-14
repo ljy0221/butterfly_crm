@@ -58,18 +58,9 @@ public class CampaignExecution extends SoftDeletedDomain {
     @Column(name = "target_count", nullable = false)
     private Integer targetCount;
 
-    @Column(name = "sent_count", nullable = false)
-    private Integer sentCount;
-
-    @Column(name = "failed_count", nullable = false)
-    private Integer failedCount;
-
-    @Column(name = "fail_reason")
-    private String failReason;
-
     /**
-     * JPA optimistic locking. 워커 fan-out에서 같은 executionId 동시 처리 race 방지 —
-     * 두 번째 transaction의 UPDATE는 OptimisticLockException으로 거부된다.
+     * JPA optimistic locking. 워커 fan-out에서 같은 executionId 동시 처리 race 방지 — 두 번째 transaction의 UPDATE는
+     * OptimisticLockException으로 거부된다.
      */
     @Version
     @Column(name = "version", nullable = false)
@@ -80,8 +71,6 @@ public class CampaignExecution extends SoftDeletedDomain {
         this.runRound = runRound;
         this.campaignExecutionStatus = CampaignExecutionStatus.READY;
         this.targetCount = targetCount;
-        this.sentCount = 0;
-        this.failedCount = 0;
     }
 
     public static CampaignExecution ready(
@@ -122,29 +111,16 @@ public class CampaignExecution extends SoftDeletedDomain {
     }
 
     /**
-     * SEND → FAIL. worker fan-out 실패 통보 시 호출 — 실패 사유를 함께 기록.
+     * SEND → FAIL. worker fan-out 실패 통보 시 호출 — 1회만 전이 허용 (멱등 보장 핵심).
+     *
+     * <p>실패 사유는 본 도메인이 보관하지 않는다 — per-target 실패 메시지는 butterfly-notification 의
+     * notification_logs.error_code/error_message 에, per-campaign 집계는 reporting 측 read-model
+     * (notification-send-result 트랙) 에 단일 진실 원천으로 적재된다.
      */
-    public void markAsFailed(String reason) {
+    public void markAsFailed() {
         requireStatus(CampaignExecutionStatus.SEND);
         this.campaignExecutionStatus = CampaignExecutionStatus.FAIL;
         this.sendCompletedAt = LocalDateTime.now();
-        this.failReason = reason;
-    }
-
-    /**
-     * 발송 완료 후 실제 발송/실패 수를 기록한다.
-     *
-     * <p>상태 전이({@link #markAsSuccess}/{@link #markAsFailed}) 후 호출해야 한다.
-     *
-     * @param sentCount   발송 성공 수 (0 이상)
-     * @param failedCount 발송 실패 수 (0 이상)
-     */
-    public void updateSentCount(int sentCount, int failedCount) {
-        if (sentCount < 0 || failedCount < 0) {
-            throw new BusinessException(CampaignErrorCode.INVALID_TARGET_COUNT);
-        }
-        this.sentCount = sentCount;
-        this.failedCount = failedCount;
     }
 
     private void requireStatus(CampaignExecutionStatus expected) {
