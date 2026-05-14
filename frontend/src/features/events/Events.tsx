@@ -360,10 +360,10 @@ export default function Events() {
                   transition: "background 120ms",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.background = "#f1f5f9";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "#fff";
+                  e.currentTarget.style.background = "";
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.background = "#eff3fe";
@@ -456,6 +456,12 @@ export default function Events() {
                       onClick={(e) => {
                         e.stopPropagation();
                         void onDelete(c);
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#dc2626";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "#94a3b8";
                       }}
                       style={{
                         border: 0,

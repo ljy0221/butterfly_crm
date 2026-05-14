@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ChangeEvent } from "react";
+import { useLayoutEffect, useRef, type ChangeEvent } from "react";
 
 /**
  * `{{variable}}` 패턴을 색으로 강조하는 textarea 오버레이.
@@ -43,7 +43,7 @@ function highlight(value: string): string {
   return escapeHtml(safe).replace(
     VAR_RE,
     (_, name: string) =>
-      `<span style="background:rgba(59,91,219,.12);color:#3b5bdb;border-radius:3px;padding:0 2px;font-weight:600">{{${escapeHtml(name)}}}</span>`,
+      `<span style="background:rgba(59,91,219,.12);color:#3b5bdb;border-radius:3px">{{${escapeHtml(name)}}}</span>`,
   );
 }
 
@@ -65,21 +65,38 @@ export default function VariableHighlight({
 }: VariableHighlightProps) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
+  // 마지막으로 저장된 커서 위치 — onChange → useLayoutEffect 사이에 보존
+  const selRef = useRef<[number, number]>([0, 0]);
+  // IME 조합 중(한글 등)에는 setSelectionRange 호출 금지
+  const composingRef = useRef(false);
 
-  const sync = (): void => {
+  useLayoutEffect(() => {
     const ta = taRef.current;
     const pre = preRef.current;
     if (!ta || !pre) return;
+    // 커서 복원: React가 textarea.value를 DOM에 쓸 때 커서를 잃는 버그 방지
+    if (!composingRef.current && document.activeElement === ta) {
+      ta.setSelectionRange(selRef.current[0], selRef.current[1]);
+    }
+    // 오버레이 스크롤 동기화
     pre.scrollTop = ta.scrollTop;
     pre.scrollLeft = ta.scrollLeft;
-  };
-
-  useEffect(() => {
-    sync();
   }, [value]);
 
-  const onScroll = (): void => sync();
+  const onScroll = (): void => {
+    const ta = taRef.current;
+    const pre = preRef.current;
+    if (ta && pre) {
+      pre.scrollTop = ta.scrollTop;
+      pre.scrollLeft = ta.scrollLeft;
+    }
+  };
+
   const onTextChange = (e: ChangeEvent<HTMLTextAreaElement>): void => {
+    selRef.current = [
+      e.target.selectionStart ?? 0,
+      e.target.selectionEnd ?? 0,
+    ];
     onChange(e.target.value);
   };
 
@@ -130,6 +147,8 @@ export default function VariableHighlight({
         value={value}
         onChange={onTextChange}
         onScroll={onScroll}
+        onCompositionStart={() => { composingRef.current = true; }}
+        onCompositionEnd={() => { composingRef.current = false; }}
         rows={rows}
         maxLength={maxLength}
         placeholder={placeholder}

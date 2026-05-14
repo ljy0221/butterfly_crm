@@ -426,14 +426,26 @@ function Row({
           e.stopPropagation();
           onToggleFavorite();
         }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = "#facc15";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = "#94a3b8";
+        }}
         role="button"
         aria-label={
           segment.favorited ? "즐겨찾기에서 제거" : "즐겨찾기에 추가"
         }
         tabIndex={0}
-        style={{ cursor: "pointer", lineHeight: 0 }}
+        style={{
+          width: 16,
+          height: 16,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
-        {Icon.star(segment.favorited, 14)}
+        {Icon.star(segment.favorited, 16)}
       </div>
       <div style={{ minWidth: 0, paddingRight: 8 }}>
         <div
