@@ -11,6 +11,12 @@ dependencies {
     implementation 'org.springframework.security:spring-security-core'
     implementation 'org.springframework.kafka:spring-kafka'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    // S14P31B101-275 — ClickHouse JDBC. butterfly.clickhouse.enabled=true 일 때 사용.
+    // jdbc + http-client 두 모듈 분리 — :all classifier 의 shaded jar 는 일부 클래스 누락 사례 있어 비추.
+    // httpclient5 는 명시하지 않음 — Spring Boot autoconfig 의 HttpClientAutoConfiguration 이 BOM
+    // 버전을 가져오게 두고, ClickHouse JDBC 는 default URLConnection 으로 통신 (PoC 측정 OK).
+    implementation 'com.clickhouse:clickhouse-jdbc:0.6.5'
+    implementation 'com.clickhouse:clickhouse-http-client:0.6.5'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation project(':butterfly-testsupport')

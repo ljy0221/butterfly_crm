@@ -37,6 +37,8 @@ public class PreviewService {
 
     private static final Duration HLL_TTL = Duration.ofHours(24);
     private static final String METHOD_HLL = "HLL";
+    /** S14P31B101-275 — SQL count 흐름은 정확값. frontend 가 "정확 (EXACT)" 로 표시. */
+    private static final String METHOD_EXACT = "EXACT";
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     private final ConditionTreeValidator conditionTreeValidator;
@@ -51,24 +53,32 @@ public class PreviewService {
 
         String hash = hasher.hash(projectId, tree);
 
-        OptionalLong cached = hllPreviewExecutor.getCachedCount(hash);
-        if (cached.isPresent()) {
-            return new PreviewResponse((int) cached.getAsLong(), METHOD_HLL, LocalDateTime.now());
-        }
+        EventQueryContext context =
+                new EventQueryContext(projectId, LocalDate.now(SEOUL), SEOUL);
 
-        List<Long> userIds = resolveUserIds(projectId, tree);
-        long count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
-
-        return new PreviewResponse((int) count, METHOD_HLL, LocalDateTime.now());
-    }
-
-    private List<Long> resolveUserIds(Long projectId, GroupNode tree) {
-        EventQueryContext context = new EventQueryContext(
-                projectId, LocalDate.now(SEOUL), SEOUL);
+        // path 별로 다른 캐시 정책. SQL path 는 exact 만, EventPort path 는 HLL 가능.
         if (isFilterlessEventOnlyTree(tree)) {
-            return resolveByEventPort((EventNode) tree.conditions().get(0), context);
+            // event_daily_agg 사전 집계 흐름 — 결과가 작아 list → HLL 캐시 유지 (S14P31B101-199 패턴).
+            var cached = hllPreviewExecutor.getCached(hash);
+            if (cached.isPresent()) {
+                return new PreviewResponse(
+                        (int) cached.get().count(), cached.get().method(), LocalDateTime.now());
+            }
+            List<Long> userIds =
+                    resolveByEventPort((EventNode) tree.conditions().get(0), context);
+            long count = hllPreviewExecutor.computeAndCache(hash, userIds, HLL_TTL);
+            return new PreviewResponse((int) count, METHOD_HLL, LocalDateTime.now());
         }
-        return resolveBySql(tree, context);
+
+        // SQL count 흐름 (S14P31B101-275) — exact 캐시 만 조회. HLL 잔재 캐시는 무시하고 정확값 재계산.
+        OptionalLong cachedExact = hllPreviewExecutor.getCachedExact(hash);
+        if (cachedExact.isPresent()) {
+            return new PreviewResponse(
+                    (int) cachedExact.getAsLong(), METHOD_EXACT, LocalDateTime.now());
+        }
+        long count = resolveBySqlCount(tree, context);
+        hllPreviewExecutor.cacheExactCount(hash, count, HLL_TTL);
+        return new PreviewResponse((int) count, METHOD_EXACT, LocalDateTime.now());
     }
 
     private List<Long> resolveByEventPort(EventNode eventNode, EventQueryContext context) {
@@ -79,14 +89,14 @@ public class PreviewService {
         }
     }
 
-    private List<Long> resolveBySql(GroupNode tree, EventQueryContext context) {
+    private long resolveBySqlCount(GroupNode tree, EventQueryContext context) {
         SqlFragment fragment;
         try {
             fragment = sqlConverter.convert(tree, context);
         } catch (EventConditionNotReadyException e) {
             throw new BusinessException(SegmentErrorCode.SEGMENT_501_EVENT_NOT_READY);
         }
-        return userDirectoryReader.queryUserIds(fragment.sql(), fragment.params());
+        return userDirectoryReader.countUserMatches(fragment.sql(), fragment.params());
     }
 
     private static boolean isFilterlessEventOnlyTree(GroupNode tree) {

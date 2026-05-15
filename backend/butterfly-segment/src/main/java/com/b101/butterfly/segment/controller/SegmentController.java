@@ -5,6 +5,7 @@ import com.b101.butterfly.global.response.PageResponse;
 import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
 import com.b101.butterfly.segment.dto.request.PreviewRequest;
 import com.b101.butterfly.segment.dto.request.UpdateSegmentRequest;
+import com.b101.butterfly.segment.dto.response.CancelBuildResponse;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
 import com.b101.butterfly.segment.dto.response.FavoritesResponse;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignsResponse;
@@ -13,6 +14,7 @@ import com.b101.butterfly.segment.dto.response.RebuildResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
+import com.b101.butterfly.segment.service.SegmentBuildCancelService;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
@@ -64,6 +66,9 @@ public class SegmentController {
      * api 프로파일에서만 발생.
      */
     private final ObjectProvider<SegmentRebuildService> segmentRebuildServiceProvider;
+
+    /** {@link SegmentBuildCancelService} 도 동일한 패턴 — api 프로파일에만 등록 (S14P31B101-269). */
+    private final ObjectProvider<SegmentBuildCancelService> segmentBuildCancelServiceProvider;
 
     @PostMapping
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
@@ -132,6 +137,21 @@ public class SegmentController {
                         .getObject()
                         .requestRebuild(projectId, segmentId, currentMemberId());
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(ApiResponse.ok(response));
+    }
+
+    /**
+     * 빌드 취소 (S14P31B101-269). BUILDING/PENDING 상태의 빌드를 즉시 FAILED 로 강등하고 cancel
+     * marker 를 박는다. UX 측에는 즉시 FAILED 로 노출되므로 stale UI 문제 회피.
+     */
+    @PostMapping("/{segmentId}/build/cancel")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
+    public ApiResponse<CancelBuildResponse> cancelBuild(
+            @PathVariable Long projectId, @PathVariable Long segmentId) {
+        CancelBuildResponse response =
+                segmentBuildCancelServiceProvider
+                        .getObject()
+                        .cancelBuild(projectId, segmentId, currentMemberId());
+        return ApiResponse.ok(response);
     }
 
     @GetMapping("/{segmentId}/campaigns")

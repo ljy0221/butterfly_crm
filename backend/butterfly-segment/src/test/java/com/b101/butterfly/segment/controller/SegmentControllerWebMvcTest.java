@@ -347,6 +347,8 @@ class SegmentControllerWebMvcTest {
                 null,
                 null,
                 BuildStatus.PENDING,
+                0L,
+                null,
                 null,
                 LocalDateTime.now(),
                 LocalDateTime.now(),

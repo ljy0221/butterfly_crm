@@ -3,7 +3,6 @@ package com.b101.butterfly.segment.messaging;
 import com.b101.butterfly.segment.domain.condition.EventNode;
 import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.entity.Segment;
-import com.b101.butterfly.segment.entity.SegmentMember;
 import com.b101.butterfly.segment.port.EventAggReader;
 import com.b101.butterfly.segment.port.EventQueryContext;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
@@ -25,11 +24,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 /**
  * Segment rebuild 메시지를 받아 segment_members를 빌드하는 worker. butterfly-worker에서만 활성화.
@@ -39,19 +35,16 @@ import java.util.stream.Stream;
  *   <li>{@code markBuildingIfPossible} CAS로 점유 — 다른 worker 신선 처리 중이면 ack 후 종료
  *   <li>segment 조회 (Codex 안전장치 b: 빌드 중 soft-delete 시 fail)
  *   <li>conditionTreeHash 비교 (Codex 안전장치 c: 빌드 중 tree 수정 시 fail)
- *   <li>tree 분기 — filter 없는 EVENT-only는 EventAggReader, 그 외 트리는 SQL 변환
- *   <li>매칭 user_id 조회 — {@link EventAggReader} 또는 {@link UserDirectoryReader}
- *   <li>기존 segment_members 일괄 삭제 → chunk(1000건) 단위 INSERT + chunk 후 heartbeat 갱신
+ *   <li>tree 분기 — filter 없는 EVENT-only 는 EventAggReader, 그 외 트리는 SQL 변환
+ *   <li>매칭 user_id 적재 — 모든 경로가 단일 native {@code INSERT ... SELECT} (S14P31B101-269)
  *   <li>{@code completeBuildIfOwner}로 estimated_count 갱신 + token/heartbeat 정리
  * </ol>
  *
  * <p><b>트랜잭션 경계 (S14P31B101-243 Phase 1):</b>
  * {@code consume()} 메서드에는 의도적으로 {@code @Transactional} 을 걸지 않는다.
- * 각 repository 호출 (CAS UPDATE / findById / saveAll chunk / heartbeat / complete) 은
- * Spring Data JPA 의 {@code SimpleJpaRepository} 가 자체적으로 짧은 트랜잭션을 시작·커밋한다.
- * 이렇게 해야 530초 짜리 filtered EVENT EXISTS 쿼리가 진행되는 동안 segments 행 X-lock 과
- * connection 을 점유하지 않으므로 OLTP 락 카스케이드(ALTER metadata lock, segment_members 경합)를
- * 방지한다. {@code condition_tree} 는 {@code @Convert} 즉시 deserialize 이므로 detached 후에도 안전.
+ * 각 repository 호출 (CAS UPDATE / findById / deleteBySegmentId / materialize / complete) 은
+ * 자체적으로 짧은 트랜잭션을 시작·커밋한다. 이렇게 해야 long-running SELECT 가 진행되는 동안
+ * segments 행 X-lock 과 connection 을 동시에 점유하지 않으므로 OLTP 락 카스케이드를 방지한다. {@code condition_tree} 는 {@code @Convert} 즉시 deserialize 이므로 detached 후에도 안전.
  *
  * <p>장애 복구: 메시지 처리 도중 worker 가 죽으면 {@code build_token} 잔재 + heartbeat 정지 →
  * {@code SegmentBuildStaleCron} 이 staleThreshold 후 FAILED 로 강등 → 다음 rebuild 가 정상 진입.
@@ -74,9 +67,6 @@ public class SegmentBuildJob {
 
     /** stale 인수 timeout — {@code SegmentRebuildService}와 동일해야 일관성 유지. */
     private static final Duration STALE_TIMEOUT = Duration.ofMinutes(30);
-
-    /** chunk INSERT 크기 — 너무 크면 트랜잭션 길어지고 너무 작으면 RTT 비용 ↑. 1000건 기준. */
-    private static final int CHUNK_SIZE = 1000;
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
@@ -153,12 +143,18 @@ public class SegmentBuildJob {
     }
 
     /**
-     * 매칭 user_id를 조회해 chunk INSERT. 기존 멤버는 일괄 삭제 후 재구성.
-     * chunk 사이마다 heartbeat 갱신해 cron 의 stale 판정 회피.
+     * 매칭 user_id를 조회해 segment_members에 적재. 기존 멤버는 일괄 삭제 후 재구성.
      *
-     * <p>S14P31B101-199 — filter 없는 EVENT 단독 트리는 단일 native {@code INSERT ... SELECT}로
-     * 처리해 Stream + JPA saveAll 경로를 우회한다 (1M row 기준 ~67분 → ~48초). 단일 statement는
-     * stale timeout(30분)에 한참 못 미치므로 chunk-사이 heartbeat가 필요 없다.
+     * <p>모든 경로가 단일 native {@code INSERT ... SELECT}로 처리되어 Java 측 chunk fetch / batch
+     * INSERT 가 사라진다. stale timeout(30분)에 한참 못 미치는 단일 statement 이므로 chunk-사이
+     * heartbeat 가 필요 없다.
+     *
+     * <ul>
+     *   <li>S14P31B101-199 — filter 없는 EVENT 단독 트리: {@code event_daily_agg} 기반 직행.
+     *   <li>S14P31B101-269 — 그 외 (filtered EVENT / mixed): {@code ConditionTreeToSqlConverter}
+     *       가 만든 SELECT 를 {@code UserDirectoryReader.materializeUserMatchesIntoSegment}
+     *       로 한 statement 적재.
+     * </ul>
      */
     private int buildMembers(Segment segment, Long projectId, String token) {
         Long segmentId = segment.getId();
@@ -184,27 +180,10 @@ public class SegmentBuildJob {
         } catch (EventConditionNotReadyException e) {
             throw new IllegalStateException("EVENT 조건 SQL 변환 준비 실패", e);
         }
-        List<Long> userIds = userDirectoryReader.queryUserIds(fragment.sql(), fragment.params());
-        return insertInChunks(segmentId, token, userIds.stream());
-    }
-
-    private int insertInChunks(Long segmentId, String token, Stream<Long> userIdStream) {
-        List<SegmentMember> buffer = new ArrayList<>(CHUNK_SIZE);
-        int total = 0;
-        for (Long userId : (Iterable<Long>) userIdStream::iterator) {
-            buffer.add(SegmentMember.builder().segmentId(segmentId).userId(userId).build());
-            if (buffer.size() >= CHUNK_SIZE) {
-                segmentMemberRepository.bulkInsert(buffer);
-                total += buffer.size();
-                buffer.clear();
-                segmentRepository.updateHeartbeat(segmentId, token, LocalDateTime.now());
-            }
-        }
-        if (!buffer.isEmpty()) {
-            segmentMemberRepository.bulkInsert(buffer);
-            total += buffer.size();
-        }
-        return total;
+        long inserted =
+                userDirectoryReader.materializeUserMatchesIntoSegment(
+                        segmentId, fragment.sql(), fragment.params());
+        return Math.toIntExact(inserted);
     }
 
     private static boolean isFilterlessEventOnlyTree(GroupNode tree) {
