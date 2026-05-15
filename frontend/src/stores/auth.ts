@@ -67,8 +67,21 @@ export const useAuthStore = create<AuthState>()(
 /**
  * Refresh helper — 직접 axios 인스턴스를 사용하지 않고 fetch를 사용해
  * 401 인터셉터 무한 루프를 방지한다.
+ *
+ * in-flight lock: 동시에 여러 API가 401을 받아도 refresh 요청은 1번만 나가고
+ * 나머지는 동일한 Promise를 기다린다.
  */
+let refreshPromise: Promise<string | null> | null = null;
+
 async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function doRefresh(): Promise<string | null> {
   const { refreshToken, setAccessToken, clear } = useAuthStore.getState();
   if (!refreshToken) return null;
   try {
@@ -78,8 +91,13 @@ async function refreshAccessToken(): Promise<string | null> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refreshToken }),
     });
-    if (!res.ok) {
+    if (res.status === 401) {
+      // refresh token 만료·무효 → 로그아웃
       clear();
+      return null;
+    }
+    if (!res.ok) {
+      // 5xx 등 일시적 서버 오류 → 로그아웃하지 않음
       return null;
     }
     const data = (await res.json()) as { accessToken: string; refreshToken?: string };
@@ -89,7 +107,7 @@ async function refreshAccessToken(): Promise<string | null> {
     }
     return data.accessToken;
   } catch {
-    clear();
+    // 네트워크 오류 → 로그아웃하지 않음
     return null;
   }
 }

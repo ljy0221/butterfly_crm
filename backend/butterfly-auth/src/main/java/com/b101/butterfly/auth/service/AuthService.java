@@ -10,11 +10,9 @@ import com.b101.butterfly.auth.dto.response.LoginResponse;
 import com.b101.butterfly.auth.dto.response.MemberInfoResponse;
 import com.b101.butterfly.auth.dto.response.SignupResponse;
 import com.b101.butterfly.auth.entity.Member;
-import com.b101.butterfly.auth.entity.RefreshToken;
 import com.b101.butterfly.auth.exception.AuthErrorCode;
 import com.b101.butterfly.auth.port.CompanyAuthPort;
 import com.b101.butterfly.auth.repository.MemberRepository;
-import com.b101.butterfly.auth.repository.RefreshTokenRepository;
 import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.global.event.AuditRecordedEvent;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +23,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 @Service
@@ -36,7 +33,6 @@ import java.util.Map;
 public class AuthService {
 
     private final MemberRepository memberRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
     private final EmailVerificationService emailVerificationService;
     private final RedisService redisService;
     private final PasswordEncoder passwordEncoder;
@@ -84,23 +80,11 @@ public class AuthService {
             throw new BusinessException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        // 기존 Refresh Token 삭제 (재로그인 시 갱신)
-        refreshTokenRepository.deleteByMemberId(member.getId());
-        redisService.delete("auth:refresh:" + member.getId());
-
-        // 토큰 발급
         String accessToken  = jwtTokenProvider.createAccessToken(
                 member.getId(), member.getProjectId(), member.getRoleType());
         String refreshToken = jwtTokenProvider.createRefreshToken(member.getId());
 
-        // Refresh Token 저장 (DB + Redis)
-        LocalDateTime expiresAt = LocalDateTime.now()
-                .plusSeconds(jwtProperties.getRefreshTokenExpiryMs() / 1000);
-        refreshTokenRepository.save(RefreshToken.builder()
-                .memberId(member.getId())
-                .token(refreshToken)
-                .expiresAt(expiresAt)
-                .build());
+        // 재로그인 시 기존 세션 무효화 후 새 토큰 저장 (Redis only)
         redisService.set("auth:refresh:" + member.getId(), refreshToken,
                 Duration.ofMillis(jwtProperties.getRefreshTokenExpiryMs()));
 
@@ -124,8 +108,7 @@ public class AuthService {
                 redisService.set("auth:blacklist:" + jti, "1", remaining);
             }
         }
-        // Refresh Token 삭제
-        refreshTokenRepository.deleteByMemberId(memberId);
+        // Refresh Token 삭제 (Redis only)
         redisService.delete("auth:refresh:" + memberId);
 
         Long projectId = (accessToken != null && jwtTokenProvider.isValid(accessToken))
@@ -138,36 +121,36 @@ public class AuthService {
         ));
     }
 
-    @Transactional
+    /**
+     * Refresh Token Rotation — Redis GETDEL로 동시성 제어.
+     *
+     * <p>GETDEL은 원자적으로 값을 읽고 삭제한다. 동시 요청이 들어와도 첫 번째 요청만
+     * 토큰을 획득하고 두 번째는 null을 받아 즉시 거부되므로 StaleStateException이 발생하지 않는다.
+     */
     public LoginResponse refreshToken(String refreshToken) {
-        // Redis 우선 조회, 없으면 DB 조회
-        RefreshToken stored = refreshTokenRepository.findByToken(refreshToken)
+        // 1. JWT 서명 및 만료 검증
+        if (!jwtTokenProvider.isValid(refreshToken)) {
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
+        }
+        Long memberId = jwtTokenProvider.getMemberId(refreshToken);
+
+        // 2. Redis GETDEL — 동시 요청 중 첫 번째만 토큰을 가져옴
+        String storedToken = redisService.getAndDelete("auth:refresh:" + memberId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID));
 
-        if (stored.isExpired()) {
-            refreshTokenRepository.delete(stored);
-            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_EXPIRED);
+        // 3. 토큰 일치 검증 (재사용 공격 방지)
+        if (!storedToken.equals(refreshToken)) {
+            throw new BusinessException(AuthErrorCode.REFRESH_TOKEN_INVALID);
         }
 
-        Long memberId = stored.getMemberId();
+        // 4. 회원 조회
         Member member = memberRepository.findById(memberId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.MEMBER_NOT_FOUND));
 
-        // RTR: 기존 토큰 삭제 후 새 토큰 발급
-        refreshTokenRepository.delete(stored);
-        redisService.delete("auth:refresh:" + memberId);
-
+        // 5. 새 토큰 발급 및 Redis 저장
         String newAccessToken  = jwtTokenProvider.createAccessToken(
                 member.getId(), member.getProjectId(), member.getRoleType());
         String newRefreshToken = jwtTokenProvider.createRefreshToken(member.getId());
-
-        LocalDateTime expiresAt = LocalDateTime.now()
-                .plusSeconds(jwtProperties.getRefreshTokenExpiryMs() / 1000);
-        refreshTokenRepository.save(RefreshToken.builder()
-                .memberId(memberId)
-                .token(newRefreshToken)
-                .expiresAt(expiresAt)
-                .build());
         redisService.set("auth:refresh:" + memberId, newRefreshToken,
                 Duration.ofMillis(jwtProperties.getRefreshTokenExpiryMs()));
 
