@@ -230,8 +230,8 @@ function FunnelView({ stages, isLoading, isError, onRetry }: FunnelViewProps) {
                 {STAGE_LABEL[row.stage]}
               </span>
               <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                {fmtNum(row.count)} · 시작 대비 {formatRate(row.conversionFromStart)} ·
-                직전 통과 {formatRate(row.conversionFromPrev)} · 이탈 {formatRate(row.dropOffFromPrev)}
+                {fmtNum(row.count)} · 시작 대비 {formatRate(row.conversionFromStart != null ? row.conversionFromStart / 100 : null)} ·
+                직전 통과 {formatRate(row.conversionFromPrev != null ? row.conversionFromPrev / 100 : null)} · 이탈 {formatRate(row.dropOffFromPrev != null ? row.dropOffFromPrev / 100 : null)}
               </span>
             </div>
             <div

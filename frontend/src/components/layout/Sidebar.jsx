@@ -1,12 +1,21 @@
 import React from "react";
 import { Icon } from "../common/Icon.jsx";
 import Avatar from "../common/Avatar.jsx";
-import { CRM_DATA } from "../../data/mock.js";
 import { useAuthStore } from "@/stores/auth";
 
+const NAV = [
+  { key: "대시보드",  label: "대시보드",       icon: "dashboard" },
+  { key: "이벤트",   label: "이벤트",          icon: "events"    },
+  { key: "고객",     label: "고객",            icon: "customers" },
+  { key: "세그먼트", label: "세그먼트",         icon: "segments"  },
+  { key: "캠페인",   label: "캠페인",           icon: "campaigns" },
+  { key: "자동화",   label: "자동화 플로우",    icon: "journey"   },
+  { key: "템플릿",   label: "메시지 템플릿",    icon: "templates" },
+  { key: "분석",     label: "분석",            icon: "analytics" },
+  { key: "설정",     label: "설정",            icon: "settings"  },
+];
+
 export default function Sidebar({ active, onNavigate, collapsed }) {
-  // NAV(메뉴 구조)는 mock 그대로, USER/PROJECT는 실 store에서 가져온다.
-  const { NAV } = CRM_DATA;
   const member = useAuthStore((s) => s.member);
   const w = collapsed ? 64 : 240;
 
