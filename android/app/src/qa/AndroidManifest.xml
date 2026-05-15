@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  qa flavor 전용 manifest override.
+  LAUNCHER 를 ProductDetailActivity → HomeActivity 로 변경하고,
+  qa 빌드의 신규 Activity 4개(Home/CategoryList/Cart/Checkout)를 등록한다.
+  AGP 가 main manifest 와 자동 merge.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <!-- LAUNCHER 를 HomeActivity 로 -->
+        <activity
+            android:name=".HomeActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ProductDetailActivity 의 LAUNCHER intent-filter 제거 + exported override -->
+        <activity
+            android:name=".ProductDetailActivity"
+            android:exported="false"
+            tools:replace="android:exported"
+            tools:node="merge">
+            <intent-filter tools:node="removeAll" />
+        </activity>
+
+        <activity
+            android:name=".CategoryListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".CartActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".CheckoutActivity"
+            android:exported="false" />
+    </application>
+</manifest>
