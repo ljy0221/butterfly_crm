@@ -12,6 +12,9 @@ import { mapSegmentError } from "@/lib/segment-errors";
 import { useProjectStore } from "@/stores/project";
 import { fmtNum } from "@/utils/fmt.js";
 import { createSegmentSchema } from "@/schemas/segment";
+import { useSegmentDraftMutation } from "@/hooks/queries/ai";
+import type { SegmentDraftResponse } from "@/api/ai";
+import { useEventCategoriesQuery } from "@/hooks/queries/event";
 import {
   useCreateSegmentMutation,
   usePreviewSegmentMutation,
@@ -167,12 +170,18 @@ function BuilderInner({
   const [previewError, setPreviewError] = useState<unknown>(null);
   const [dirty, setDirty] = useState(false);
   const [dirtyAfterPreview, setDirtyAfterPreview] = useState(false);
+  const [naturalPrompt, setNaturalPrompt] = useState("");
+  const [naturalDraft, setNaturalDraft] = useState<SegmentDraftResponse | null>(
+    null,
+  );
 
   // ---------- Mutations ----------
   const createMut = useCreateSegmentMutation(projectId);
   const updateMut = useUpdateSegmentMutation(projectId);
   const previewMut = usePreviewSegmentMutation(projectId);
   const rebuildMut = useRebuildSegmentMutation(projectId);
+  const segmentDraftMut = useSegmentDraftMutation(projectId);
+  const eventCategoriesQuery = useEventCategoriesQuery(projectId);
   const submitting = createMut.isPending || updateMut.isPending;
 
   // ---------- Detail → form 초기화 ----------
@@ -272,6 +281,56 @@ function BuilderInner({
       setPreviewError(err);
       setPreviewResult(null);
     }
+  };
+
+  const onGenerateSegmentDraft = async (): Promise<void> => {
+    const prompt = naturalPrompt.trim();
+    if (!prompt) {
+      toast("세그먼트 조건을 자연어로 입력해 주세요.", "warning");
+      return;
+    }
+    try {
+      const res = await segmentDraftMut.mutateAsync({
+        prompt,
+        availableEvents: (eventCategoriesQuery.data ?? []).map((event) => ({
+          categoryId: event.categoryId,
+          categoryName: event.categoryName,
+          displayName: event.displayName,
+          description: event.description,
+        })),
+        context: {
+          name,
+          description,
+          currentConditionTree: tree,
+        },
+      });
+      setNaturalDraft(res);
+      toast("AI 세그먼트 조건 초안을 만들었습니다. 적용 전 내용을 확인해 주세요.", "success");
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "AI 세그먼트 조건 초안을 만들지 못했습니다.";
+      toast(msg, "error");
+    }
+  };
+
+  const onApplySegmentDraft = (): void => {
+    if (!naturalDraft) return;
+    if (naturalDraft.name) {
+      setName(naturalDraft.name.slice(0, 30));
+    }
+    if (naturalDraft.description) {
+      setDescription(naturalDraft.description.slice(0, 100));
+    }
+    dispatch({ type: "SET_TREE", tree: naturalDraft.conditionTree });
+    setPreviewResult(null);
+    setPreviewError(null);
+    setPreviewCallCount(0);
+    setDirtyAfterPreview(false);
+    setDirty(true);
+    setErrors({});
+    toast("AI 초안을 조건 트리에 적용했습니다. 저장 전 미리보기를 실행해 주세요.", "success");
   };
 
   const onSave = async (): Promise<void> => {
@@ -598,6 +657,17 @@ function BuilderInner({
           </Card>
 
           {/* 조건 트리 */}
+          {!isFormDisabled && (
+            <NaturalSegmentDraftPanel
+              prompt={naturalPrompt}
+              draft={naturalDraft}
+              isLoading={segmentDraftMut.isPending}
+              onChangePrompt={setNaturalPrompt}
+              onGenerate={onGenerateSegmentDraft}
+              onApply={onApplySegmentDraft}
+            />
+          )}
+
           <Card
             title="조건 구성"
             subtitle="이벤트·사용자·태그·디바이스 조건을 조합합니다 (AND/OR · 최대 3단계 중첩)"
@@ -733,6 +803,121 @@ function BuilderInner({
       </div>
     </div>
   );
+}
+
+function NaturalSegmentDraftPanel({
+  prompt,
+  draft,
+  isLoading,
+  onChangePrompt,
+  onGenerate,
+  onApply,
+}: {
+  prompt: string;
+  draft: SegmentDraftResponse | null;
+  isLoading: boolean;
+  onChangePrompt: (value: string) => void;
+  onGenerate: () => void;
+  onApply: () => void;
+}) {
+  return (
+    <Card
+      title="자연어 세그먼트 빌더"
+      subtitle="대상 고객을 문장으로 입력하면 conditionTree 초안을 생성합니다."
+      action={
+        <Button
+          variant="primaryStrong"
+          size="sm"
+          icon={Icon.send(12)}
+          onClick={onGenerate}
+          disabled={isLoading}
+          style={{}}
+        >
+          {isLoading ? "생성 중..." : "초안 생성"}
+        </Button>
+      }
+      style={{ borderColor: "#dbe4ff" }}
+    >
+      <textarea
+        value={prompt}
+        onChange={(e) => onChangePrompt(e.target.value)}
+        rows={3}
+        placeholder="예: 최근 30일 장바구니 이벤트가 1회 이상이고 구매 이벤트가 없는 iOS 사용자"
+        style={{
+          width: "100%",
+          minHeight: 72,
+          resize: "vertical",
+          padding: 12,
+          fontFamily: "inherit",
+          fontSize: 13,
+          lineHeight: 1.5,
+          color: "#1f2937",
+          border: "1px solid #cbd5e1",
+          borderRadius: 8,
+          outline: "none",
+          boxSizing: "border-box",
+        }}
+      />
+
+      {draft && (
+        <div
+          style={{
+            marginTop: 12,
+            padding: 12,
+            background: "#f8fafc",
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 10,
+              alignItems: "center",
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1f2937" }}>
+                {draft.name ?? "세그먼트 조건 초안"}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 12, color: "#64748b" }}>
+                조건 {countConditions(draft.conditionTree)}개
+                {draft.description ? ` · ${draft.description}` : ""}
+              </div>
+            </div>
+            <Button variant="secondary" size="sm" onClick={onApply} style={{}}>
+              조건 트리에 적용
+            </Button>
+          </div>
+          {draft.notes && draft.notes.length > 0 && (
+            <div
+              style={{
+                marginTop: 8,
+                fontSize: 11,
+                color: "#64748b",
+                lineHeight: 1.5,
+              }}
+            >
+              {draft.notes.slice(0, 2).join(" · ")}
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function countConditions(node: SegmentDraftResponse["conditionTree"]): number {
+  let count = 0;
+  for (const child of node.conditions) {
+    if (child.type === "group") {
+      count += countConditions(child);
+    } else {
+      count += 1;
+    }
+  }
+  return count;
 }
 
 function LinkedCampaignsView({
