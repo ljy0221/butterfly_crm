@@ -33,17 +33,18 @@ export function RequireRole({ role, children }: { role: Role; children: ReactNod
 /**
  * URL의 :projectId가 store의 현재 프로젝트와 다르면 store를 업데이트하거나
  * 프로젝트 선택 페이지로 보낸다.
+ * ADMIN은 /p/* 경로에 접근할 수 없으므로 즉시 /admin으로 리다이렉트한다.
  */
 export function RequireProject({ children }: { children: ReactNode }) {
   const params = useParams<{ projectId: string }>();
   const current = useProjectStore((s) => s.current);
+  const member = useAuthStore((s) => s.member);
   const urlProjectId = Number(params.projectId);
 
-  if (!current || Number.isNaN(urlProjectId)) {
+  if (!current || Number.isNaN(urlProjectId) || member?.role === "ADMIN") {
     return <Navigate to="/projects" replace />;
   }
   if (current.projectId !== urlProjectId) {
-    // 다른 프로젝트로의 직접 진입 시 — 프로젝트 선택 페이지에서 권한 검증 후 store 갱신.
     return <Navigate to="/projects" replace />;
   }
   return <>{children}</>;
