@@ -1,6 +1,15 @@
 spring:
   application:
     name: butterfly-api
+  ai:
+    # 로컬/CI 기본값은 비활성화한다. 실제 AI 호출은 SPRING_AI_MODEL_CHAT=openai 과 OPENAI_API_KEY 설정 시 동작.
+    model:
+      chat: ${SPRING_AI_MODEL_CHAT:none}
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        options:
+          model: ${OPENAI_MODEL:gpt-5.4-mini}
   # local 개발용 default profile (매번 환경변수 명시 부담 회피).
   # production K8s는 SPRING_PROFILES_ACTIVE=api,prod로 override (Spring Boot 우선순위 룰).
   # K8s env > application.yml이라 본 default는 local 한정 효과, production 영향 0.
