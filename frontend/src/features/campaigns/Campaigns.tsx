@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Icon,
-  Menu,
   PageHeader,
   SearchInput,
   Select,
@@ -315,7 +314,7 @@ export default function Campaigns() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "2.4fr 0.9fr 0.7fr 1.2fr 0.8fr 0.8fr 1.2fr 50px",
+                gridTemplateColumns: "2.4fr 0.9fr 0.7fr 1.4fr 130px",
                 padding: "10px 14px",
                 background: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
@@ -327,10 +326,7 @@ export default function Campaigns() {
               <div>캠페인명</div>
               <div>상태</div>
               <div>채널</div>
-              <div>세그먼트</div>
-              <div style={{ textAlign: "right" }}>발송수</div>
-              <div style={{ textAlign: "right" }}>오픈률</div>
-              <div>다음 발송</div>
+              <div>생성일시</div>
               <div></div>
             </div>
             {campaigns.map((c, i) => (
@@ -399,39 +395,13 @@ function CampaignRow({
 }: CampaignRowProps) {
   const status = item.campaignStatus;
 
-  const menuItems: Array<
-    | { label: string; icon?: React.ReactNode; onClick: () => void; danger?: boolean }
-    | { divider: true }
-  > = [];
-  if (canEdit) {
-    if (status === "DRAFT") {
-      menuItems.push({
-        label: "시작",
-        icon: Icon.send(12),
-        onClick: onStart,
-      });
-      menuItems.push({ divider: true });
-      menuItems.push({
-        label: "삭제",
-        icon: Icon.trash(12),
-        onClick: onDelete,
-        danger: true,
-      });
-    } else if (status === "ACTIVE") {
-      menuItems.push({
-        label: "일시정지",
-        icon: Icon.pause ? Icon.pause(12) : Icon.dots(12),
-        onClick: onPause,
-      });
-    }
-  }
 
   return (
     <div
       onClick={onClick}
       style={{
         display: "grid",
-        gridTemplateColumns: "2.4fr 0.9fr 0.7fr 1.2fr 0.8fr 0.8fr 1.2fr 50px",
+        gridTemplateColumns: "2.4fr 0.9fr 0.7fr 1.4fr 130px",
         padding: "12px 14px",
         alignItems: "center",
         fontSize: 12.5,
@@ -444,9 +414,6 @@ function CampaignRow({
     >
       <div>
         <div style={{ color: "#1f2937", fontWeight: 600 }}>{item.campaignName}</div>
-        <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>
-          #{item.campaignId}
-        </div>
       </div>
       <div>
         <Tag tone={STATUS_TONE[status]} dot style={{}}>
@@ -458,39 +425,62 @@ function CampaignRow({
           {CHANNEL_LABEL[item.channel]}
         </Tag>
       </div>
-      {/* 목록 응답에 segment/sendCount/openRate/nextRunAt 미노출 — 빈 칸 처리 */}
-      <div style={{ color: "#94a3b8" }}>—</div>
-      <div style={{ textAlign: "right", color: "#94a3b8" }}>—</div>
-      <div style={{ textAlign: "right", color: "#94a3b8" }}>—</div>
       <div style={{ color: "#64748b", fontSize: 11.5 }}>{fmtDateTime(item.createdAt)}</div>
-      <div style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-        {menuItems.length > 0 && (
-          <Menu
-            align="right"
-            trigger={
-              <button
-                type="button"
-                aria-label="캠페인 작업 메뉴"
-                style={{
-                  width: 26,
-                  height: 26,
-                  border: 0,
-                  background: "transparent",
-                  color: "#64748b",
-                  cursor: "pointer",
-                  borderRadius: 4,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {Icon.dots(14)}
-              </button>
-            }
-            items={menuItems}
-          />
+      <div
+        style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {canEdit && status === "DRAFT" && (
+          <>
+            <ActionBtn label="시작" onClick={onStart} />
+            <ActionBtn label="삭제" onClick={onDelete} danger />
+          </>
+        )}
+        {canEdit && status === "ACTIVE" && (
+          <ActionBtn label="일시정지" onClick={onPause} />
+        )}
+        {canEdit && status === "PAUSED" && (
+          <ActionBtn label="재개" onClick={onStart} />
         )}
       </div>
     </div>
+  );
+}
+
+function ActionBtn({
+  label,
+  onClick,
+  danger = false,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
+        fontFamily: "inherit",
+        borderRadius: 6,
+        border: `1px solid ${danger ? "#fecaca" : "#e2e8f0"}`,
+        background: danger ? "#fff5f5" : "#f8fafc",
+        color: danger ? "#dc2626" : "#374151",
+        cursor: "pointer",
+        transition: "background 100ms",
+        whiteSpace: "nowrap",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = danger ? "#fee2e2" : "#f1f5f9";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = danger ? "#fff5f5" : "#f8fafc";
+      }}
+    >
+      {label}
+    </button>
   );
 }

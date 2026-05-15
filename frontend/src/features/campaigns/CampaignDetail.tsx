@@ -269,9 +269,6 @@ function CampaignDetailBody({
         title={campaign.campaignName}
         subtitle={
           <span style={{ display: "inline-flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <span style={{ fontFamily: "var(--font-mono)", color: "#94a3b8", fontSize: 11 }}>
-              #{campaign.campaignId}
-            </span>
             <Tag tone={STATUS_TONE[status]} dot style={{}}>
               {STATUS_LABEL[status]}
             </Tag>
@@ -395,7 +392,6 @@ function CampaignDetailBody({
                 ["이름", campaign.campaignName],
                 ["유형", campaign.campaignType === "ONE_TIME" ? "일회성 (One-time)" : "자동화 (Automation)"],
                 ["설명", campaign.campaignDescription],
-                ["생성자 ID", `#${campaign.memberId}`],
                 ["생성일시", fmtDateTime(campaign.createdAt)],
                 ["수정일시", fmtDateTime(campaign.updatedAt)],
               ]}
@@ -410,7 +406,7 @@ function CampaignDetailBody({
                   "세그먼트",
                   campaign.segmentId == null
                     ? "전체 사용자 (세그먼트 미지정)"
-                    : `세그먼트 #${campaign.segmentId}`,
+                    : "세그먼트",
                 ],
                 ["세그먼트 빌드 상태", campaign.segmentBuildStatus ?? "—"],
               ]}
@@ -420,7 +416,6 @@ function CampaignDetailBody({
           <Card title="메시지 템플릿" style={{}}>
             <DetailGrid
               rows={[
-                ["템플릿 ID", `#${campaign.messageTemplateId}`],
                 ["템플릿 이름", template?.messageTemplateName ?? "(로드 중)"],
                 ["채널", CHANNEL_LABEL[campaign.channel]],
                 template

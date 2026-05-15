@@ -254,7 +254,6 @@ export default function TemplateDetailModal({
             <Row label="프로젝트" value={data.projectName} />
             <Row label="생성일" value={fmtDateTime(data.createdAt)} />
             <Row label="수정일" value={fmtDateTime(data.updatedAt)} />
-            <Row label="템플릿 ID" value={`#${templateId}`} mono />
           </Section>
 
           <div
