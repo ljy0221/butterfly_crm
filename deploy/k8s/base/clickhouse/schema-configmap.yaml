@@ -40,32 +40,31 @@ data:
   02-kafka-engine.sql: |
     -- Kafka Engine queue + MaterializedView.
     --
-    -- ⚠️ JSON 필드 매핑 (실 사고 박제 — S14P31B101-300):
-    --   Spring JsonSerializer 는 EventPayload record 의 필드를 camelCase 로 그대로 직렬화
-    --     (eventUuid, projectId, userId, ...). schema 의 snake_case 컬럼과 매칭 안 되면
-    --     input_format_skip_unknown_fields=1 라 silent 무시 → 모든 row 가 default 값 적재.
-    --   해결: queue 테이블은 camelCase 컬럼명으로 받고, MaterializedView 에서 snake_case 로 매핑하여
-    --     events MergeTree (segment build SQL 이 snake_case 기대) 에 적재.
+    -- 컬럼 컨벤션 (S14P31B101-312):
+    --   짝 PR S14P31B101-313 으로 Spring EventPayload 에 @JsonProperty(snake_case) 적용 →
+    --   publish JSON 자체가 snake_case 로 출력. 본 PR 에서 queue 컬럼도 snake_case 로 복귀
+    --   (S14P31B101-300 의 2차 commit camelCase queue + MV aliasing 단기 우회로의 정석 path).
+    --   publisher (Spring) ↔ storage (ClickHouse) 두 schema 의 DB 컨벤션 일관성 회복.
+    --
+    -- occurred_at 만 String 으로 받는 이유:
+    --   Spring LocalDateTime 직렬화 default 가 ISO-8601 with timezone offset (예:
+    --   "2026-05-15T14:00:00.000+09:00"). ClickHouse DateTime64(3) 의 JSON parser default 가
+    --   timezone offset 형식 거부 → "Cannot parse input: expected '\"' before: '+09:00'" 로
+    --   parser 가 멈추고 뒷 필드까지 모두 적재 실패. MV 에서 parseDateTime64BestEffort 로 변환 —
+    --   어떤 timestamp 형식 (offset, Z, T 유무) 이 와도 robust.
     --
     -- kafka_num_consumers=1: events.collected 가 단일 partition 가정 (Step 8 §0.3 사전 확인).
     -- multi-partition 이면 PartitionCount 와 동일 값으로 수정 + ConfigMap 재apply 필요.
-    -- ⚠️ occurredAt 은 String 으로 받는다 (실 사고 박제 — S14P31B101-300):
-    --   Spring LocalDateTime 직렬화 default 가 ISO-8601 with timezone offset (예:
-    --   "2026-05-15T14:00:00.000+09:00"). ClickHouse DateTime64(3) 의 JSON parser 는 default 가
-    --   timezone offset 형식 거부 → "Cannot parse input: expected '\"' before: '+09:00'" 로
-    --   parser 가 멈추고 뒷 필드까지 모두 적재 실패. 운영 critical (실 publish 348+ 건 누적 적재 실패).
-    --   해결: queue 컬럼을 String 으로 받고, MV 에서 parseDateTime64BestEffort 로 변환 — 어떤
-    --   timestamp 형식 (offset, Z, T 유무) 이 와도 robust.
     CREATE TABLE IF NOT EXISTS butterfly.events_kafka_queue
     (
-        eventUuid      String,
-        projectId      UInt64,
-        userId         UInt64,
-        deviceId       UInt64,
-        categoryId     UInt64,
-        occurredAt     String,
-        schemaVersion  Int32,
-        eventData      String
+        event_uuid     String,
+        project_id     UInt64,
+        user_id        UInt64,
+        device_id      UInt64,
+        category_id    UInt64,
+        occurred_at    String,
+        schema_version Int32,
+        event_data     String
     )
     ENGINE = Kafka
     SETTINGS
@@ -81,15 +80,15 @@ data:
     CREATE MATERIALIZED VIEW IF NOT EXISTS butterfly.events_cdc_mv
     TO butterfly.events
     AS SELECT
-        0                                                       AS event_id,
-        projectId                                               AS project_id,
-        userId                                                  AS user_id,
-        categoryId                                              AS category_id,
-        deviceId                                                AS device_id,
-        eventUuid                                               AS event_uuid,
-        parseDateTime64BestEffort(occurredAt, 3, 'Asia/Seoul')  AS occurred_at,
-        schemaVersion                                           AS schema_version,
-        eventData                                               AS event_data,
-        now()                                                   AS created_at,
+        0                                                        AS event_id,
+        project_id,
+        user_id,
+        category_id,
+        device_id,
+        event_uuid,
+        parseDateTime64BestEffort(occurred_at, 3, 'Asia/Seoul')  AS occurred_at,
+        schema_version,
+        event_data,
+        now()                                                    AS created_at,
         CAST(NULL AS Nullable(DateTime)) AS updated_at
     FROM butterfly.events_kafka_queue;
