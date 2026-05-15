@@ -28,4 +28,9 @@ public class RedisService {
     public boolean hasKey(@NonNull String key) {
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
     }
+
+    /** 원자적 GET+DELETE. RTR 동시성 제어에 사용 (Redis GETDEL). */
+    public Optional<String> getAndDelete(@NonNull String key) {
+        return Optional.ofNullable(redisTemplate.opsForValue().getAndDelete(key));
+    }
 }
