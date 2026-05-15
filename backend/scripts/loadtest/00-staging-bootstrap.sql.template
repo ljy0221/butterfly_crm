@@ -1,0 +1,40 @@
+-- Staging bootstrap — loadtest 시드 직전에 적용
+-- 로컬 docker-compose 환경에서 운영과 동일한 조건을 만들기 위한 OWNER + Project + FCM credential.
+--
+-- 적용 방법: run-staging.ps1 가 __REPLACE_WITH_SERVICE_ACCOUNT_JSON__ 을
+--           C:\Users\SSAFY\Downloads\butterfly-test-ce57c-...json 의 한 줄 JSON 으로 치환 후
+--           docker exec butterfly-mysql mysql ... 에 보냄.
+--
+-- 멱등성: project_id = 1 범위 데이터를 DELETE 후 INSERT.
+--
+-- LocalAuthFilter 사용 전제: password_hash 가 NULL 이어도 됨 (로그인 안 함, X-Member-Id 헤더 우회).
+
+SET FOREIGN_KEY_CHECKS = 0;
+
+DELETE FROM channel_credentials WHERE project_id = 1;
+DELETE FROM message_templates   WHERE project_id = 1;
+DELETE FROM members             WHERE project_id = 1;
+DELETE FROM projects            WHERE project_id = 1;
+
+-- OWNER member (V13 컬럼 member_status='ACTIVE' 포함)
+INSERT INTO members (member_id, project_id, email, password_hash, name, phone, birth_date,
+                     role_type, member_status, is_deleted, created_at, updated_at)
+VALUES (1, 1, 'staging-owner@local', NULL, 'staging owner', '01000000000', '1990-01-01',
+        'OWNER', 'ACTIVE', FALSE, NOW(), NOW());
+
+-- Project
+INSERT INTO projects (project_id, name, business_no, company_auth_no, owner_id,
+                      public_api_key, daily_limit, plan, is_deleted, created_at, updated_at)
+VALUES (1, 'Staging Project', 'STG-BN', 'STG-AUTH', 1,
+        'pk_staging_loadtest', 100000, 'PRO', FALSE, NOW(), NOW());
+
+-- FCM Channel Credential (Firebase Service Account JSON)
+INSERT INTO channel_credentials (project_id, channel, credential_data, active, created_at, updated_at)
+VALUES (1, 'PUSH', '__REPLACE_WITH_SERVICE_ACCOUNT_JSON__', TRUE, NOW(), NOW());
+
+SET FOREIGN_KEY_CHECKS = 1;
+
+SELECT
+  (SELECT COUNT(*) FROM members  WHERE project_id = 1)             AS members,
+  (SELECT COUNT(*) FROM projects WHERE project_id = 1)             AS projects,
+  (SELECT COUNT(*) FROM channel_credentials WHERE project_id = 1 AND channel='PUSH') AS fcm_credential;
