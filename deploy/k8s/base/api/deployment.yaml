@@ -118,6 +118,22 @@ spec:
             # HikariCP pool size — ClickHouse 는 stateless HTTP 라 작아도 OK (researcher 4~10).
             - name: CLICKHOUSE_MAX_POOL_SIZE
               value: "4"
+            # Spring AI / OpenAI 통합 (S14P31B101-309).
+            # butterfly-ai 모듈이 spring-ai-starter-model-openai 의존, butterfly-api 만 의존.
+            # application.yml 의 spring.ai 블록이 본 env 들을 placeholder 로 받음:
+            #   - spring.ai.model.chat = ${SPRING_AI_MODEL_CHAT:none}
+            #   - spring.ai.openai.api-key = ${OPENAI_API_KEY:}
+            #   - spring.ai.openai.chat.options.model = ${OPENAI_MODEL:gpt-5.4-mini}
+            # SPRING_AI_MODEL_CHAT=openai 로 ChatClient 빈 active. 미설정 시 default "none" 으로 AI 호출 비활성.
+            - name: SPRING_AI_MODEL_CHAT
+              value: "openai"
+            - name: OPENAI_MODEL
+              value: "gpt-5.4-mini"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai-secret
+                  key: api-key
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
