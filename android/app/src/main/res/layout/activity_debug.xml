@@ -94,5 +94,71 @@
             android:layout_marginTop="8dp"
             android:text="④ purchase 이벤트" />
 
+        <!-- QA 빌드 전용 패널 — BuildConfig.IS_QA_BUILD=true 일 때만 표시 -->
+        <View
+            android:id="@+id/qaDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:background="#DDDDDD"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/qaSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="QA 빌드 — 사용자 / 이벤트"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <Spinner
+            android:id="@+id/spUser"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnFireSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="search 이벤트 (운동화, 8건)"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnFireCategoryView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="category_view 이벤트 (시계)"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnFireAddToCart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="add_to_cart 이벤트"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnFireWishlistAdd"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="wishlist_add 이벤트"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnFireLogin"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="login 이벤트"
+            android:visibility="gone" />
+
     </LinearLayout>
 </ScrollView>

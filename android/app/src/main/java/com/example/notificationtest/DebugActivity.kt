@@ -86,6 +86,74 @@ class DebugActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnEventPurchase).setOnClickListener {
             EventTrigger.firePurchase(this)
         }
+
+        // QA 빌드 전용 패널
+        if (BuildConfig.IS_QA_BUILD) {
+            setupQaPanel()
+        }
+    }
+
+    /**
+     * QA 빌드 전용 — 사용자 셀렉터 + 5가지 이벤트 발사 버튼 활성화.
+     * DemoUserPreferences 는 qa source set 에만 있으므로 reflection.
+     */
+    private fun setupQaPanel() {
+        listOf(
+            R.id.qaDivider, R.id.qaSection, R.id.spUser,
+            R.id.btnFireSearch, R.id.btnFireCategoryView,
+            R.id.btnFireAddToCart, R.id.btnFireWishlistAdd, R.id.btnFireLogin
+        ).forEach { findViewById<android.view.View>(it).visibility = android.view.View.VISIBLE }
+
+        try {
+            val prefsClass = Class.forName("com.example.notificationtest.prefs.DemoUserPreferences")
+            val instance = prefsClass.getField("INSTANCE").get(null)
+            @Suppress("UNCHECKED_CAST")
+            val knownUsers = prefsClass.getMethod("getKnownUsers").invoke(instance) as List<String>
+            val currentUserId = prefsClass.getMethod("currentUserId", android.content.Context::class.java)
+                .invoke(instance, this) as String
+
+            val sp = findViewById<android.widget.Spinner>(R.id.spUser)
+            val adapter = android.widget.ArrayAdapter(
+                this, android.R.layout.simple_spinner_item, knownUsers
+            ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+            sp.adapter = adapter
+            sp.setSelection(knownUsers.indexOf(currentUserId).coerceAtLeast(0))
+
+            sp.onItemSelectedListener = object : android.widget.AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(parent: android.widget.AdapterView<*>?,
+                    view: android.view.View?, position: Int, id: Long) {
+                    val newUser = knownUsers[position]
+                    prefsClass.getMethod("setCurrentUserId",
+                        android.content.Context::class.java, String::class.java)
+                        .invoke(instance, this@DebugActivity, newUser)
+                    EventTrigger.fireLoginSilently(this@DebugActivity, newUser)
+                }
+                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "QA user selector setup failed", t)
+        }
+
+        findViewById<Button>(R.id.btnFireSearch).setOnClickListener {
+            EventTrigger.fireSearchSilently(this, "운동화", 8)
+            Toast.makeText(this, "search 이벤트 발사", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<Button>(R.id.btnFireCategoryView).setOnClickListener {
+            EventTrigger.fireCategoryViewSilently(this, "시계")
+            Toast.makeText(this, "category_view 이벤트 발사", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<Button>(R.id.btnFireAddToCart).setOnClickListener {
+            EventTrigger.fireAddToCartSilently(this, "운동화", "sku-shoe-1", 1, 57850)
+            Toast.makeText(this, "add_to_cart 이벤트 발사", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<Button>(R.id.btnFireWishlistAdd).setOnClickListener {
+            EventTrigger.fireWishlistAddSilently(this, "운동화", "sku-shoe-1")
+            Toast.makeText(this, "wishlist_add 이벤트 발사", Toast.LENGTH_SHORT).show()
+        }
+        findViewById<Button>(R.id.btnFireLogin).setOnClickListener {
+            EventTrigger.fireLoginSilently(this, "user-test")
+            Toast.makeText(this, "login 이벤트 발사", Toast.LENGTH_SHORT).show()
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
