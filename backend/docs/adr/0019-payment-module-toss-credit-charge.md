@@ -63,7 +63,6 @@ Butterfly는 멀티테넌트 CRM SaaS로 프로젝트(테넌트) 단위 유료 �
 ```
 butterfly-payment/
 └── src/main
-    ├── resources/db/migration/V16__payment.sql
     └── java/com/b101/butterfly/payment/
         ├── config/            # PaymentConfig, TossPaymentsProperties
         ├── presentation/      # 컨트롤러 + dto
@@ -82,7 +81,7 @@ butterfly-payment/
 - `credit_account` — 프로젝트 1행, `balance BIGINT CHECK(balance>=0)`, `version BIGINT` (낙관 락).
 - `credit_transaction` — 모든 잔액 변동의 append-only 원장. `UNIQUE(payment_order_id, reason)` 로 중복 적립 차단.
 
-도메인 모듈 자기 자리(`butterfly-payment/src/main/resources/db/migration/`)에 V16 부터 시작 (ADR-0013 §4).
+ADR-0013 §4 는 도메인 모듈 자기 자리에 두기를 권장하지만, develop 현 시점 모든 마이그레이션이 `butterfly-api/src/main/resources/db/migration/` 에 집중되어 있다. 본 PR 도 **기존 관행을 따라 같은 디렉토리에 V16 부터 추가**한다 (번호 순서·충돌 감지 용이성 우선).
 
 ### REST API (1차 PR)
 
