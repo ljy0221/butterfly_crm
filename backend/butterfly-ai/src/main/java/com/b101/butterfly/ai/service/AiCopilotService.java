@@ -128,6 +128,12 @@ public class AiCopilotService {
         String channel = defaultText(context.channel(), "KAKAO");
         String campaignType = defaultText(context.campaignType(), "ONE_TIME");
         String segment = defaultText(context.segmentName(), "선택 세그먼트");
+        String greetingVar = pickGreetingVariable(request.availableVariables());
+        String body =
+                greetingVar == null
+                        ? goal + "\n지금 바로 확인해 보시고 필요한 혜택을 놓치지 마세요."
+                        : "{{" + greetingVar + "}}님, " + goal
+                                + "\n지금 바로 확인해 보시고 필요한 혜택을 놓치지 마세요.";
 
         return new CampaignDraftResponse(
                 new CampaignDraftResponse.CampaignDraft(
@@ -140,10 +146,32 @@ public class AiCopilotService {
                         channel + " 채널에 맞춘 메시지 템플릿 초안입니다.",
                         channel,
                         limitText(segment + " 고객님을 위한 안내", 255),
-                        "{{name}}님, " + goal + "\n지금 바로 확인해 보시고 필요한 혜택을 놓치지 마세요.",
+                        body,
                         null,
-                        List.of("name")),
+                        greetingVar == null ? List.of() : List.of(greetingVar)),
                 List.of(reason));
+    }
+
+    /**
+     * fallback 본문에 쓸 호칭 변수를 고른다. availableVariables 가 비어 있으면 null
+     * 을 반환해 변수 없는 안전한 문장을 만들도록 한다 (이전엔 user_tags 에 'name' 시드가
+     * 없으면 "님, ..." 같은 어색한 잔재가 남았다). 'name' 이 있으면 우선 사용, 없으면
+     * 첫 항목을 선택.
+     */
+    private String pickGreetingVariable(List<String> availableVariables) {
+        if (availableVariables == null || availableVariables.isEmpty()) {
+            return null;
+        }
+        return availableVariables.stream()
+                .filter(v -> v != null && !v.isBlank())
+                .filter(v -> v.equalsIgnoreCase("name"))
+                .findFirst()
+                .orElseGet(
+                        () ->
+                                availableVariables.stream()
+                                        .filter(v -> v != null && !v.isBlank())
+                                        .findFirst()
+                                        .orElse(null));
     }
 
     private SegmentDraftResponse fallbackSegmentDraft(SegmentDraftRequest request, String reason) {
@@ -157,12 +185,7 @@ public class AiCopilotService {
                                                 List.of(),
                                                 new Period.Relative(days),
                                                 1))
-                        .orElseGet(
-                                () ->
-                                        new TagNode(
-                                                "interest",
-                                                Operator.CONTAINS,
-                                                objectMapper.getNodeFactory().textNode(shortGoal(request.prompt()))));
+                        .orElseGet(() -> fallbackTagCondition(request));
         GroupNode conditionTree = new GroupNode(LogicOp.AND, List.of(condition));
 
         return new SegmentDraftResponse(
@@ -172,6 +195,24 @@ public class AiCopilotService {
                 List.of(
                         "명시된 기간이 없으면 최근 " + days + "일 기준으로 해석했습니다.",
                         reason));
+    }
+
+    /**
+     * 이벤트 힌트가 매칭 안 됐을 때의 fallback tag 조건. 프로젝트의 실제 user_tags
+     * 키 (request.availableTagKeys) 가 있으면 그 첫 항목을 사용해 매칭 0건 사고를
+     * 방지한다. 키 후보가 없으면 임의 키로 노드를 만들지 말고 마지막 수단으로
+     * "interest" 를 사용 (기존 동작 유지).
+     */
+    private ConditionNode fallbackTagCondition(SegmentDraftRequest request) {
+        String key =
+                request.availableTagKeys().stream()
+                        .filter(k -> k != null && !k.isBlank())
+                        .findFirst()
+                        .orElse("interest");
+        return new TagNode(
+                key,
+                Operator.CONTAINS,
+                objectMapper.getNodeFactory().textNode(shortGoal(request.prompt())));
     }
 
     private Optional<SegmentDraftRequest.EventCategoryHint> pickEventHint(SegmentDraftRequest request) {
@@ -275,6 +316,9 @@ public class AiCopilotService {
                 실제 categoryId를 모르면 event 노드를 만들지 말고 tag/user/device 노드를 사용하세요.
                 event 노드는 type=event, categoryId, filters, period, minCount를 사용하세요.
                 tag/user/device 노드는 type, key, op, value를 사용하세요.
+                tag 노드의 key는 입력 JSON의 availableTagKeys 가 비어 있지 않으면 반드시 그 목록 안의 키만 사용하세요.
+                availableTagKeys 목록 밖의 키를 만들지 마세요 — 실제 user_tags 와 매칭되지 않아 세그먼트 결과가 0건이 됩니다.
+                availableTagKeys 가 비어 있고 적합한 키를 추정할 수 없으면 tag 노드 대신 event 노드 또는 user/device 노드를 시도하고, 그래도 어려우면 notes에 부족한 정보를 적으세요.
                 op는 eq, neq, gt, lt, gte, lte, in, contains 중 하나입니다.
                 period는 relative면 type=relative, days를 사용하세요.
                 모호한 부분은 notes에 적으세요.

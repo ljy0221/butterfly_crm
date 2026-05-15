@@ -107,6 +107,7 @@ class AiCopilotServiceTest {
                         new SegmentDraftRequest(
                                 "cart add customers in last 14 days",
                                 new SegmentDraftRequest.SegmentDraftContext(null, null, null),
+                                List.of(),
                                 List.of()));
 
         assertThat(response.conditionTree()).isInstanceOf(GroupNode.class);
@@ -115,6 +116,23 @@ class AiCopilotServiceTest {
                 .isInstanceOfSatisfying(
                         TagNode.class,
                         tag -> assertThat(tag.key()).isEqualTo("interest"));
+    }
+
+    @Test
+    void segmentDraftTagFallbackUsesFirstAvailableTagKey() {
+        SegmentDraftResponse response =
+                service.generateSegmentDraft(
+                        1L,
+                        new SegmentDraftRequest(
+                                "vip customers",
+                                new SegmentDraftRequest.SegmentDraftContext(null, null, null),
+                                List.of(),
+                                List.of("vip_grade", "city")));
+
+        assertThat(response.conditionTree().conditions().get(0))
+                .isInstanceOfSatisfying(
+                        TagNode.class,
+                        tag -> assertThat(tag.key()).isEqualTo("vip_grade"));
     }
 
     @Test
@@ -127,12 +145,43 @@ class AiCopilotServiceTest {
                                 new SegmentDraftRequest.SegmentDraftContext(null, null, null),
                                 List.of(
                                         new SegmentDraftRequest.EventCategoryHint(
-                                                12L, "purchase_completed", "Purchase", "order paid"))));
+                                                12L, "purchase_completed", "Purchase", "order paid")),
+                                List.of()));
 
         assertThat(response.conditionTree().conditions().get(0))
                 .isInstanceOfSatisfying(
                         EventNode.class,
                         event -> assertThat(event.categoryId()).isEqualTo(12L));
+    }
+
+    @Test
+    void campaignDraftFallbackUsesFirstAvailableVariableForGreeting() {
+        CampaignDraftResponse response =
+                service.generateCampaignDraft(
+                        1L,
+                        new CampaignDraftRequest(
+                                "birthday coupon",
+                                new CampaignDraftRequest.CampaignDraftContext(
+                                        null, null, "ONE_TIME", "EMAIL", null, "vip"),
+                                List.of("first_name", "email")));
+
+        assertThat(response.template().messageTemplateBody()).contains("{{first_name}}");
+        assertThat(response.template().requiredVariables()).containsExactly("first_name");
+    }
+
+    @Test
+    void campaignDraftFallbackOmitsVariableWhenNoneAvailable() {
+        CampaignDraftResponse response =
+                service.generateCampaignDraft(
+                        1L,
+                        new CampaignDraftRequest(
+                                "system notice",
+                                new CampaignDraftRequest.CampaignDraftContext(
+                                        null, null, "ONE_TIME", "PUSH", null, null),
+                                List.of()));
+
+        assertThat(response.template().messageTemplateBody()).doesNotContain("{{");
+        assertThat(response.template().requiredVariables()).isEmpty();
     }
 
     @Test
