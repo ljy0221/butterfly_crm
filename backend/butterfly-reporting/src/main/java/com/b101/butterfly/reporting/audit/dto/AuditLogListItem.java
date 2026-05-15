@@ -1,15 +1,15 @@
 package com.b101.butterfly.reporting.audit.dto;
 
 import com.b101.butterfly.reporting.audit.entity.AuditLog;
+import com.b101.butterfly.reporting.audit.port.MemberLookupView;
 
 import java.time.LocalDateTime;
 
 /**
  * 감사 로그 목록 응답 항목 (API #20).
  *
- * <p>명세 호환을 위해 {@code memberName}을 포함하지만, 현재 reporting 모듈에서 auth.entity.Member에
- * 직접 의존할 수 없어 일단 null로 채운다. {@code MemberLookupPort} 도입 후 별도 PR에서 채워 넣는다
- * (현재 path는 P4-A로 계획됨, 역할 1 담당).
+ * <p>{@code memberName}은 {@link MemberLookupView}를 통해 채워진다. lookup 결과가 없으면(예: 탈퇴 멤버)
+ * null 로 폴백한다 — 프론트는 ID-only 표시로 그레이스풀 디그레이드.
  */
 public record AuditLogListItem(
         Long auditId,
@@ -24,12 +24,12 @@ public record AuditLogListItem(
         LocalDateTime createdAt
 ) {
 
-    public static AuditLogListItem from(AuditLog log) {
+    public static AuditLogListItem from(AuditLog log, MemberLookupView member) {
         return new AuditLogListItem(
                 log.getId(),
                 log.getProjectId(),
                 log.getMemberId(),
-                null,
+                member != null ? member.name() : null,
                 log.getAction(),
                 log.getTargetType(),
                 log.getTargetId(),
