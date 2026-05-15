@@ -28,6 +28,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+/**
+ * EventCollectController WebMvc 테스트.
+ *
+ * <p>인증은 {@code ApiKeyAuthenticationFilter}(prod) / {@code LocalAuthFilter}(dev)가
+ * request attribute {@code resolvedProjectId}에 projectId를 박는 것으로 통합되어 있다 (ADR-0017).
+ * 본 테스트는 {@code addFilters = false}로 필터 체인을 우회하므로
+ * {@code .requestAttr(...)}로 직접 attribute를 세팅해 컨트롤러 단위 동작만 검증한다.
+ */
 @WebMvcTest(EventCollectController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("api")
@@ -40,6 +48,7 @@ class EventCollectControllerWebMvcTest {
     @MockitoBean private EventCollectService eventCollectService;
 
     private static final String URL = "/api/v1/events";
+    private static final String RESOLVED_PROJECT_ID_ATTR = "resolvedProjectId";
     private static final Long PROJECT_ID = 100L;
 
     private String validBody() throws Exception {
@@ -63,7 +72,7 @@ class EventCollectControllerWebMvcTest {
                 .thenReturn(response);
 
         mockMvc.perform(post(URL)
-                        .header("X-Project-Id", PROJECT_ID)
+                        .requestAttr(RESOLVED_PROJECT_ID_ATTR, PROJECT_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validBody()))
                 .andExpect(status().isOk())
@@ -90,7 +99,7 @@ class EventCollectControllerWebMvcTest {
                 """;
 
         mockMvc.perform(post(URL)
-                        .header("X-Project-Id", PROJECT_ID)
+                        .requestAttr(RESOLVED_PROJECT_ID_ATTR, PROJECT_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(anonBody))
                 .andExpect(status().isOk())
@@ -104,7 +113,7 @@ class EventCollectControllerWebMvcTest {
                 .thenThrow(new BusinessException(EventErrorCode.CATEGORY_NOT_FOUND));
 
         mockMvc.perform(post(URL)
-                        .header("X-Project-Id", PROJECT_ID)
+                        .requestAttr(RESOLVED_PROJECT_ID_ATTR, PROJECT_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validBody()))
                 .andExpect(status().isNotFound())
@@ -119,7 +128,7 @@ class EventCollectControllerWebMvcTest {
                 .thenThrow(new BusinessException(EventErrorCode.DEVICE_NOT_REGISTERED));
 
         mockMvc.perform(post(URL)
-                        .header("X-Project-Id", PROJECT_ID)
+                        .requestAttr(RESOLVED_PROJECT_ID_ATTR, PROJECT_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validBody()))
                 .andExpect(status().isNotFound())
@@ -140,7 +149,7 @@ class EventCollectControllerWebMvcTest {
                 """;
 
         mockMvc.perform(post(URL)
-                        .header("X-Project-Id", PROJECT_ID)
+                        .requestAttr(RESOLVED_PROJECT_ID_ATTR, PROJECT_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidBody))
                 .andExpect(status().isBadRequest());
@@ -159,18 +168,9 @@ class EventCollectControllerWebMvcTest {
                 """;
 
         mockMvc.perform(post(URL)
-                        .header("X-Project-Id", PROJECT_ID)
+                        .requestAttr(RESOLVED_PROJECT_ID_ATTR, PROJECT_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(invalidBody))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("POST /events — X-Project-Id 헤더 누락은 400")
-    void collectRejectsMissingProjectIdHeader() throws Exception {
-        mockMvc.perform(post(URL)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validBody()))
                 .andExpect(status().isBadRequest());
     }
 }
