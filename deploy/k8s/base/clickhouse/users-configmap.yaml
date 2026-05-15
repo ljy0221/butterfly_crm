@@ -1,0 +1,26 @@
+# butterfly user 에 SQL-style 권한 부여 (S14P31B101-300).
+#
+# ClickHouse 공식 이미지의 CLICKHOUSE_USER/CLICKHOUSE_PASSWORD env 는 user 를 만들지만
+# access_management(=GRANT) 권한을 자동 부여하지 않는다. 권한 없는 user 는 schema-job 의
+# CREATE TABLE 이 권한 오류로 실패. users.d 의 override 로 access_management=1 + named_collection_control=1
+# 을 butterfly user 에 직접 부여.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: clickhouse-users
+  namespace: butterfly
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/instance: clickhouse
+    app.kubernetes.io/component: analytics
+    app.kubernetes.io/part-of: butterfly
+data:
+  butterfly.xml: |
+    <clickhouse>
+        <users>
+            <butterfly>
+                <access_management>1</access_management>
+                <named_collection_control>1</named_collection_control>
+            </butterfly>
+        </users>
+    </clickhouse>
