@@ -19,5 +19,8 @@ public final class AuditAction {
     /** 사용자가 rebuild API #44를 호출. Codex 합의 — Phase 6에서 추가 (이 시점). */
     public static final String SEGMENT_REBUILD_REQUESTED = "SEGMENT_REBUILD_REQUESTED";
 
+    /** 사용자가 빌드 취소 API 를 호출 (S14P31B101-269). cancel marker 마킹 + FAILED 강등. */
+    public static final String SEGMENT_BUILD_CANCELED = "SEGMENT_BUILD_CANCELED";
+
     private AuditAction() {}
 }

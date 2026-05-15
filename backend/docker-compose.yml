@@ -11,13 +11,41 @@ services:
       MYSQL_PASSWORD: butterfly
     volumes:
       - mysql-data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    # S14P31B101-269 — buffer pool 128MB(디폴트) 가 100M events 테이블 hot range 를 못 담아
+    # random IO 누적, Innodb_buffer_pool_wait_free 가 분 단위로 쌓이는 문제 해소.
+    # tmp/heap 도 GROUP BY 877k user 가 16MB 디폴트를 초과해 디스크 spill 되는 것 회피.
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=2G
+      --tmp-table-size=256M
+      --max-heap-table-size=256M
 
   redis:
     image: redis:7-alpine
     container_name: butterfly-redis
     ports:
       - "6379:6379"
+
+  # S14P31B101-275 — ClickHouse PoC. segment build SQL 의 events 100M scan 을 columnar 로 가속.
+  # native TCP 9000 / HTTP 8123. 같은 docker network 라 'mysql:3306' 으로 mysql() 테이블 함수 접근 가능.
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: butterfly-clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: butterfly
+      CLICKHOUSE_USER: butterfly
+      CLICKHOUSE_PASSWORD: butterfly
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
 
   kafka:
     image: apache/kafka:3.7.0
@@ -39,3 +67,4 @@ services:
 
 volumes:
   mysql-data:
+  clickhouse-data:

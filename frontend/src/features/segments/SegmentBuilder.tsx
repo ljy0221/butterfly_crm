@@ -28,6 +28,7 @@ import type {
 import ConditionTreeEditor from "./builder/ConditionTreeEditor";
 import PreviewPanel from "./builder/PreviewPanel";
 import { initialTree, treeReducer } from "./builder/treeReducer";
+import BuildProgress from "./BuildProgress";
 
 /**
  * Sprint 5 — SegmentBuilder.
@@ -669,6 +670,15 @@ function BuilderInner({
                   </span>
                 )}
               </div>
+              {/* S14P31B101-275 — BUILDING/PENDING 동안 진행률 표시. currentMemberCount 가
+                  실시간 적재 건수, estimatedCount 는 이전 빌드 결과 (target proxy). */}
+              {(detail.buildStatus === "BUILDING" || detail.buildStatus === "PENDING") && (
+                <BuildProgress
+                  current={detail.currentMemberCount ?? 0}
+                  target={detail.estimatedCount ?? null}
+                  startedAt={detail.buildStartedAt}
+                />
+              )}
               <div style={{ fontSize: 11, color: "#94a3b8", marginBottom: 12 }}>
                 {detail.lastBuiltAt
                   ? `최종 빌드: ${detail.lastBuiltAt}`

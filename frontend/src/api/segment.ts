@@ -106,6 +106,10 @@ export interface SegmentDetail {
   estimatedAt: string | null;
   lastBuiltAt: string | null;
   buildStatus: BuildStatus;
+  /** S14P31B101-275 — BUILDING/PENDING 중에는 실시간 적재된 segment_members COUNT, 그 외엔 estimatedCount. */
+  currentMemberCount: number | null;
+  /** 가장 최근 빌드 시작 시각 (BUILDING 중 progress 계산용). */
+  buildStartedAt: string | null;
   createdBy: CreatorSummary;
   createdAt: string;
   updatedAt: string;

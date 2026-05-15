@@ -54,6 +54,7 @@ import static org.mockito.Mockito.when;
 class SegmentServiceTest {
 
     @Mock private SegmentRepository segmentRepository;
+    @Mock private com.b101.butterfly.segment.repository.SegmentMemberRepository segmentMemberRepository;
     @Mock private SegmentFavoriteRepository segmentFavoriteRepository;
     @Mock private ConditionTreeValidator conditionTreeValidator;
     @Mock private LinkedCampaignChecker linkedCampaignChecker;

@@ -137,9 +137,15 @@ public class Segment extends BaseEntity {
      * 보여주기 위함. worker 의 CAS({@code markBuildingIfPossible}) 는
      * {@code buildStatus != BUILDING} 조건이라 PENDING/READY/FAILED 모두 진입 가능하므로
      * 본 호출 후에도 정상 흐름 유지.
+     *
+     * <p>S14P31B101-269 — buildToken/heartbeat 도 같이 초기화한다. 이전 cancel marker 또는
+     * stale worker 잔재 token 을 새 빌드 시작 시점에 자동 해제 → 다음 worker 의
+     * {@code markBuildingIfPossible} 점유 정상 동작.
      */
     public void markPending() {
         this.buildStatus = BuildStatus.PENDING;
+        this.buildToken = null;
+        this.buildHeartbeatAt = null;
     }
 
     /**

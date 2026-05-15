@@ -190,38 +190,21 @@ export default function PreviewPanel({
         </div>
       )}
 
-      {/* 액션 버튼 — 대형 데이터셋 부하 차단을 위해 일시 비활성 (S14P31B101-242).
-          쿼리 가속화 epic 완료 후 본 disabled 와 안내 박스를 함께 revert. */}
+      {/* 액션 버튼. S14P31B101-275 ClickHouse 통합으로 SELECT count() ~2.7 초 가속화 — 이전 -242 의
+          일시 비활성을 revert. */}
       <Button
         variant="secondary"
         size="md"
         onClick={onRunPreview}
-        disabled
+        disabled={!canPreview || disabled || isLoading}
         style={{
           marginTop: 14,
           width: "100%",
           justifyContent: "center",
-          opacity: 0.5,
         }}
       >
-        미리보기 일시 중단됨
+        {isLoading ? "계산 중..." : preview ? "미리보기 재실행" : "미리보기 실행"}
       </Button>
-      <div
-        role="note"
-        style={{
-          marginTop: 8,
-          padding: "8px 10px",
-          fontSize: 11,
-          color: "#64748b",
-          background: "#f8fafc",
-          border: "1px dashed #e2e8f0",
-          borderRadius: 6,
-          lineHeight: 1.5,
-        }}
-      >
-        대규모 데이터셋에서 쿼리가 수 분 동안 락을 잡는 사례가 확인되어
-        운영 안정성을 위해 일시 비활성화했습니다. 쿼리 가속화 작업 완료 후 재활성 예정.
-      </div>
       {!canPreview && (
         <div
           style={{

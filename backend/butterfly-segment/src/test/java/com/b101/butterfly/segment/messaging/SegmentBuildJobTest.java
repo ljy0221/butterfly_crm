@@ -26,13 +26,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.LongStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,14 +37,15 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link SegmentBuildJob} 동작 검증 — PR3 완성형 빌드 로직.
+ * {@link SegmentBuildJob} 동작 검증.
  *
- * <p>EVENT-only / TAG·USER·DEVICE / mixed / 동시성 안전장치(b/c) / chunk 처리 검증.
+ * <p>흐름: 점유 CAS → segment 조회 → tree hash 비교 → tree 분기로 적재 →
+ * {@link SegmentRepository#completeBuildIfOwner} 마무리. S14P31B101-269 이후 모든 적재 경로가
+ * 단일 INSERT-SELECT 라 chunk/heartbeat 처리는 사라졌다.
  */
 @ExtendWith(MockitoExtension.class)
 class SegmentBuildJobTest {
@@ -69,21 +67,25 @@ class SegmentBuildJobTest {
     private static final String HASH = "abcd1234";
 
     @Test
-    @DisplayName("TAG-only 트리 — sqlConverter + userDirectoryReader 호출 + segment_members INSERT")
+    @DisplayName("TAG-only 트리 — sqlConverter + materializeUserMatchesIntoSegment 호출")
     void tagOnlyTree() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
         SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE ...", Map.of());
         when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
-        when(userDirectoryReader.queryUserIds(any(), any()))
-                .thenReturn(List.of(101L, 102L, 103L));
+        when(userDirectoryReader.materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(3L);
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
                 .thenReturn(1);
 
         segmentBuildJob.consume(message(HASH));
 
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
-        verify(userDirectoryReader).queryUserIds(any(), any());
+        verify(userDirectoryReader)
+                .materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params()));
+        verify(userDirectoryReader, never()).queryUserIds(any(), any());
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
@@ -92,7 +94,7 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("EVENT-only 트리 — materializeEventMatchesIntoSegment 단일 호출, bulkInsert 미호출")
+    @DisplayName("EVENT-only 트리 — materializeEventMatchesIntoSegment 단일 호출")
     void eventOnlyTree() {
         Segment segment = sampleSegment(eventTree());
         stubClaimAndHash(segment);
@@ -103,13 +105,13 @@ class SegmentBuildJobTest {
 
         segmentBuildJob.consume(message(HASH));
 
-        // S14P31B101-199 — filter 없는 EVENT 단독은 native INSERT-SELECT 단일 statement.
+        // S14P31B101-199 — filter 없는 EVENT 단독은 event_daily_agg 기반 INSERT-SELECT.
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
         verify(eventAggReader).materializeEventMatchesIntoSegment(eq(SEGMENT_ID), any(), any());
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
-        verify(segmentMemberRepository, never()).bulkInsert(any());
         verify(sqlConverter, never()).convert(any(), any(EventQueryContext.class));
-        verify(userDirectoryReader, never()).queryUserIds(any(), any());
+        verify(userDirectoryReader, never())
+                .materializeUserMatchesIntoSegment(anyLong(), any(), any());
 
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
@@ -118,21 +120,25 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("필터가 있는 EVENT-only 트리 — SQL 변환 + segment_members INSERT")
+    @DisplayName("필터가 있는 EVENT-only 트리 — SQL 변환 + materializeUserMatchesIntoSegment 단일 호출")
     void filteredEventOnlyTreeUsesSqlConverter() {
         Segment segment = sampleSegment(filteredEventTree());
         stubClaimAndHash(segment);
-        SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE filtered_event", Map.of());
+        SqlFragment fragment =
+                new SqlFragment("SELECT u.user_id FROM users u WHERE filtered_event", Map.of());
         when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
-        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
-                .thenReturn(List.of(211L, 212L));
+        when(userDirectoryReader.materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(2L);
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
                 .thenReturn(1);
 
         segmentBuildJob.consume(message(HASH));
 
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
-        verify(userDirectoryReader).queryUserIds(eq(fragment.sql()), eq(fragment.params()));
+        verify(userDirectoryReader)
+                .materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params()));
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
                 .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
@@ -140,21 +146,25 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("mixed 트리 (EVENT + TAG) — SQL 변환 + segment_members INSERT")
+    @DisplayName("mixed 트리 (EVENT + TAG) — SQL 변환 + materializeUserMatchesIntoSegment 단일 호출")
     void mixedTreeUsesSqlConverter() {
         Segment segment = sampleSegment(mixedTree());
         stubClaimAndHash(segment);
-        SqlFragment fragment = new SqlFragment("SELECT u.user_id FROM users u WHERE mixed", Map.of());
+        SqlFragment fragment =
+                new SqlFragment("SELECT u.user_id FROM users u WHERE mixed", Map.of());
         when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
-        when(userDirectoryReader.queryUserIds(eq(fragment.sql()), eq(fragment.params())))
-                .thenReturn(List.of(301L, 302L));
+        when(userDirectoryReader.materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(2L);
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
                 .thenReturn(1);
 
         segmentBuildJob.consume(message(HASH));
 
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
-        verify(userDirectoryReader).queryUserIds(eq(fragment.sql()), eq(fragment.params()));
+        verify(userDirectoryReader)
+                .materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params()));
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
                 .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
@@ -162,26 +172,23 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("chunk 경계 처리 — 1500건 → bulkInsert 2번 (1000+500), heartbeat 1번")
-    void chunkBoundary() {
+    @DisplayName("대량 결과 — 단일 statement 적재, heartbeat 미호출 (chunk 흐름 제거)")
+    void singleStatementInsertSelect() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
-        when(sqlConverter.convert(any(), any(EventQueryContext.class)))
-                .thenReturn(new SqlFragment("SELECT ...", Map.of()));
-        // 1500건 user_id (CHUNK_SIZE=1000)
-        List<Long> userIds = LongStream.range(1, 1501).boxed().toList();
-        when(userDirectoryReader.queryUserIds(any(), any())).thenReturn(userIds);
+        SqlFragment fragment = new SqlFragment("SELECT ...", Map.of());
+        when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
+        when(userDirectoryReader.materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(1_500L);
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
                 .thenReturn(1);
 
         segmentBuildJob.consume(message(HASH));
 
-        // bulkInsert 정확히 2번 (1000-건 chunk + 500-건 chunk).
-        // 단, production은 buffer 참조를 재사용하므로 ArgumentCaptor로 chunk 크기 검증은 부정확
-        // → 호출 횟수 + total count로 검증.
-        verify(segmentMemberRepository, times(2)).bulkInsert(any());
-        // 첫 chunk(1000건 도달) 후 heartbeat 갱신 1회 (마지막 500건은 chunk 미달이라 갱신 X)
-        verify(segmentRepository, times(1)).updateHeartbeat(eq(SEGMENT_ID), any(), any());
+        // S14P31B101-269 이후 chunk 흐름 제거 — bulkInsert / updateHeartbeat 호출 없음.
+        verify(segmentMemberRepository, never()).bulkInsert(any());
+        verify(segmentRepository, never()).updateHeartbeat(eq(SEGMENT_ID), any(), any());
 
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
@@ -190,20 +197,21 @@ class SegmentBuildJobTest {
     }
 
     @Test
-    @DisplayName("결과 0건 — bulkInsert 미호출 (빈 buffer), completeBuild count=0")
+    @DisplayName("결과 0건 — materialize 0 반환, completeBuild count=0")
     void zeroResults() {
         Segment segment = sampleSegment(tagTree());
         stubClaimAndHash(segment);
-        when(sqlConverter.convert(any(), any(EventQueryContext.class)))
-                .thenReturn(new SqlFragment("SELECT ...", Map.of()));
-        when(userDirectoryReader.queryUserIds(any(), any())).thenReturn(Collections.emptyList());
+        SqlFragment fragment = new SqlFragment("SELECT ...", Map.of());
+        when(sqlConverter.convert(any(), any(EventQueryContext.class))).thenReturn(fragment);
+        when(userDirectoryReader.materializeUserMatchesIntoSegment(
+                        eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params())))
+                .thenReturn(0L);
         when(segmentRepository.completeBuildIfOwner(eq(SEGMENT_ID), any(), anyInt(), any()))
                 .thenReturn(1);
 
         segmentBuildJob.consume(message(HASH));
 
         verify(segmentMemberRepository).deleteBySegmentId(SEGMENT_ID);
-        verify(segmentMemberRepository, never()).bulkInsert(any());
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
                 .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
