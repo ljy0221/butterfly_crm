@@ -54,9 +54,17 @@ class ProductDetailActivity : AppCompatActivity() {
             }
         }
 
+        // QA 빌드: Intent extra "productId" 로 동적 상품 표시 + 그 상품 정보로 product_view 발사
+        // demo 빌드: 기존 단일 상품 (DEMO_PRODUCT_*) 그대로 사용
+        val productId = intent.getStringExtra("productId")
+
         // savedInstanceState == null 일 때만 — rotation/recreate 시 중복 발사 방지
         if (savedInstanceState == null) {
-            EventTrigger.fireProductViewSilently(this)
+            if (BuildConfig.IS_QA_BUILD && productId != null) {
+                invokeQaProductView(productId)
+            } else {
+                EventTrigger.fireProductViewSilently(this)
+            }
         }
 
         findViewById<TextView>(R.id.tvOriginalPrice).apply {
@@ -94,6 +102,35 @@ class ProductDetailActivity : AppCompatActivity() {
             ).apply { description = "FCM 푸시 알림 채널" }
             val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * QA 빌드 전용 — ProductCatalog 에서 productId 로 lookup 후 product_view 이벤트 발사.
+     * main source 에서 ProductCatalog 를 직접 import 할 수 없어 reflection.
+     * lookup 실패 시 demo fallback (fireProductViewSilently).
+     */
+    private fun invokeQaProductView(productId: String) {
+        try {
+            val catalogClass = Class.forName("com.example.notificationtest.catalog.ProductCatalog")
+            val findByIdMethod = catalogClass.getMethod("findById", String::class.java)
+            val instance = catalogClass.getField("INSTANCE").get(null)
+            val product = findByIdMethod.invoke(instance, productId) ?: run {
+                Log.w(TAG, "Product not found: $productId — fallback to default product_view")
+                EventTrigger.fireProductViewSilently(this)
+                return
+            }
+            val category = product.javaClass.getMethod("getCategory").invoke(product) as String
+            val name = product.javaClass.getMethod("getName").invoke(product) as String
+            val price = product.javaClass.getMethod("getPrice").invoke(product) as Int
+
+            EventTrigger.fireProductViewWithDataSilently(this, category, productId, name, price)
+
+            findViewById<TextView>(R.id.tvProductName).text = name
+            findViewById<TextView>(R.id.tvCategory).text = category
+        } catch (t: Throwable) {
+            Log.w(TAG, "QA product view dispatch failed, fallback", t)
+            EventTrigger.fireProductViewSilently(this)
         }
     }
 }
