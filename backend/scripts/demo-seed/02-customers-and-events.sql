@@ -19,12 +19,21 @@ DELETE FROM users            WHERE project_id = 1;
 -- ──────────────────────────────────────────────────────────────────────────────
 -- 이벤트 카테고리 4개
 -- ──────────────────────────────────────────────────────────────────────────────
+-- 5/22 시연 호환 (id=1~4) + QA 빌드용 확장 (id=5~10)
+-- QA 앱의 EventTrigger 10가지 메서드와 매칭 (S14P31B101-291)
 INSERT INTO event_categories (category_id, project_id, name, type, description, created_at)
 VALUES
-(1, 1, 'product_view', 'CUSTOM',  '상품 상세 페이지 조회', NOW()),
-(2, 1, 'page_view',    'DEFAULT', '일반 페이지 조회',      NOW()),
-(3, 1, 'add_to_cart',  'CUSTOM',  '장바구니 담기',          NOW()),
-(4, 1, 'purchase',     'CUSTOM',  '구매 완료',              NOW());
+(1,  1, 'product_view',  'CUSTOM',  '상품 상세 페이지 조회', NOW()),
+(2,  1, 'page_view',     'DEFAULT', '일반 페이지 조회',      NOW()),
+(3,  1, 'add_to_cart',   'CUSTOM',  '장바구니 담기',         NOW()),
+(4,  1, 'purchase',      'CUSTOM',  '구매 완료',             NOW()),
+(5,  1, 'app_open',      'DEFAULT', '앱 진입',               NOW()),
+(6,  1, 'search',        'CUSTOM',  '검색',                  NOW()),
+(7,  1, 'category_view', 'CUSTOM',  '카테고리 진입',         NOW()),
+(8,  1, 'product_click', 'CUSTOM',  '상품 카드 클릭',        NOW()),
+(9,  1, 'cart_view',     'CUSTOM',  '장바구니 진입',         NOW()),
+(10, 1, 'wishlist_add',  'CUSTOM',  '찜 추가',               NOW()),
+(11, 1, 'login',         'DEFAULT', '로그인',                NOW());
 
 -- ──────────────────────────────────────────────────────────────────────────────
 -- 이지은 (페르소나 A) — user_id=73
