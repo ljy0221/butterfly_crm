@@ -1,6 +1,7 @@
 package com.b101.butterfly.reporting.audit.dto;
 
 import com.b101.butterfly.reporting.audit.entity.AuditLog;
+import com.b101.butterfly.reporting.audit.port.MemberLookupView;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -8,8 +9,8 @@ import java.util.Map;
 /**
  * 감사 로그 상세 응답 (API #21).
  *
- * <p>{@code memberName}, {@code memberEmail}은 {@code MemberLookupPort} 도입 전까지는 null로 둔다.
- * (이유는 {@link AuditLogListItem} 참조)
+ * <p>{@code memberName}, {@code memberEmail}은 {@link MemberLookupView}를 통해 채워진다.
+ * lookup 결과가 없으면(예: 탈퇴 멤버) null 로 폴백한다.
  */
 public record AuditLogDetailResponse(
         Long auditId,
@@ -26,13 +27,13 @@ public record AuditLogDetailResponse(
         LocalDateTime createdAt
 ) {
 
-    public static AuditLogDetailResponse from(AuditLog log) {
+    public static AuditLogDetailResponse from(AuditLog log, MemberLookupView member) {
         return new AuditLogDetailResponse(
                 log.getId(),
                 log.getProjectId(),
                 log.getMemberId(),
-                null,
-                null,
+                member != null ? member.name() : null,
+                member != null ? member.email() : null,
                 log.getAction(),
                 log.getTargetType(),
                 log.getTargetId(),

@@ -355,34 +355,59 @@ export default function AuditLogTable({ scope, projectId }: Props) {
               </time>
             </div>
             {scope === "admin" && (
-              <div style={{ fontFamily: "var(--font-mono)", color: "#1f2937" }}>
+              <div style={{ color: "#1f2937", fontSize: 12 }}>
                 {row.projectId == null ? (
                   <Tag tone="info" style={{}}>
                     시스템
                   </Tag>
                 ) : (
-                  `#${row.projectId}`
+                  <span style={{ fontFamily: "var(--font-mono)" }}>
+                    프로젝트 #{row.projectId}
+                  </span>
                 )}
               </div>
             )}
-            <div style={{ fontFamily: "var(--font-mono)", color: "#1f2937" }}>
-              #{row.memberId}
+            <div style={{ color: "#1f2937" }}>
               {row.memberName ? (
-                <span style={{ marginLeft: 4, color: "#64748b" }}>
-                  · {row.memberName}
+                <>
+                  <span style={{ fontWeight: 600 }}>{row.memberName}</span>
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      color: "#94a3b8",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                    }}
+                  >
+                    #{row.memberId}
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontFamily: "var(--font-mono)" }}>
+                  #{row.memberId}
                 </span>
-              ) : null}
+              )}
             </div>
             <div>
               <Tag tone="warning" style={{}}>
                 {row.action}
               </Tag>
             </div>
-            <div style={{ fontFamily: "var(--font-mono)", color: "#475569" }}>
-              {row.targetType}
-              {row.targetId != null ? (
-                <span style={{ color: "#94a3b8" }}> #{row.targetId}</span>
-              ) : null}
+            <div style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+              <Tag tone="info" style={{}}>
+                {row.targetType}
+              </Tag>
+              {row.targetId != null && (
+                <span
+                  style={{
+                    color: "#94a3b8",
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
+                  }}
+                >
+                  #{row.targetId}
+                </span>
+              )}
             </div>
             <div
               style={{
