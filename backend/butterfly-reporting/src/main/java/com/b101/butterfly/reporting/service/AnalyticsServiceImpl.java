@@ -17,6 +17,8 @@ import com.b101.butterfly.reporting.dto.PeriodSummaryRow;
 import com.b101.butterfly.reporting.dto.SegmentMetricItem;
 import com.b101.butterfly.reporting.dto.SegmentMetricsResponse;
 import com.b101.butterfly.reporting.notification.entity.Channel;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawRow;
 import com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow;
 import com.b101.butterfly.reporting.report.dto.FunnelCountRow;
 import com.b101.butterfly.reporting.report.port.CampaignSegmentInfo;
@@ -70,6 +72,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     private final CampaignStatsDailyRepository campaignStatsDailyRepository;
     private final ProjectStatsDailyRepository projectStatsDailyRepository;
     private final CampaignSegmentPort campaignSegmentPort;
+    private final ReportingNotificationLogRepository notificationLogRepository;
     private final AnalyticsServiceStub stub;
 
     /**
@@ -116,6 +119,15 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     /**
      * API 58 — 캠페인 누적 통계 (모든 회차 합산).
+     *
+     * <p>1차: {@code campaign_stats_daily} 우선 조회 (KPI 정의서 §5 집계 테이블 우선 정책).
+     * 2차: daily 가 비어 있고 (시연 당일·hourly→daily 롤업 전) 실제 발송 row 가 존재하면
+     * {@code notification_logs} 를 직접 카운트해 fallback 응답을 만든다. 5/22 시연 직전
+     * 부하 테스트 직후처럼 daily 가 아직 안 채워진 시점에도 KPI 카드가 0 으로 나오지 않게
+     * 하기 위한 안전장치 (ADR-0007, S14P31B101-34).
+     *
+     * <p>open/click/convert 는 user_action_logs(123) 머지 전이라 daily/fallback 모두 0. ADR-0007
+     * 의 "분모 0 ⇒ null" 정책은 {@link #rate} 에서 처리.
      */
     @Override
     public CampaignStatsResponse getCampaignStats(Long projectId, Long campaignId) {
@@ -126,16 +138,31 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 campaignId,
                 null
         );
-        if (row == null) {
-            row = FunnelCountRow.zero();
-        }
 
-        long sent = row.sentCount();
-        long delivered = row.deliveredCount();
-        long open = row.openCount();
-        long click = row.clickCount();
-        long convert = row.convertCount();
-        long failed = Math.max(0L, sent - delivered);
+        long sent;
+        long delivered;
+        long open;
+        long click;
+        long convert;
+        long failed;
+
+        if (row == null || row.sentCount() == 0L) {
+            // daily 가 비어 있다 — raw notification_logs fallback. 시연 당일 안전망.
+            CampaignFunnelRawRow rawRow = notificationLogRepository.countCampaignFunnel(projectId, campaignId);
+            sent = nullSafe(rawRow == null ? null : rawRow.getSentCount());
+            delivered = nullSafe(rawRow == null ? null : rawRow.getDeliveredCount());
+            failed = nullSafe(rawRow == null ? null : rawRow.getFailedCount());
+            open = 0L;
+            click = 0L;
+            convert = 0L;
+        } else {
+            sent = row.sentCount();
+            delivered = row.deliveredCount();
+            open = row.openCount();
+            click = row.clickCount();
+            convert = row.convertCount();
+            failed = Math.max(0L, sent - delivered);
+        }
 
         return new CampaignStatsResponse(
                 campaignId,
@@ -148,6 +175,10 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 List.of(),
                 LocalDateTime.now()
         );
+    }
+
+    private static long nullSafe(Long v) {
+        return v == null ? 0L : v;
     }
 
     @Override
