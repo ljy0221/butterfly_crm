@@ -153,10 +153,51 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
                   ],
                   [
                     "멤버",
-                    <span key="m" style={{ fontFamily: "var(--font-mono)" }}>
-                      #{data.memberId}
-                      {data.memberName ? ` · ${data.memberName}` : ""}
-                      {data.memberEmail ? ` (${data.memberEmail})` : ""}
+                    <span
+                      key="m"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "baseline",
+                        flexWrap: "wrap",
+                        columnGap: 6,
+                        rowGap: 2,
+                      }}
+                    >
+                      {data.memberName ? (
+                        <>
+                          <span style={{ color: "#1f2937", fontWeight: 600 }}>
+                            {data.memberName}
+                          </span>
+                          {data.memberEmail && (
+                            <span style={{ color: "#475569", fontSize: 12 }}>
+                              {data.memberEmail}
+                            </span>
+                          )}
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              color: "#94a3b8",
+                              fontSize: 11,
+                            }}
+                          >
+                            #{data.memberId}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              color: "#1f2937",
+                            }}
+                          >
+                            #{data.memberId}
+                          </span>
+                          <Tag tone="info" style={{}}>
+                            탈퇴/식별 불가
+                          </Tag>
+                        </>
+                      )}
                     </span>,
                   ],
                   [
@@ -167,8 +208,8 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
                       </Tag>
                     ) : (
                       <span
-                        style={{ fontFamily: "var(--font-mono)" }}
-                      >{`#${data.projectId}`}</span>
+                        style={{ fontFamily: "var(--font-mono)", color: "#1f2937" }}
+                      >{`프로젝트 #${data.projectId}`}</span>
                     ),
                   ],
                   [
@@ -179,9 +220,28 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
                   ],
                   [
                     "대상",
-                    <span key="tgt" style={{ fontFamily: "var(--font-mono)" }}>
-                      {data.targetType}
-                      {data.targetId != null ? ` #${data.targetId}` : ""}
+                    <span
+                      key="tgt"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "baseline",
+                        gap: 6,
+                      }}
+                    >
+                      <Tag tone="info" style={{}}>
+                        {data.targetType}
+                      </Tag>
+                      {data.targetId != null && (
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            color: "#94a3b8",
+                            fontSize: 11,
+                          }}
+                        >
+                          #{data.targetId}
+                        </span>
+                      )}
                     </span>,
                   ],
                   [
