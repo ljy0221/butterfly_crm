@@ -26,6 +26,16 @@ object EventTrigger {
     private const val DEMO_USER_ID = "user-142"
 
     /**
+     * 5/22 시연용 — 메인 상품 정보 단일 출처.
+     * fireProductView / fireProductViewSilently / firePurchase 가 모두 참조.
+     * 시연 직전 변경 시 이 4 상수만 수정하면 됨.
+     */
+    private const val DEMO_PRODUCT_ID = "sku-9847"
+    private const val DEMO_PRODUCT_NAME = "데일리 러닝화"
+    private const val DEMO_PRODUCT_CATEGORY = "운동화"
+    private const val DEMO_PRODUCT_PRICE = 89000
+
+    /**
      * QA 빌드는 DemoUserPreferences 에서 동적으로, demo 빌드는 DEMO_USER_ID 상수.
      * BuildConfig.IS_QA_BUILD 분기는 reflection 없이 컴파일 시 결정.
      * main source 가 qa source 의 DemoUserPreferences 를 직접 import 할 수 없어 reflection.
@@ -99,11 +109,6 @@ object EventTrigger {
             "productId" to DEMO_PRODUCT_ID,
             "totalAmount" to DEMO_PRODUCT_PRICE
         ))
-    }
-
-    @JvmStatic
-    fun fireProductViewSilently(context: Context) {
-        sendEventSilently(context, "product_view", productViewPayload())
     }
 
     @JvmStatic
@@ -194,10 +199,10 @@ object EventTrigger {
     }
 
     private fun productViewPayload(): Map<String, Any> = mapOf(
-        "category" to "DEMO_PRODUCT_CATEGORY",
-        "productId" to "DEMO_PRODUCT_ID",
-        "productName" to "DEMO_PRODUCT_NAME",
-        "price" to 19900
+        "category" to DEMO_PRODUCT_CATEGORY,
+        "productId" to DEMO_PRODUCT_ID,
+        "productName" to DEMO_PRODUCT_NAME,
+        "price" to DEMO_PRODUCT_PRICE
     )
 
     private fun sendEvent(context: Context, category: String, data: Map<String, Any>) {
