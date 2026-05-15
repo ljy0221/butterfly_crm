@@ -28,7 +28,8 @@ class HomeActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
 
-        // 1) 디바이스 등록 + app_open (silent, savedInstanceState 가드로 rotation 중복 방지)
+        // 1) 디바이스 등록 → 등록 콜백 안에서 app_open 발사 (race condition 방지)
+        //    savedInstanceState 가드로 rotation 중복 방지
         if (savedInstanceState == null) {
             FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
@@ -41,8 +42,10 @@ class HomeActivity : AppCompatActivity() {
                 } else {
                     Log.w(TAG, "FCM token failed, skipping silent register", task.exception)
                 }
+                // 디바이스 등록 시도 후 app_open 발사 (네트워크 응답을 기다리지는 않지만
+                // FCM 토큰 콜백을 거치므로 registerDevice 요청이 이벤트보다 먼저 큐에 들어감)
+                EventTrigger.fireAppOpenSilently(this)
             }
-            EventTrigger.fireAppOpenSilently(this)
         }
 
         // 2) 카테고리 그리드
