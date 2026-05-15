@@ -15,6 +15,7 @@ import { createSegmentSchema } from "@/schemas/segment";
 import { useSegmentDraftMutation } from "@/hooks/queries/ai";
 import type { SegmentDraftResponse } from "@/api/ai";
 import { useEventCategoriesQuery } from "@/hooks/queries/event";
+import { useRecommendedVariablesQuery } from "@/hooks/queries/personalization";
 import AiLaunchButton from "@/features/ai/AiLaunchButton";
 import {
   useCreateSegmentMutation,
@@ -806,6 +807,9 @@ function NaturalSegmentDraftModal({
   const [draft, setDraft] = useState<SegmentDraftResponse | null>(null);
   const segmentDraftMut = useSegmentDraftMutation(projectId);
   const eventCategoriesQuery = useEventCategoriesQuery(projectId);
+  // 308 추천 변수 API — 실제 user_tags.tag_key 후보. AI 가 임의 키로 tag 노드를
+  // 만들어 세그먼트 매칭 0건이 되는 사고 방지. 세그먼트 작성 중에는 segmentId 미존재.
+  const recommendedVarsQuery = useRecommendedVariablesQuery(projectId);
 
   const onGenerate = async (): Promise<void> => {
     const nextPrompt = prompt.trim();
@@ -822,6 +826,8 @@ function NaturalSegmentDraftModal({
           displayName: event.displayName,
           description: event.description,
         })),
+        availableTagKeys:
+          recommendedVarsQuery.data?.variables.map((v) => v.key) ?? [],
         context: {
           name,
           description,

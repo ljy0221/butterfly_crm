@@ -13,6 +13,7 @@ import {
   useUpdateCampaignMutation,
 } from "@/hooks/queries/campaign";
 import { useCampaignDraftMutation } from "@/hooks/queries/ai";
+import { useRecommendedVariablesQuery } from "@/hooks/queries/personalization";
 import type { CampaignDraftResponse } from "@/api/ai";
 import {
   step1Schema,
@@ -532,6 +533,12 @@ function CampaignCopilotModal({
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<CampaignDraftResponse | null>(null);
   const campaignDraftMut = useCampaignDraftMutation(projectId);
+  // 308 추천 변수 API — 프로젝트(+세그먼트)의 실제 user_tags.tag_key 풀.
+  // 빈 응답이면 DEFAULT_AI_TEMPLATE_VARIABLES 로 fallback (기존 동작 유지).
+  const recommendedVarsQuery = useRecommendedVariablesQuery(
+    projectId,
+    wizardDraft.segmentId,
+  );
 
   const onGenerate = async (): Promise<void> => {
     const nextPrompt = prompt.trim();
@@ -539,10 +546,16 @@ function CampaignCopilotModal({
       toast("AI에게 맡길 캠페인 목표를 입력해 주세요.", "warning");
       return;
     }
+    const recommendedKeys =
+      recommendedVarsQuery.data?.variables.map((v) => v.key) ?? [];
+    const availableVariables =
+      recommendedKeys.length > 0
+        ? recommendedKeys
+        : [...DEFAULT_AI_TEMPLATE_VARIABLES];
     try {
       const res = await campaignDraftMut.mutateAsync({
         prompt: nextPrompt,
-        availableVariables: [...DEFAULT_AI_TEMPLATE_VARIABLES],
+        availableVariables,
         context: {
           campaignName: wizardDraft.campaignName,
           campaignDescription: wizardDraft.campaignDescription,

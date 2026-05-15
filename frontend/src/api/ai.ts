@@ -59,11 +59,13 @@ export interface SegmentDraftRequest {
     EventCategorySummary,
     "categoryId" | "categoryName" | "displayName" | "description"
   >[];
+  availableTagKeys?: string[];
 }
 
 interface SegmentDraftHttpRequest {
   prompt: string;
   availableEvents?: SegmentDraftRequest["availableEvents"];
+  availableTagKeys?: string[];
   context?: Omit<SegmentDraftContext, "currentConditionTree"> & {
     currentConditionTree?: BackendGroupNode | null;
   };
@@ -101,6 +103,7 @@ export async function createSegmentDraft(
   const body: SegmentDraftHttpRequest = {
     prompt: req.prompt,
     availableEvents: req.availableEvents,
+    availableTagKeys: req.availableTagKeys,
     context: req.context
       ? {
           name: req.context.name,
