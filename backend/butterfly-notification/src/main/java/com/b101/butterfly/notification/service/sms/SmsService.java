@@ -50,16 +50,18 @@ public class SmsService {
             return outcomes;
         }
 
-        String text = buildMessageText(message);
-        String type = determineMessageType(text);
-
+        // 개인화 변수 치환 — target 마다 다른 text 가능
         Object[] messageMaps = validTargets.stream()
-                .map(target -> Map.of(
-                        "to", target.phoneNumber(),
-                        "from", credential.senderNumber(),
-                        "text", text,
-                        "type", type
-                ))
+                .map(target -> {
+                    String text = buildMessageText(message.personalize(target.variables()));
+                    String type = determineMessageType(text);
+                    return Map.of(
+                            "to", target.phoneNumber(),
+                            "from", credential.senderNumber(),
+                            "text", text,
+                            "type", type
+                    );
+                })
                 .toArray();
 
         Map<String, Object> body = Map.of("messages", messageMaps);
@@ -98,7 +100,9 @@ public class SmsService {
                     DeliveryErrorCode.SMS_PHONE_MISSING.getMessage());
         }
 
-        String text = buildMessageText(message);
+        // 개인화 변수 치환
+        DeliveryCommand.MessagePayload personalized = message.personalize(target.variables());
+        String text = buildMessageText(personalized);
         String type = determineMessageType(text);
 
         Map<String, Object> messageMap = Map.of(
@@ -135,9 +139,6 @@ public class SmsService {
             sb.append("[").append(message.title()).append("] ");
         }
         sb.append(message.body());
-        if (message.clickAction() != null && !message.clickAction().isBlank()) {
-            sb.append("\n").append(message.clickAction());
-        }
         return sb.toString();
     }
 

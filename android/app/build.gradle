@@ -33,12 +33,28 @@ android {
             // 시연 D-3 에 LAN IP 로 교체 시 defaultConfig 의 buildConfigField 한 줄만 수정
         }
     }
+    flavorDimensions = ["purpose"]
+    productFlavors {
+        demo {
+            dimension = "purpose"
+            resValue "string", "app_name", "Butterfly 데모"
+            buildConfigField "boolean", "IS_QA_BUILD", "false"
+        }
+        qa {
+            dimension = "purpose"
+            applicationIdSuffix ".qa"
+            versionNameSuffix "-qa"
+            resValue "string", "app_name", "Butterfly QA"
+            buildConfigField "boolean", "IS_QA_BUILD", "true"
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_11
         targetCompatibility JavaVersion.VERSION_11
     }
     buildFeatures {
-        buildConfig true
+        buildConfig = true
+        resValues = true
     }
 }
 

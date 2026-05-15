@@ -31,14 +31,17 @@ public class EmailService {
                     DeliveryErrorCode.EMAIL_ADDRESS_MISSING.getMessage());
         }
 
+        // 개인화 변수 치환 (target.variables 비어있으면 동일 인스턴스 반환)
+        DeliveryCommand.MessagePayload personalized = message.personalize(target.variables());
+
         try {
             MimeMessage mimeMessage = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
             helper.setFrom(fromAddress);
             helper.setTo(target.email());
-            helper.setSubject(message.title());
-            helper.setText(buildHtmlContent(message), true);
+            helper.setSubject(personalized.title());
+            helper.setText(buildHtmlContent(personalized), true);
 
             mailSender.send(mimeMessage);
 
@@ -68,15 +71,6 @@ public class EmailService {
         html.append("<div style=\"padding:16px;\">")
                 .append(message.body())
                 .append("</div>");
-
-        if (message.clickAction() != null && !message.clickAction().isBlank()) {
-            html.append("<div style=\"padding:16px;text-align:center;\">")
-                    .append("<a href=\"").append(message.clickAction())
-                    .append("\" style=\"display:inline-block;padding:12px 24px;")
-                    .append("background-color:#4A90D9;color:#ffffff;text-decoration:none;")
-                    .append("border-radius:4px;\">")
-                    .append("자세히 보기</a></div>");
-        }
 
         html.append("</div>");
         return html.toString();

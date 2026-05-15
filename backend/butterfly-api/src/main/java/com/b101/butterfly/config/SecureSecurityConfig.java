@@ -60,6 +60,10 @@ public class SecureSecurityConfig {
                         .requestMatchers("/internal/**").permitAll()
                         // 이벤트 수집 — ApiKeyAuthenticationFilter 가 인증 처리
                         .requestMatchers("/api/v1/events/**").permitAll()
+                        // K8s readiness/liveness probe + Prometheus scrape (S14P31B101-281)
+                        // 인증 거치면 readiness 401 → Pod NotReady → progress deadline 초과 → CrashLoop.
+                        // 외부 노출은 받은 EC2 SG가 worker NodePort를 받은 EC2 IP/32로만 제한해 보호.
+                        .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus").permitAll()
                         // 플랫폼 관리자 전용
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")
                         // 나머지 전부 JWT 인증 필요

@@ -97,10 +97,23 @@ integration-test:
     # 회귀 가드 역할. 작성자가 의심스러우면 로컬 `./gradlew integrationTest`로 확인.
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: never
+    # feature/Feat/Fix/Hotfix/Chore push commit에서는 제외 (2026-05-14).
+    # commit 시 통합테스트 미실행 정책. develop/main 머지 commit이 회귀 가드 담당.
+    # 필요 시 수동 트리거(when: manual) 또는 로컬 `./gradlew integrationTest` 사용.
+    - if: $CI_COMMIT_REF_NAME == "develop"
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
+    - if: $CI_COMMIT_REF_NAME == "main"
+      changes:
+        - backend/**/*
+        - .gitlab-ci.yml
     - if: $CI_COMMIT_BRANCH
       changes:
         - backend/**/*
         - .gitlab-ci.yml
+      when: manual
+      allow_failure: true
   services:
     - name: docker:27-dind
       alias: docker
@@ -303,6 +316,13 @@ frontend-build:
         - frontend/**/*
         - .gitlab-ci.yml
   <<: *npm-cache
+  variables:
+    # Vite는 빌드 시점에 import.meta.env.VITE_*를 정적 치환한다.
+    # 미주입 시 client.ts/auth.ts 폴백 "http://localhost:8080"이 번들에 박혀
+    # 배포된 브라우저에서 ERR_CONNECTION_REFUSED 발생.
+    # 도메인은 시크릿이 아니라(이미 동일 파일 DEPLOY_TARGET_HOST 등에 평문 노출)
+    # GitLab CI/CD Variables 대신 yaml에 직접 명시.
+    VITE_API_BASE_URL: "https://k14b101.p.ssafy.io"
   before_script:
     - cd $FRONTEND_DIR
     - npm ci --prefer-offline --no-audit
