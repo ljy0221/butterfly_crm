@@ -76,6 +76,10 @@ class ProductDetailActivity : AppCompatActivity() {
             Log.d(TAG, "[+1 view] tapped — product_view fired")
         }
 
+        findViewById<TextView>(R.id.btnBack).setOnClickListener {
+            finish()
+        }
+
         findViewById<TextView>(R.id.btnDebug).setOnClickListener {
             startActivity(Intent(this, DebugActivity::class.java))
         }

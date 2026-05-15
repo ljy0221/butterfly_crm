@@ -3,40 +3,103 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center"
     android:background="@color/demo_bg_white"
     android:fitsSystemWindows="true">
 
-    <TextView
+    <!-- 상단 바 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="8dp">
+
+        <TextView
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:text="←"
+            android:textSize="22sp"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:text="결제"
+            android:textColor="@color/demo_text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/demo_border_light" />
+
+    <!-- 본문 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="결제 시뮬레이션"
+            android:textColor="@color/demo_text_primary"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="실제 결제는 일어나지 않습니다. 확정 시 purchase 이벤트만 발사됩니다."
+            android:textColor="@color/demo_text_secondary"
+            android:textSize="13sp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="24dp"
+            android:background="@color/demo_border_light" />
+
+        <TextView
+            android:id="@+id/tvSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:textColor="@color/demo_text_primary"
+            android:textSize="15sp"
+            android:lineSpacingExtra="6dp" />
+    </LinearLayout>
+
+    <!-- 하단 고정 CTA -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="결제 시뮬레이션"
-        android:textColor="@color/demo_text_primary"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:gravity="center" />
+        android:orientation="horizontal"
+        android:padding="16dp"
+        android:background="@color/demo_bg_white">
 
-    <TextView
-        android:id="@+id/tvSummary"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:textColor="@color/demo_text_primary"
-        android:textSize="14sp"
-        android:gravity="center" />
-
-    <TextView
-        android:id="@+id/btnConfirm"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginTop="32dp"
-        android:background="@drawable/bg_cta_primary"
-        android:gravity="center"
-        android:text="결제 확정"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold"
-        android:clickable="true"
-        android:focusable="true" />
+        <TextView
+            android:id="@+id/btnConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_cta_primary"
+            android:gravity="center"
+            android:text="결제 확정"
+            android:textColor="#FFFFFF"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
 </LinearLayout>

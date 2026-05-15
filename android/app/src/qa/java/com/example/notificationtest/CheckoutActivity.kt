@@ -17,6 +17,8 @@ class CheckoutActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_checkout)
 
+        findViewById<TextView>(R.id.btnBack).setOnClickListener { finish() }
+
         val items = CartStore.current
         val total = CartStore.totalPrice()
         findViewById<TextView>(R.id.tvSummary).text =
