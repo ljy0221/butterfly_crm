@@ -92,9 +92,9 @@ spec:
             # SegmentBuildJob 이 worker 에서 실행되므로 (@Profile("worker")) ClickHouse 어댑터가
             # 실질적으로 활성되는 곳은 worker. api 와 토글 값을 반드시 동기화 — 한 쪽만 켜면
             # 환경별로 다른 어댑터가 active 돼 segment build 결과 정합성 사고.
-            # 본 PR 시점엔 "false". api 와 동기 — Step 8 §5 에서 동시에 "true" flip.
+            # S14P31B101-305: 토글 ON. api 와 동기 flip — worker 가 SegmentBuildJob 실 실행 주체.
             - name: BUTTERFLY_CLICKHOUSE_ENABLED
-              value: "false"
+              value: "true"
             - name: CLICKHOUSE_URL
               value: "jdbc:clickhouse://clickhouse.butterfly.svc.cluster.local:8123/butterfly?socket_timeout=30000&max_execution_time=60&compress=true"
             - name: CLICKHOUSE_USERNAME

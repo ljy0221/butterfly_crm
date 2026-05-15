@@ -98,12 +98,11 @@ spec:
             #   - socket_timeout=30000: long-running segment build SQL 여유
             #   - max_execution_time=60: server-side execution 한도
             #   - compress=true: 큰 결과셋 LZ4 압축 (clickhouse-jdbc 0.6.x 표준 param 명)
-            # 본 PR 시점엔 "false" 로 시작 — manifest 만 develop 에 들어가고 ClickHouse 어댑터는
-            # 비활성 (기존 MySQL 어댑터 그대로). Step 8 §5 에서 (a) PR 1 Java merge, (b) 백필 완료,
-            # (c) BEFORE 측정 박제가 끝난 시점에 본 값을 "true" 로 별도 commit. ADR-0023 §B-5
-            # 토글 rollback backbone 정신 — 매니페스트 첫 진입에서 즉시 활성화하지 않는다.
+            # S14P31B101-305: 토글 ON. PR 1 (spike Java) develop merge + §3.4 CDC E2E 검증
+            # 완료 시점에 "false" → "true" flip. ADR-0023 §B-5 토글 rollback backbone — 시연
+            # 직전 사고 시 본 값을 "false" 로 되돌리는 한 줄 패치로 즉시 MySQL adapter 복귀.
             - name: BUTTERFLY_CLICKHOUSE_ENABLED
-              value: "false"
+              value: "true"
             - name: CLICKHOUSE_URL
               value: "jdbc:clickhouse://clickhouse.butterfly.svc.cluster.local:8123/butterfly?socket_timeout=30000&max_execution_time=60&compress=true"
             - name: CLICKHOUSE_USERNAME
