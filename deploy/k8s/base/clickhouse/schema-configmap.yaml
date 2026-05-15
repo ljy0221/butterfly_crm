@@ -38,19 +38,27 @@ data:
     SETTINGS index_granularity = 8192;
 
   02-kafka-engine.sql: |
-    -- Kafka Engine queue + MaterializedView — Spike 의 clickhouse-cdc-setup.sql 그대로.
+    -- Kafka Engine queue + MaterializedView.
+    --
+    -- ⚠️ JSON 필드 매핑 (실 사고 박제 — S14P31B101-300):
+    --   Spring JsonSerializer 는 EventPayload record 의 필드를 camelCase 로 그대로 직렬화
+    --     (eventUuid, projectId, userId, ...). schema 의 snake_case 컬럼과 매칭 안 되면
+    --     input_format_skip_unknown_fields=1 라 silent 무시 → 모든 row 가 default 값 적재.
+    --   해결: queue 테이블은 camelCase 컬럼명으로 받고, MaterializedView 에서 snake_case 로 매핑하여
+    --     events MergeTree (segment build SQL 이 snake_case 기대) 에 적재.
+    --
     -- kafka_num_consumers=1: events.collected 가 단일 partition 가정 (Step 8 §0.3 사전 확인).
     -- multi-partition 이면 PartitionCount 와 동일 값으로 수정 + ConfigMap 재apply 필요.
     CREATE TABLE IF NOT EXISTS butterfly.events_kafka_queue
     (
-        event_uuid     String,
-        project_id     UInt64,
-        user_id        UInt64,
-        device_id      UInt64,
-        category_id    UInt64,
-        occurred_at    DateTime64(3),
-        schema_version Int32,
-        event_data     String
+        eventUuid      String,
+        projectId      UInt64,
+        userId         UInt64,
+        deviceId       UInt64,
+        categoryId     UInt64,
+        occurredAt     DateTime64(3),
+        schemaVersion  Int32,
+        eventData      String
     )
     ENGINE = Kafka
     SETTINGS
@@ -66,15 +74,15 @@ data:
     CREATE MATERIALIZED VIEW IF NOT EXISTS butterfly.events_cdc_mv
     TO butterfly.events
     AS SELECT
-        0           AS event_id,
-        project_id,
-        user_id,
-        category_id,
-        device_id,
-        event_uuid,
-        occurred_at,
-        schema_version,
-        event_data,
-        now()       AS created_at,
+        0              AS event_id,
+        projectId      AS project_id,
+        userId         AS user_id,
+        categoryId     AS category_id,
+        deviceId       AS device_id,
+        eventUuid      AS event_uuid,
+        occurredAt     AS occurred_at,
+        schemaVersion  AS schema_version,
+        eventData      AS event_data,
+        now()          AS created_at,
         CAST(NULL AS Nullable(DateTime)) AS updated_at
     FROM butterfly.events_kafka_queue;
