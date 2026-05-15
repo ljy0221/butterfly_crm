@@ -121,9 +121,27 @@ public Optional<Long> resolveProjectId(String sha256) {
 - [ ] `UserActionIngestService` 도메인 검증 (resolvedProjectId vs logId.projectId) — 후속 PR
 - [ ] log-policy.md PII 마스킹에 `X-API-Key` 헤더 추가 — 별도 PR
 
+## Addendum (2026-05-15) — 적용 범위 확장 + 컨트롤러 attribute 패턴 통합
+
+본 ADR 작성 시점에는 SDK 표면이 `POST /api/v1/events/actions` 한 경로뿐이라 인증 필터의 매칭 prefix를 `/api/v1/events/**` 로 한정했다. 이후 SDK 사양이 확장되며 다음 두 경로가 추가됐다:
+
+- `POST /api/v1/events` — `EventCollectController` (이벤트 수집)
+- `POST /api/v1/devices` — `DeviceController` (디바이스 등록 + push token 갱신)
+
+세 경로 모두 동일한 SDK 호출 표면이므로 동일한 X-API-Key 인증/레이트 리밋이 적용돼야 한다. 이에 따라:
+
+1. **`ApiKeyAuthenticationFilter.shouldNotFilter` 매칭 확장**: `/api/v1/events` + `/api/v1/devices` 두 prefix 모두 필터 통과.
+2. **`SecureSecurityConfig.permitAll`**: `/api/v1/events/**`, `/api/v1/devices/**` 둘 다 등록 (필터가 인증 처리하므로 Spring Security 레이어는 통과).
+3. **컨트롤러 인터페이스 통일**: `EventCollectController`, `DeviceController`가 `@RequestHeader("X-Project-Id")` 직접 읽기 → `httpRequest.getAttribute("resolvedProjectId")` 꺼내쓰기로 교체. 이미 `UserActionIngestController`가 사용 중이던 패턴과 일치.
+4. **dev 환경 호환 (`LocalAuthFilter`)**: prod의 `ApiKeyAuthenticationFilter`가 박는 `resolvedProjectId` request attribute와 동일한 키를 `LocalAuthFilter`도 `X-Project-Id` 헤더 수신 시 박도록 보강. 컨트롤러 코드가 dev/prod 환경 차이를 모른 채 한 가지 패턴으로 동작.
+
+이 변경은 인증 메커니즘 자체를 바꾸지 않는다 — SPI, SHA-256 저장, 포맷 가드, RPM 한도, 검증 흐름 모두 본 ADR 본문 그대로다. 적용 경로 prefix 와 컨트롤러 헤더 추출 방식만 갱신된 사항이라 새 ADR을 발급하지 않고 본 ADR 에 추가 기록한다.
+
+**관련 변경**: S14P31B101-312 (브랜치 `Refactor/...312_clickhouse_queue_snake_case` 와 동일 사이클 작업), commit 후 jira 분리.
+
 ## References
 
 - 합의 기록: [project_api_key_validator_spi.md](memory) (이재영 메모리)
 - 관련 ADR: [ADR-0014](./0014-events-persisted-topic.md) 모듈 경계, [ADR-0005](./0005-auth-filter-placement.md) 인증 필터 배치
 - 관련 Jira: S14P31B101-193 (SPI 설계), S14P31B101-205 (인증 필터 구현)
-- 코드: `butterfly-api/.../ApiKeyAuthenticationFilter`, `butterfly-tenant/.../ApiKeyValidatorImpl`, `butterfly-common/.../HashUtils`
+- 코드: `butterfly-api/.../ApiKeyAuthenticationFilter`, `butterfly-tenant/.../ApiKeyValidatorImpl`, `butterfly-common/.../HashUtils`, `butterfly-event/.../EventCollectController`, `butterfly-event/.../DeviceController`, `butterfly-api/.../LocalAuthFilter`
