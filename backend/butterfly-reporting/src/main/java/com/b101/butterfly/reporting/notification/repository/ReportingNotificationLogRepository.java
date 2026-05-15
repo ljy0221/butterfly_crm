@@ -104,6 +104,42 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
     List<HourlyCountRow> aggregateHourly(LocalDateTime from, LocalDateTime to);
 
     /**
+     * 캠페인 누적 펀널 카운트(raw) — 시연 당일처럼 daily 롤업이 아직 안 돈 시점의 fallback 용
+     * (S14P31B101-34, ADR-0007). campaign_stats_daily 가 비어 있으면 본 쿼리로 즉시 카운트해
+     * sent/delivered/failed 를 반환한다.
+     *
+     * <p>kpi-and-attribution.md §3 분모 0 ⇒ null 정책은 호출자(Service) 책임. 본 쿼리는 카운트만.
+     * open/click/convert 는 user_action_logs(123) 미머지 시점이라 0 로 고정 — Stub/Impl 정책과 동일.
+     *
+     * <p>HourlyAggregator/CampaignStatsHourly 와 동일한 status 매핑:
+     * sent = SENT + DELIVERED (발송 성공 row), delivered = DELIVERED only,
+     * failed = FAILED only.
+     */
+    @Query(value = """
+            SELECT
+                SUM(CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN 1 ELSE 0 END) AS sent_count,
+                SUM(CASE WHEN n.status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered_count,
+                SUM(CASE WHEN n.status = 'FAILED' THEN 1 ELSE 0 END) AS failed_count
+            FROM notification_logs n
+            WHERE n.project_id = :projectId
+              AND n.campaign_id = :campaignId
+            """, nativeQuery = true)
+    CampaignFunnelRawRow countCampaignFunnel(
+            @Param("projectId") Long projectId,
+            @Param("campaignId") Long campaignId
+    );
+
+    /**
+     * {@link #countCampaignFunnel} projection. SUM(CASE..) 가 row 없을 때 null 을 반환할 수
+     * 있으므로 Long 래퍼로 받는다. Service 가 null → 0 으로 정규화.
+     */
+    interface CampaignFunnelRawRow {
+        Long getSentCount();
+        Long getDeliveredCount();
+        Long getFailedCount();
+    }
+
+    /**
      * Daily 템플릿 집계 — 날짜 범위 안의 발송 로그를 message_template_id×channel 단위로 GROUP BY.
      *
      * <p>message_template_id가 null인 row(템플릿 없이 발송된 경우)는 제외한다.
