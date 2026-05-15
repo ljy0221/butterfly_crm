@@ -10,10 +10,13 @@
 -- 제거됐고, singular(message_template_*) 만 남아 있습니다.
 --
 -- [API Key] projects.public_api_key 컬럼은 ADR-0017 따라 평문이 아닌 SHA-256 해시 64자를 저장합니다.
--- 평문(고객사 SDK 에 발급되는 키): pk_live_demo00000000000000000000  (pk_live_ 8 + 24 = 32자)
--- SHA-256:                        8927361945b6d0997b54ef65d1e382665830b77bdf26421789fc67239d57d60f
--- 검증: printf "pk_live_demo00000000000000000000" | sha256sum
--- 시연 시 SDK / curl 헤더: -H "X-API-Key: pk_live_demo00000000000000000000"
+-- 키 형식은 ApiKeyService.generateApiKey() 가 발급하는 UUID hex 형태와 동일하게 맞춥니다
+-- (영소문자 + 숫자, pk_live_ 8자 + UUID hex 24자 = 32자).
+--
+-- 평문(고객사 SDK 에 발급되는 키): pk_live_be8aec05f5f541e18a1f81ba  (32자)
+-- SHA-256:                        6d347da9e002fc62e18eee9fb6363cf4b8d05a6d1399e7b5324bc261053c79f1
+-- 검증: printf "pk_live_be8aec05f5f541e18a1f81ba" | sha256sum
+-- 시연 시 SDK / curl 헤더: -H "X-API-Key: pk_live_be8aec05f5f541e18a1f81ba"
 
 SET FOREIGN_KEY_CHECKS = 0;
 
@@ -24,7 +27,7 @@ DELETE FROM projects             WHERE project_id = 1;
 INSERT INTO projects (project_id, name, business_no, company_auth_no, owner_id,
                       public_api_key, daily_limit, plan, is_deleted, created_at, updated_at)
 VALUES (1, '데모 이커머스', '000-00-00000', 'demo-auth-no', 1,
-        '8927361945b6d0997b54ef65d1e382665830b77bdf26421789fc67239d57d60f',
+        '6d347da9e002fc62e18eee9fb6363cf4b8d05a6d1399e7b5324bc261053c79f1',
         100000, 'PRO', FALSE, NOW(), NOW());
 
 -- 운영자 — OWNER role
