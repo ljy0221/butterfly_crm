@@ -12,6 +12,7 @@ dependencies {
     implementation project(':butterfly-event')
     implementation project(':butterfly-segment')
     implementation project(':butterfly-campaign')
+    implementation project(':butterfly-ai')
     implementation project(':butterfly-notification')
     implementation project(':butterfly-reporting')
 

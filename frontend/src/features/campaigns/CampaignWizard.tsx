@@ -1,8 +1,8 @@
 import { useEffect, useReducer, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
-import { Button, PageHeader } from "@/components/common";
+import { Button, Icon, PageHeader } from "@/components/common";
 import { ApiError } from "@/api/types";
-import { confirmDialog, toast } from "@/lib/ui-bus";
+import { confirmDialog, openModal, toast } from "@/lib/ui-bus";
 import { mapCampaignError } from "@/lib/campaign-errors";
 import { useAuthStore } from "@/stores/auth";
 import { useProjectStore } from "@/stores/project";
@@ -12,6 +12,8 @@ import {
   useStartCampaignMutation,
   useUpdateCampaignMutation,
 } from "@/hooks/queries/campaign";
+import { useCampaignDraftMutation } from "@/hooks/queries/ai";
+import type { CampaignDraftResponse } from "@/api/ai";
 import {
   step1Schema,
   step2Schema,
@@ -37,6 +39,17 @@ import Step3Segment from "./wizard/Step3Segment";
 import Step4Schedule from "./wizard/Step4Schedule";
 import Step5Template from "./wizard/Step5Template";
 import Step6Review from "./wizard/Step6Review";
+import TemplateFormModal, {
+  type TemplateFormValues,
+} from "@/features/templates/TemplateFormModal";
+import AiLaunchButton from "@/features/ai/AiLaunchButton";
+
+const DEFAULT_AI_TEMPLATE_VARIABLES = [
+  "name",
+  "email",
+  "phone",
+  "segmentName",
+] as const;
 
 /**
  * Sprint 6 — Campaign Wizard.
@@ -163,6 +176,61 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
 
   const onPrev = (): void => {
     dispatch({ type: "prev" });
+  };
+
+  const openCampaignCopilot = (): void => {
+    if (projectId == null) return;
+    openModal(({ close }) => (
+      <CampaignCopilotModal
+        projectId={projectId}
+        draft={state.draft}
+        onApplyCampaign={onApplyCampaignDraft}
+        onOpenTemplate={onOpenTemplateDraft}
+        onClose={close}
+      />
+    ));
+  };
+
+  const onApplyCampaignDraft = (draft: CampaignDraftResponse): void => {
+    const c = draft.campaign;
+    if (c.campaignName) {
+      dispatch({ type: "set/name", value: c.campaignName.slice(0, 50) });
+    }
+    if (c.campaignDescription) {
+      dispatch({
+        type: "set/description",
+        value: c.campaignDescription.slice(0, 200),
+      });
+    }
+    if (c.campaignType) {
+      dispatch({ type: "set/type", value: c.campaignType });
+    }
+    if (c.channel) {
+      dispatch({ type: "set/channel", value: c.channel });
+    }
+    dispatch({ type: "clear/errors" });
+    toast("AI 초안을 기본 정보에 적용했습니다.", "success");
+  };
+
+  const onOpenTemplateDraft = (draft: CampaignDraftResponse): void => {
+    if (projectId == null) return;
+    const template: TemplateFormValues = {
+      messageTemplateName: draft.template.messageTemplateName,
+      messageTemplateDescription: draft.template.messageTemplateDescription,
+      channel: draft.template.channel,
+      messageTemplateTitle: draft.template.messageTemplateTitle,
+      messageTemplateBody: draft.template.messageTemplateBody,
+      messageTemplateImageUrl:
+        draft.template.messageTemplateImageUrl ?? undefined,
+    };
+    openModal(({ close }) => (
+      <TemplateFormModal
+        mode="create"
+        projectId={projectId}
+        initialValues={template}
+        onClose={close}
+      />
+    ));
   };
 
   const onJump = (target: WizardStep): void => {
@@ -362,6 +430,16 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
         }
       />
 
+      {canEdit && (
+        <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
+          <AiLaunchButton
+            label="AI로 초안 만들기"
+            caption="Campaign Copilot"
+            onClick={openCampaignCopilot}
+          />
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
         <Stepper current={state.step} furthest={furthest} onJump={onJump} />
 
@@ -437,6 +515,216 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
     </div>
   );
 }
+
+function CampaignCopilotModal({
+  projectId,
+  draft: wizardDraft,
+  onApplyCampaign,
+  onOpenTemplate,
+  onClose,
+}: {
+  projectId: number;
+  draft: WizardDraft;
+  onApplyCampaign: (draft: CampaignDraftResponse) => void;
+  onOpenTemplate: (draft: CampaignDraftResponse) => void;
+  onClose: () => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [draft, setDraft] = useState<CampaignDraftResponse | null>(null);
+  const campaignDraftMut = useCampaignDraftMutation(projectId);
+
+  const onGenerate = async (): Promise<void> => {
+    const nextPrompt = prompt.trim();
+    if (!nextPrompt) {
+      toast("AI에게 맡길 캠페인 목표를 입력해 주세요.", "warning");
+      return;
+    }
+    try {
+      const res = await campaignDraftMut.mutateAsync({
+        prompt: nextPrompt,
+        availableVariables: [...DEFAULT_AI_TEMPLATE_VARIABLES],
+        context: {
+          campaignName: wizardDraft.campaignName,
+          campaignDescription: wizardDraft.campaignDescription,
+          campaignType: wizardDraft.campaignType,
+          channel: wizardDraft.channel,
+          segmentId: wizardDraft.segmentId,
+          segmentName: wizardDraft.segmentName,
+        },
+      });
+      setDraft(res);
+      toast("AI 캠페인 초안을 만들었습니다. 적용 전 내용을 확인해 주세요.", "success");
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "AI 캠페인 초안을 만들지 못했습니다.";
+      toast(msg, "error");
+    }
+  };
+  return (
+    <section
+      aria-label="캠페인 AI 초안"
+      style={{
+        width: "min(820px, calc(100vw - 48px))",
+        background: "#fff",
+        border: "1px solid rgba(99,102,241,.24)",
+        borderRadius: 16,
+        padding: 20,
+        boxShadow: "0 28px 80px -24px rgba(15,23,42,.42)",
+      }}
+    >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>
+            AI Campaign Copilot
+          </div>
+          <p style={{ margin: "5px 0 0", fontSize: 12, color: "#64748b" }}>
+            목표를 입력하면 기본 정보와 메시지 템플릿 초안을 생성합니다.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="닫기"
+          style={{
+            width: 30,
+            height: 30,
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            background: "#fff",
+            color: "#64748b",
+            cursor: "pointer",
+            fontSize: 18,
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(0, 1fr) auto",
+          gap: 12,
+          alignItems: "start",
+          marginTop: 16,
+        }}
+      >
+        <div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={4}
+            placeholder="예: 장바구니에 상품을 담고 결제하지 않은 고객에게 24시간 한정 쿠폰을 이메일로 안내"
+            style={{
+              width: "100%",
+              resize: "vertical",
+              minHeight: 72,
+              padding: 12,
+              fontFamily: "inherit",
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: "#1f2937",
+              border: "1px solid #cbd5e1",
+              borderRadius: 8,
+              outline: "none",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+        <Button
+          variant="primaryStrong"
+          size="md"
+          icon={Icon.send(13)}
+          onClick={onGenerate}
+          disabled={campaignDraftMut.isPending}
+          style={{ marginTop: 0 }}
+        >
+          {campaignDraftMut.isPending ? "생성 중..." : "초안 생성"}
+        </Button>
+      </div>
+
+      {draft && (
+        <div
+          style={{
+            marginTop: 12,
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.2fr)",
+            gap: 10,
+          }}
+        >
+          <div style={aiDraftCardStyle}>
+            <div style={aiDraftTitleStyle}>기본 정보 초안</div>
+            <div style={aiDraftLineStyle}>
+              {draft.campaign.campaignName ?? "(이름 없음)"}
+            </div>
+            <div style={aiDraftSubStyle}>
+              {draft.campaign.campaignDescription ?? "(설명 없음)"}
+            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onApplyCampaign(draft)}
+              style={{ marginTop: 10 }}
+            >
+              기본 정보에 적용
+            </Button>
+          </div>
+          <div style={aiDraftCardStyle}>
+            <div style={aiDraftTitleStyle}>템플릿 초안</div>
+            <div style={aiDraftLineStyle}>{draft.template.messageTemplateTitle}</div>
+            <div style={aiDraftSubStyle}>{draft.template.messageTemplateBody}</div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onOpenTemplate(draft)}
+              style={{ marginTop: 10 }}
+            >
+              새 템플릿으로 열기
+            </Button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+const aiDraftCardStyle: React.CSSProperties = {
+  padding: 12,
+  border: "1px solid #e2e8f0",
+  borderRadius: 8,
+  background: "#f8fafc",
+  minWidth: 0,
+};
+
+const aiDraftTitleStyle: React.CSSProperties = {
+  marginBottom: 6,
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#3b5bdb",
+};
+
+const aiDraftLineStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#1f2937",
+  lineHeight: 1.45,
+  overflowWrap: "anywhere",
+};
+
+const aiDraftSubStyle: React.CSSProperties = {
+  marginTop: 4,
+  fontSize: 12,
+  color: "#64748b",
+  lineHeight: 1.5,
+  display: "-webkit-box",
+  WebkitLineClamp: 3,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+};
 
 // ---------- helpers ----------
 
