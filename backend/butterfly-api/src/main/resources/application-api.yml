@@ -8,6 +8,8 @@ butterfly:
       "DELETE:/api/v1/projects/*/templates/*": 10
       "POST:/api/v1/projects/*/campaigns": 30
       "POST:/api/v1/projects/*/templates": 30
+      "POST:/api/v1/projects/*/ai/campaign-draft": 10
+      "POST:/api/v1/projects/*/ai/segment-draft": 10
       "PUT:/api/v1/projects/*/templates/*": 30
       "GET:/api/v1/projects/*/campaigns/**": 200
       "GET:/api/v1/projects/*/templates/**": 200
