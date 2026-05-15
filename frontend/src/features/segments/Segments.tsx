@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Icon,
-  Menu,
   PageHeader,
   SearchInput,
   Select,
@@ -273,13 +272,14 @@ export default function Segments() {
               style={{
                 display: "grid",
                 gridTemplateColumns:
-                  "30px 2.4fr 1.1fr 0.9fr 0.7fr 0.9fr 40px",
+                  "30px 2.4fr 1.1fr 0.9fr 0.7fr 0.9fr 100px",
                 padding: "12px 16px",
                 background: "#f8fafc",
                 borderBottom: "1px solid #e2e8f0",
                 fontSize: 11,
                 color: "#64748b",
                 fontWeight: 600,
+                alignItems: "center",
               }}
             >
               <div></div>
@@ -541,47 +541,58 @@ function Row({
           {BUILD_STATUS_LABEL[buildStatus]}
         </Tag>
       </div>
-      <div onClick={(e) => e.stopPropagation()} style={{ textAlign: "right" }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 6 }}
+      >
         {canEdit ? (
-          <Menu
-            align="right"
-            trigger={
-              <button
-                type="button"
-                aria-label="세그먼트 메뉴"
-                style={{
-                  width: 26,
-                  height: 26,
-                  border: 0,
-                  background: "transparent",
-                  color: "#64748b",
-                  cursor: "pointer",
-                  borderRadius: 6,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {Icon.dots(14)}
-              </button>
-            }
-            items={[
-              { label: "수정", icon: Icon.edit(12), onClick: onEdit },
-              { divider: true },
-              {
-                label: "삭제",
-                icon: Icon.trash(12),
-                onClick: onDelete,
-                danger: true,
-              },
-            ]}
-            style={{}}
-          />
+          <>
+            <SegActionBtn label="수정" onClick={onEdit} />
+            <SegActionBtn label="삭제" onClick={onDelete} danger />
+          </>
         ) : (
           <span style={{ color: "#cbd5e1" }}>{Icon.chevron(12)}</span>
         )}
       </div>
     </div>
+  );
+}
+
+function SegActionBtn({
+  label,
+  onClick,
+  danger = false,
+}: {
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
+        fontFamily: "inherit",
+        borderRadius: 6,
+        border: `1px solid ${danger ? "#fecaca" : "#e2e8f0"}`,
+        background: danger ? "#fff5f5" : "#f8fafc",
+        color: danger ? "#dc2626" : "#374151",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        transition: "background 100ms",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = danger ? "#fee2e2" : "#f1f5f9";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = danger ? "#fff5f5" : "#f8fafc";
+      }}
+    >
+      {label}
+    </button>
   );
 }
 
