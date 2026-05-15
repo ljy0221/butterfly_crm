@@ -84,9 +84,9 @@ class HomeActivity : AppCompatActivity() {
             } else false
         }
 
-        // 5) 장바구니 진입 — Task 9에서 CartActivity 추가 후 wiring (Task 10 에서 enable)
+        // 5) 장바구니 진입
         findViewById<TextView>(R.id.btnCart).setOnClickListener {
-            Log.d(TAG, "Cart button — CartActivity wiring pending (Task 9/10)")
+            startActivity(Intent(this, CartActivity::class.java))
         }
 
         // 6) Debug 진입
