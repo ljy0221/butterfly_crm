@@ -1,10 +1,11 @@
 package com.b101.butterfly.auth.security;
 
-import com.b101.butterfly.auth.constant.MemberStatus;
 import com.b101.butterfly.auth.constant.RoleType;
 import com.b101.butterfly.auth.entity.Member;
+import com.b101.butterfly.auth.exception.AuthErrorCode;
 import com.b101.butterfly.auth.repository.MemberRepository;
 import com.b101.butterfly.auth.service.RedisService;
+import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,9 @@ import java.time.Duration;
  *
  * 사용 예:
  * @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
+ *
+ * ADMIN 역할은 프로젝트 스코프 API에 접근할 수 없다.
+ * ADMIN 전용 기능은 /api/v1/admin/** 경로(SecureSecurityConfig.hasRole("ADMIN"))로만 제공한다.
  */
 @Component("projectPermission")
 @RequiredArgsConstructor
@@ -37,18 +41,7 @@ public class ProjectPermissionEvaluator {
         Long memberId = currentMemberId();
         if (memberId == null) return false;
 
-        // ADMIN은 projectId=null — 모든 프로젝트 접근 허용
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth.getPrincipal() instanceof CustomUserDetails ud
-                && ud.getRoleType() == RoleType.ADMIN) {
-            return true;
-        }
-
         try {
-            Member member = memberRepository.findById(memberId)
-                    .orElseThrow(() -> new RuntimeException("Member not found"));
-            if (member.getStatus() != MemberStatus.ACTIVE) return false;
-
             RoleType actual   = resolveRole(memberId, projectId);
             RoleType required = RoleType.valueOf(requiredRole);
             return actual.ordinal() <= required.ordinal();
@@ -71,10 +64,10 @@ public class ProjectPermissionEvaluator {
                 .map(RoleType::valueOf)
                 .orElseGet(() -> {
                     Member member = memberRepository.findById(memberId)
-                            .orElseThrow(() -> new RuntimeException("Member not found"));
+                            .orElseThrow(() -> new BusinessException(AuthErrorCode.MEMBER_NOT_FOUND));
 
                     if (!projectId.equals(member.getProjectId())) {
-                        throw new RuntimeException("Member not in project");
+                        throw new BusinessException(AuthErrorCode.ACCESS_DENIED);
                     }
 
                     RoleType role = member.getRoleType();

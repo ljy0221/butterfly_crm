@@ -20,6 +20,7 @@ export default function ProjectSelect() {
   const member = useAuthStore((s) => s.member);
   const clearAuth = useAuthStore((s) => s.clear);
   const setCurrent = useProjectStore((s) => s.setCurrent);
+  const clearProject = useProjectStore((s) => s.clear);
   const current = useProjectStore((s) => s.current);
 
   const projectId = member?.projectId ?? null;
@@ -106,7 +107,7 @@ export default function ProjectSelect() {
             <Button
               variant="primaryStrong"
               size="md"
-              onClick={() => navigate("/admin/applications")}
+              onClick={() => { clearProject(); navigate("/admin/applications"); }}
             >
               관리자 페이지로
             </Button>
