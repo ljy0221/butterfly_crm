@@ -39,12 +39,14 @@ public record DeliveryCommand(
          * 사용자별 변수로 {@code {{var}}} 치환된 새 MessagePayload 를 만든다.
          *
          * <p>치환 대상: title, body, imageUrl. data 는 FCM 메타데이터라 치환 안 함.
-         * variables 가 null 또는 빈 맵이면 자기 자신 반환 (불필요 객체 생성 회피).
+         *
+         * <p>variables 가 비어 있어도 substitute 는 호출한다 — 템플릿에 {@code {{name}}} 이
+         * 남아 있을 때 raw placeholder 노출을 막기 위해 빈 문자열로 치환 + WARN 로그를 남기는
+         * fallback policy (VariableSubstitutor 도메인 결정) 를 그대로 따른다. 호출 측은
+         * {@link com.b101.butterfly.campaign.messagetemplate.domain.VariableSubstitutor#hasVariablePattern}
+         * 으로 한 번만 분기하면 충분.
          */
         public MessagePayload personalize(java.util.Map<String, String> variables) {
-            if (variables == null || variables.isEmpty()) {
-                return this;
-            }
             return new MessagePayload(
                     com.b101.butterfly.campaign.messagetemplate.domain.VariableSubstitutor.substitute(title, variables),
                     com.b101.butterfly.campaign.messagetemplate.domain.VariableSubstitutor.substitute(body, variables),

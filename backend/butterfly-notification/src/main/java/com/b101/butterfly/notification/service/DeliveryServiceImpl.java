@@ -1,5 +1,6 @@
 package com.b101.butterfly.notification.service;
 
+import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand.ChannelCredential;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand.DeliveryTarget;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 발송 오케스트레이션.
@@ -28,6 +30,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final DeliveryResultPersister deliveryResultPersister;
     private final ChannelCredentialService channelCredentialService;
     private final UserContactPort userContactPort;
+    private final UserTagLookupPort userTagLookupPort;
     private final CampaignExecutionResultPublisher campaignExecutionResultPublisher;
 
     @Override
@@ -37,16 +40,26 @@ public class DeliveryServiceImpl implements DeliveryService {
                 ? command.credential()
                 : channelCredentialService.getCredential(command.projectId(), command.channel());
 
-        // 2. targets 결정: 있으면 그대로, 없으면 userIds로 조회
-        List<DeliveryTarget> targets = command.targets() != null && !command.targets().isEmpty()
-                ? command.targets()
-                : userContactPort.getContactsByUserIds(
-                        command.projectId(), command.userIds(), command.channel())
+        // 2. targets 결정: 있으면 그대로, 없으면 userIds 로 조회.
+        //    userIds 경로일 때도 user_tags 를 함께 조회해 variables 를 채운다 — 누락하면
+        //    뒤이은 personalize() 가 {{name}} 같은 placeholder 를 빈 문자열로 치환해버려
+        //    개인화가 사라진다. (worker fan-out 의 CampaignSendInstructionProcessor 와 동일한 조립 규칙)
+        final List<DeliveryTarget> targets;
+        if (command.targets() != null && !command.targets().isEmpty()) {
+            targets = command.targets();
+        } else {
+            List<Long> userIds = command.userIds();
+            Map<Long, Map<String, String>> userTags = userTagLookupPort.getTagsByUserIds(
+                    command.projectId(), userIds);
+            targets = userContactPort.getContactsByUserIds(
+                            command.projectId(), userIds, command.channel())
                     .stream()
                     .map(c -> new DeliveryTarget(
                             c.userId(), c.deviceId(),
-                            c.pushToken(), c.email(), c.phoneNumber()))
+                            c.pushToken(), c.email(), c.phoneNumber(),
+                            userTags.getOrDefault(c.userId(), Map.of())))
                     .toList();
+        }
 
         if (targets.isEmpty()) {
             throw new BusinessException(DeliveryErrorCode.EMPTY_TARGETS);
