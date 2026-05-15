@@ -5,6 +5,7 @@ import { useLoginMutation } from "@/hooks/queries/auth";
 import { mapAuthError } from "@/lib/auth-errors";
 import { toast } from "@/lib/ui-bus";
 import { useAuthStore, type AuthRole } from "@/stores/auth";
+import { useProjectStore } from "@/stores/project";
 import { loginSchema } from "@/schemas/auth";
 import { ApiError } from "@/api/types";
 
@@ -35,6 +36,7 @@ export default function LoginPage() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const setAuth = useAuthStore((s) => s.setAuth);
   const member = useAuthStore((s) => s.member);
+  const clearProject = useProjectStore((s) => s.clear);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -71,6 +73,8 @@ export default function LoginPage() {
       onSuccess: (res) => {
         const role = res.member.roleType as AuthRole;
         const status = res.member.status as "PENDING" | "ACTIVE" | undefined;
+        // 이전 세션의 프로젝트 컨텍스트 잔존 방지 — 로그인 시 항상 초기화
+        clearProject();
         setAuth({
           accessToken: res.accessToken ?? "",
           refreshToken: res.refreshToken ?? "",

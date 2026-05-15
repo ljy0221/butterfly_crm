@@ -14,7 +14,7 @@ export default function Avatar({ name, size = 28, style }) {
         width: size, height: size, borderRadius: 999,
         background: COLORS[i], color: TEXT_COLORS[i],
         display: "inline-flex", alignItems: "center", justifyContent: "center",
-        fontSize: size * 0.4, fontWeight: 700, flex: "none",
+        fontSize: size * 0.4, fontWeight: 700, lineHeight: 1, flex: "none",
         ...style,
       }}
     >
