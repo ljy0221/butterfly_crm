@@ -6,6 +6,7 @@ import {
   useCreateTemplateMutation,
   useUpdateTemplateMutation,
 } from "@/hooks/queries/template";
+import { useRecommendedVariablesQuery } from "@/hooks/queries/personalization";
 import {
   createTemplateSchema,
   extractVariables,
@@ -30,6 +31,11 @@ export interface TemplateFormModalProps {
   templateId?: number;
   /** mode="edit" 일 때 prefill. mode="create" 일 때는 무시. */
   initialValues?: TemplateFormValues;
+  /**
+   * 추천 변수 산출 범위를 좁힐 때 사용. 캠페인 위저드처럼 세그먼트가 미리 선택된
+   * 화면에서 모달을 띄울 때 전달한다. 미지정이면 프로젝트 전체 user_tags 빈도 기준.
+   */
+  segmentId?: number | null;
   onClose: () => void;
 }
 
@@ -50,7 +56,11 @@ const CHANNEL_OPTIONS: Array<{ value: Channel; label: string }> = [
   { value: "KAKAO", label: "KAKAO (알림톡)" },
 ];
 
-const SUGGESTED_VARS = [
+/**
+ * API 응답이 없거나 빈 결과일 때 표시할 기본 변수. 프로젝트에 user_tags 가 아직
+ * 적재되지 않은 초기 상태에서도 운영자가 형식을 익힐 수 있도록 남겨둔다.
+ */
+const FALLBACK_SUGGESTED_VARS = [
   "name",
   "product_name",
   "item_count",
@@ -73,6 +83,7 @@ export default function TemplateFormModal({
   projectId,
   templateId,
   initialValues,
+  segmentId,
   onClose,
 }: TemplateFormModalProps) {
   const [name, setName] = useState<string>(
@@ -96,6 +107,12 @@ export default function TemplateFormModal({
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const detectedVars = useMemo(() => extractVariables(body), [body]);
+
+  const recommendedQuery = useRecommendedVariablesQuery(projectId, segmentId);
+  const suggestedVars = useMemo<string[]>(() => {
+    const apiVars = recommendedQuery.data?.variables.map((v) => v.key) ?? [];
+    return apiVars.length > 0 ? apiVars : FALLBACK_SUGGESTED_VARS;
+  }, [recommendedQuery.data]);
 
   const createMut = useCreateTemplateMutation(projectId);
   const updateMut = useUpdateTemplateMutation(projectId);
@@ -376,9 +393,9 @@ export default function TemplateFormModal({
               marginRight: 4,
             }}
           >
-            추천 변수:
+            {segmentId != null ? "세그먼트 추천 변수:" : "프로젝트 추천 변수:"}
           </span>
-          {SUGGESTED_VARS.map((v) => (
+          {suggestedVars.map((v) => (
             <button
               key={v}
               type="button"
