@@ -92,6 +92,24 @@ class ModularBoundaryTest {
             );
 
     /**
+     * MaskingPolicyHolder.configure()는 config 패키지에서만 호출할 수 있다.
+     *
+     * <p>ADR-0008 §"비밀값 마스킹 규칙" — 마스킹 정책 교체는 AuditMaskingConfig를 통해서만
+     * 허용한다. 도메인 서비스에서 직접 호출하면 환경별 정책이 덮어씌워져 보안 정책이 무력화된다.
+     */
+    @ArchTest
+    static final ArchRule maskingPolicyHolderConfigureShouldOnlyBeCalledFromConfigPackage =
+            noClasses()
+                    .that().resideOutsideOfPackage("com.b101.butterfly.config..")
+                    .and().resideOutsideOfPackage("com.b101.butterfly.global.audit..")
+                    .should().callMethod(
+                            "com.b101.butterfly.global.audit.MaskingPolicyHolder",
+                            "configure",
+                            "com.b101.butterfly.global.audit.DetailMaskingPolicy"
+                    )
+                    .as("MaskingPolicyHolder.configure()는 config 패키지에서만 호출 가능하다");
+
+    /**
      * 캠페인 모듈은 세그먼트 모듈의 {@code port} 패키지만 접근할 수 있다.
      *
      * <p>S14P31B101-229 — campaign → segment 의존이 추가되며 기존 BC ACL 룰을 segment 측에
