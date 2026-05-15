@@ -28,22 +28,39 @@ import java.io.IOException;
  *   <li>{@code X-Project-Id} — 프로젝트 ID (선택, 기본값 null)</li>
  *   <li>{@code X-Role} — 역할 ADMIN/OWNER/EDITOR/VIEWER (선택, 기본값 VIEWER)</li>
  * </ul>
+ *
+ * <p>{@code X-Project-Id}가 있으면 prod의 {@link ApiKeyAuthenticationFilter}와 동일하게
+ * request attribute {@code resolvedProjectId}에도 박는다 — SDK 컨트롤러
+ * ({@code EventCollectController}, {@code DeviceController}, {@code UserActionIngestController})가
+ * dev/prod 환경 모두에서 같은 attribute로 projectId를 꺼낼 수 있도록.
+ * 키 이름은 {@code ApiKeyAuthenticationFilter.RESOLVED_PROJECT_ID}와 동기화 필요.
  */
 @Slf4j
 @Component
 @Profile("!prod")
 public class LocalAuthFilter extends OncePerRequestFilter {
 
+    private static final String RESOLVED_PROJECT_ID_ATTR = "resolvedProjectId";
+
     @Override
     protected void doFilterInternal(HttpServletRequest req,
                                     HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
+        String projectH = req.getHeader("X-Project-Id");
+        Long projectId = null;
+        if (projectH != null) {
+            try {
+                projectId = Long.parseLong(projectH);
+                req.setAttribute(RESOLVED_PROJECT_ID_ATTR, projectId);
+            } catch (NumberFormatException e) {
+                log.debug("LocalAuthFilter: X-Project-Id 파싱 실패 — attribute 미설정. reason={}", e.getMessage());
+            }
+        }
+
         String memberIdHeader = req.getHeader("X-Member-Id");
         if (memberIdHeader != null) {
             try {
                 Long memberId  = Long.parseLong(memberIdHeader);
-                String projectH = req.getHeader("X-Project-Id");
-                Long projectId  = projectH != null ? Long.parseLong(projectH) : null;
                 String roleH   = req.getHeader("X-Role");
                 RoleType role  = roleH != null ? RoleType.valueOf(roleH) : RoleType.VIEWER;
 

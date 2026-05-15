@@ -90,7 +90,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return !request.getRequestURI().startsWith("/api/v1/events");
+        String uri = request.getRequestURI();
+        // SDK 표면: /api/v1/events/** (이벤트 수집/액션), /api/v1/devices/** (디바이스 등록)
+        // 두 prefix 모두 X-API-Key 인증 + projectId resolve가 필요. ADR-0017 §"인증 필터" 적용 범위.
+        return !(uri.startsWith("/api/v1/events") || uri.startsWith("/api/v1/devices"));
     }
 
     private void rejectWith(HttpServletResponse res, int status, String code, String message)

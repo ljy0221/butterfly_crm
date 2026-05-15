@@ -58,8 +58,8 @@ public class SecureSecurityConfig {
                         // SDK / 내부 경로 — 자체 토큰 방식으로 처리
                         .requestMatchers("/sdk/**").permitAll()
                         .requestMatchers("/internal/**").permitAll()
-                        // 이벤트 수집 — ApiKeyAuthenticationFilter 가 인증 처리
-                        .requestMatchers("/api/v1/events/**").permitAll()
+                        // SDK 표면 — ApiKeyAuthenticationFilter 가 X-API-Key 인증 처리 (ADR-0017)
+                        .requestMatchers("/api/v1/events/**", "/api/v1/devices/**").permitAll()
                         // K8s readiness/liveness probe + Prometheus scrape (S14P31B101-281)
                         // 인증 거치면 readiness 401 → Pod NotReady → progress deadline 초과 → CrashLoop.
                         // 외부 노출은 받은 EC2 SG가 worker NodePort를 받은 EC2 IP/32로만 제한해 보호.
