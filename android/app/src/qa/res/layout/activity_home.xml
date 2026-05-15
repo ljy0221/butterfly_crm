@@ -3,7 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/demo_bg_white">
+    android:background="@color/demo_bg_white"
+    android:fitsSystemWindows="true">
 
     <!-- 상단 바 -->
     <LinearLayout
