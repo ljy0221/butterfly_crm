@@ -1,5 +1,7 @@
 package com.b101.butterfly.global.event;
 
+import com.b101.butterfly.global.audit.MaskingPolicyHolder;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -52,6 +54,9 @@ public record AuditRecordedEvent(
         if (occurredAt == null) {
             occurredAt = Instant.now();
         }
+        // 비밀값 마스킹 정책 적용 (ADR-0008) — 환경별 동작:
+        // prod: warn-and-store(자동 마스킹), !prod: fail-fast(예외 발생)
+        detail = MaskingPolicyHolder.apply(detail);
     }
 
     /**
