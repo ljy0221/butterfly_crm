@@ -11,7 +11,15 @@ services:
       MYSQL_PASSWORD: butterfly
     volumes:
       - mysql-data:/var/lib/mysql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    # S14P31B101-269 — buffer pool 128MB(디폴트) 가 100M events 테이블 hot range 를 못 담아
+    # random IO 누적, Innodb_buffer_pool_wait_free 가 분 단위로 쌓이는 문제 해소.
+    # tmp/heap 도 GROUP BY 877k user 가 16MB 디폴트를 초과해 디스크 spill 되는 것 회피.
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=2G
+      --tmp-table-size=256M
+      --max-heap-table-size=256M
 
   redis:
     image: redis:7-alpine

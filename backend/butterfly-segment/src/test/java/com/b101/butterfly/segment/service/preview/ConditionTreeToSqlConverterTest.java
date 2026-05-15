@@ -315,4 +315,119 @@ class ConditionTreeToSqlConverterTest {
                 .containsEntry("eventEndExclusiveDate0", LocalDate.of(2026, 5, 6));
         assertThat(fragment.params()).containsEntry("eventFilterVal0_0", "%검정%");
     }
+
+    // ---------- S14P31B101-269: OR-of-filtered-EVENT-same-bucket single scan ----------
+
+    @Test
+    @DisplayName("OR-of-filtered-EVENT-same-bucket → outer users 없이 events 한 번 scan + SUM(CASE) OR HAVING")
+    void mergedFilteredEventOrSameBucket() {
+        EventNode leaf1 =
+                new EventNode(
+                        42L,
+                        List.of(new EventFilter("plan", Operator.EQ, NODE.textNode("premium"))),
+                        new Period.Cumulative(),
+                        30);
+        EventNode leaf2 =
+                new EventNode(
+                        42L,
+                        List.of(
+                                new EventFilter(
+                                        "productId", Operator.EQ, NODE.textNode("SKU-007"))),
+                        new Period.Cumulative(),
+                        15);
+        GroupNode tree = new GroupNode(LogicOp.OR, List.of(leaf1, leaf2));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        // outer users 안 거침 — events 한 번 scan 형태.
+        assertThat(fragment.sql())
+                .startsWith("SELECT ev.user_id FROM events ev")
+                .contains("ev.project_id = :projectId")
+                .contains("ev.category_id = :eventCategoryId0")
+                .contains("GROUP BY ev.user_id")
+                .contains("SUM(CASE WHEN")
+                .contains(">= :eventMinCount0")
+                .contains(">= :eventMinCount1")
+                .contains(" OR ");
+        // outer users 없는지 명시 확인.
+        assertThat(fragment.sql()).doesNotContain("FROM users u");
+        assertThat(fragment.params())
+                .containsEntry("projectId", 1L)
+                .containsEntry("eventCategoryId0", 42L)
+                .containsEntry("eventMinCount0", 30)
+                .containsEntry("eventMinCount1", 15)
+                .containsEntry("eventFilterVal0_0", "premium")
+                .containsEntry("eventFilterVal1_0", "SKU-007");
+    }
+
+    @Test
+    @DisplayName("OR + 다른 categoryId — single scan 비대상 → 기존 EXISTS 경로")
+    void filteredEventOrDifferentCategoryFallsBack() {
+        EventNode leaf1 =
+                new EventNode(
+                        42L,
+                        List.of(new EventFilter("plan", Operator.EQ, NODE.textNode("premium"))),
+                        new Period.Cumulative(),
+                        30);
+        EventNode leaf2 =
+                new EventNode(
+                        99L,
+                        List.of(
+                                new EventFilter(
+                                        "productId", Operator.EQ, NODE.textNode("SKU-007"))),
+                        new Period.Cumulative(),
+                        15);
+        GroupNode tree = new GroupNode(LogicOp.OR, List.of(leaf1, leaf2));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        // 다른 category — 기존 outer users + EXISTS 모델 유지.
+        assertThat(fragment.sql())
+                .startsWith("SELECT u.user_id FROM users u")
+                .contains("EXISTS (SELECT 1 FROM events ev");
+    }
+
+    @Test
+    @DisplayName("AND-of-filtered-EVENT — single scan 비대상 (logic != OR) → 기존 EXISTS 경로")
+    void filteredEventAndFallsBack() {
+        EventNode leaf1 =
+                new EventNode(
+                        42L,
+                        List.of(new EventFilter("plan", Operator.EQ, NODE.textNode("premium"))),
+                        new Period.Cumulative(),
+                        30);
+        EventNode leaf2 =
+                new EventNode(
+                        42L,
+                        List.of(
+                                new EventFilter(
+                                        "productId", Operator.EQ, NODE.textNode("SKU-007"))),
+                        new Period.Cumulative(),
+                        15);
+        GroupNode tree = new GroupNode(LogicOp.AND, List.of(leaf1, leaf2));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql())
+                .startsWith("SELECT u.user_id FROM users u")
+                .contains("EXISTS (SELECT 1 FROM events ev");
+    }
+
+    @Test
+    @DisplayName("OR + filterless EVENT 포함 — single scan 비대상 → 기존 EXISTS 경로")
+    void filteredEventOrWithFilterlessLeafFallsBack() {
+        EventNode filtered =
+                new EventNode(
+                        42L,
+                        List.of(new EventFilter("plan", Operator.EQ, NODE.textNode("premium"))),
+                        new Period.Cumulative(),
+                        30);
+        EventNode filterless =
+                new EventNode(42L, List.of(), new Period.Cumulative(), 15);
+        GroupNode tree = new GroupNode(LogicOp.OR, List.of(filtered, filterless));
+
+        SqlFragment fragment = converter.convert(tree, EVENT_CONTEXT);
+
+        assertThat(fragment.sql()).startsWith("SELECT u.user_id FROM users u");
+    }
 }

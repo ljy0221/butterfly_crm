@@ -17,4 +17,10 @@ public class StubUserDirectoryReader implements UserDirectoryReader {
     public List<Long> queryUserIds(String sql, Map<String, Object> params) {
         return List.of();
     }
+
+    @Override
+    public long materializeUserMatchesIntoSegment(
+            Long segmentId, String selectSql, Map<String, Object> params) {
+        return 0L;
+    }
 }
