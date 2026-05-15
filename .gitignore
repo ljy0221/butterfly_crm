@@ -57,8 +57,13 @@ backend/scripts/run-worker-for-segment-build.bat
 ### 개인 학습 노트 (커밋 안 함) ###
 CLAUDE.local.md
 /docs/
+.omc/
 
 ### K8s secrets (수동 apply, ArgoCD 외부) ###
 deploy/k8s/overlays/*/secrets.yaml
 deploy/k8s/overlays/*/regcred.yaml
+
+### 시연 스크립트 민감 파일 ###
+backend/scripts/demo-seed/firebase-service-account.json
+backend/scripts/demo-inject/.env
 

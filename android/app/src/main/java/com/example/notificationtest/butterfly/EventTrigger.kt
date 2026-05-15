@@ -83,13 +83,22 @@ object EventTrigger {
 
     @JvmStatic
     fun fireProductView(context: Context) {
-        sendEvent(context, "product_view", mapOf("productId" to "P123", "price" to 19900))
+        sendEvent(context, "product_view", productViewPayload())
+    }
+
+    @JvmStatic
+    fun fireProductViewSilently(context: Context) {
+        sendEventSilently(context, "product_view", productViewPayload())
     }
 
     @JvmStatic
     fun firePurchase(context: Context) {
         val orderId = "O-${System.currentTimeMillis()}"
-        sendEvent(context, "purchase", mapOf("orderId" to orderId, "totalAmount" to 19900))
+        sendEvent(context, "purchase", mapOf(
+            "orderId" to orderId,
+            "productId" to DEMO_PRODUCT_ID,
+            "totalAmount" to DEMO_PRODUCT_PRICE
+        ))
     }
 
     @JvmStatic
