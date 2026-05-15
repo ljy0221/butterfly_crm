@@ -211,6 +211,7 @@
         android:background="@color/demo_bg_white">
 
         <TextView
+            android:id="@+id/btnAddToCart"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
@@ -228,6 +229,7 @@
             android:layout_height="match_parent" />
 
         <TextView
+            android:id="@+id/btnBuyNow"
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"

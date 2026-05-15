@@ -79,6 +79,19 @@ class ProductDetailActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnDebug).setOnClickListener {
             startActivity(Intent(this, DebugActivity::class.java))
         }
+
+        // 장바구니 CTA — qa 빌드는 실제 CartStore add + add_to_cart 이벤트, demo 빌드는 토스트만
+        findViewById<TextView>(R.id.btnAddToCart).setOnClickListener {
+            if (BuildConfig.IS_QA_BUILD) {
+                invokeQaAddToCart(productId)
+            } else {
+                android.widget.Toast.makeText(this, "장바구니 (시연용 토스트)", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        findViewById<TextView>(R.id.btnBuyNow).setOnClickListener {
+            android.widget.Toast.makeText(this, "바로구매 (시뮬레이션)", android.widget.Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun requestNotificationPermission() {
@@ -102,6 +115,38 @@ class ProductDetailActivity : AppCompatActivity() {
             ).apply { description = "FCM 푸시 알림 채널" }
             val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
+        }
+    }
+
+    /**
+     * QA 빌드 전용 — 장바구니 추가. ProductCatalog lookup + CartStore.add + add_to_cart 이벤트.
+     * 실패 시 토스트로 알림 (시연 무관).
+     */
+    private fun invokeQaAddToCart(productId: String?) {
+        if (productId == null) {
+            android.widget.Toast.makeText(this, "productId 없음 — 장바구니 담기 불가", android.widget.Toast.LENGTH_SHORT).show()
+            return
+        }
+        try {
+            val catalogClass = Class.forName("com.example.notificationtest.catalog.ProductCatalog")
+            val findByIdMethod = catalogClass.getMethod("findById", String::class.java)
+            val catalogInstance = catalogClass.getField("INSTANCE").get(null)
+            val product = findByIdMethod.invoke(catalogInstance, productId) ?: return
+
+            val storeClass = Class.forName("com.example.notificationtest.cart.CartStore")
+            val productClass = Class.forName("com.example.notificationtest.catalog.ProductCatalog\$Product")
+            val addMethod = storeClass.getMethod("add", productClass, Int::class.javaPrimitiveType)
+            val storeInstance = storeClass.getField("INSTANCE").get(null)
+            addMethod.invoke(storeInstance, product, 1)
+
+            val category = product.javaClass.getMethod("getCategory").invoke(product) as String
+            val price = product.javaClass.getMethod("getPrice").invoke(product) as Int
+
+            EventTrigger.fireAddToCartSilently(this, category, productId, 1, price)
+            android.widget.Toast.makeText(this, "장바구니에 담겼습니다", android.widget.Toast.LENGTH_SHORT).show()
+        } catch (t: Throwable) {
+            Log.w(TAG, "QA add-to-cart failed", t)
+            android.widget.Toast.makeText(this, "장바구니 담기 실패: ${t.message}", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 
