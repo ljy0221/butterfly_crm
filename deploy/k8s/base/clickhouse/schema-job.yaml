@@ -1,0 +1,66 @@
+# ClickHouse 초기 스키마 적용 Job — ArgoCD PostSync Hook (S14P31B101-300).
+#
+# clickhouse-schema ConfigMap 의 SQL 파일을 차례로 clickhouse-client 로 적용.
+# PostSync hook + hook-delete-policy=BeforeHookCreation 으로 매 ArgoCD sync 마다 이전 Job
+# 삭제 후 재생성 → 스키마 ConfigMap 수정이 GitOps 사이클 안에서 자동 반영.
+# IF NOT EXISTS 라 재실행 무해.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clickhouse-schema-apply
+  namespace: butterfly
+  labels:
+    app.kubernetes.io/name: clickhouse-schema-apply
+    app.kubernetes.io/instance: clickhouse
+    app.kubernetes.io/component: analytics
+    app.kubernetes.io/part-of: butterfly
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: applier
+          image: clickhouse/clickhouse-server:24.8
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              # ClickHouse Service 가 준비될 때까지 대기 (PostSync 직후엔 StatefulSet 부팅 중일 수 있음)
+              for i in $(seq 1 30); do
+                wget -q -O- http://clickhouse.butterfly.svc.cluster.local:8123/ping && break
+                echo "Waiting ClickHouse..."; sleep 5
+              done
+              for f in /schema/01-events-table.sql /schema/02-kafka-engine.sql; do
+                echo "Applying $f"
+                clickhouse-client \
+                  --host clickhouse.butterfly.svc.cluster.local \
+                  --port 9000 \
+                  --user "$CH_USER" \
+                  --password "$CH_PASS" \
+                  --database butterfly \
+                  --multiquery < "$f"
+              done
+          env:
+            - name: CH_USER
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: username
+            - name: CH_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: password
+          volumeMounts:
+            - name: schema
+              mountPath: /schema
+      volumes:
+        - name: schema
+          configMap:
+            name: clickhouse-schema
