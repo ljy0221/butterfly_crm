@@ -1,0 +1,125 @@
+# ClickHouse StatefulSet 단일 replica (S14P31B101-300, ADR-0023).
+#
+# 배치: role=analytics 노드 (clickhouse 전용, taint role=analytics:NoSchedule).
+# resources: req 1C/4Gi, limits 1500m/6Gi — K3s 의 system reserved=0 환경에서 kube-system
+#   DaemonSet 마진 22~25% 확보 (reviewer Critical #2).
+# probes:
+#   - startupProbe: 백필 후 첫 부팅 시 part 메타 로드 60s+ 가능 → 최대 300s 부팅 허용
+#   - readiness/liveness: /ping
+# PV: local-path 40Gi — 100M event LZ4 5~8GB + merge 임시 part + Kafka queue 여유.
+#   ADR-0023 §B-4: 데이터 loss 는 "Kafka events.collected 토픽 + MySQL 원본"으로 재현 감수.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: clickhouse
+  namespace: butterfly
+  labels:
+    app.kubernetes.io/name: clickhouse
+    app.kubernetes.io/instance: clickhouse
+    app.kubernetes.io/component: analytics
+    app.kubernetes.io/part-of: butterfly
+    app.kubernetes.io/version: "24.8"
+spec:
+  serviceName: clickhouse
+  replicas: 1
+  selector:
+    matchLabels:
+      app: clickhouse
+  template:
+    metadata:
+      labels:
+        app: clickhouse
+        app.kubernetes.io/name: clickhouse
+        app.kubernetes.io/instance: clickhouse
+    spec:
+      nodeSelector:
+        role: analytics
+      tolerations:
+        - key: role
+          operator: Equal
+          value: analytics
+          effect: NoSchedule
+      # MergeTree background merge flush 여유
+      terminationGracePeriodSeconds: 90
+      automountServiceAccountToken: false
+      securityContext:
+        runAsUser: 101
+        runAsGroup: 101
+        fsGroup: 101
+      containers:
+        - name: clickhouse
+          image: clickhouse/clickhouse-server:24.8
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8123
+              name: http
+            - containerPort: 9000
+              name: native
+          env:
+            - name: CLICKHOUSE_DB
+              value: "butterfly"
+            - name: CLICKHOUSE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: username
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: password
+          resources:
+            requests:
+              cpu: 1
+              memory: 4Gi
+            limits:
+              cpu: 1500m
+              memory: 6Gi
+          startupProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 20
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 8123
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - name: clickhouse-data
+              mountPath: /var/lib/clickhouse
+            - name: clickhouse-config-override
+              mountPath: /etc/clickhouse-server/config.d/override.xml
+              subPath: override.xml
+            - name: clickhouse-users-override
+              mountPath: /etc/clickhouse-server/users.d/butterfly.xml
+              subPath: butterfly.xml
+      volumes:
+        - name: clickhouse-config-override
+          configMap:
+            name: clickhouse-config
+        - name: clickhouse-users-override
+          configMap:
+            name: clickhouse-users
+  volumeClaimTemplates:
+    - metadata:
+        name: clickhouse-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 40Gi

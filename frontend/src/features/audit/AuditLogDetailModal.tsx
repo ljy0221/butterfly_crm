@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button, Card, Icon, Tag } from "@/components/common";
 import { toast } from "@/lib/ui-bus";
 import { mapAuditError } from "@/lib/audit-errors";
@@ -6,7 +7,9 @@ import { useAuditLogDetailQuery } from "@/hooks/queries/audit";
 /**
  * Sprint 7 — 감사 로그 상세 모달.
  *
- * - detail JSON pretty (mono).
+ * - detail JSON 은 기본 접힘(키 개수만 노출) — 어깨너머 노출 차단.
+ *   클릭 시 expander 로 펼치고, 펼친 상태에서만 raw JSON 표시.
+ *   상세 마스킹 정책은 발행 측(AuditEventListener)에서 별도로 다룬다 (TODO: S14P31B101-???).
  * - userAgent / ipAddress 시맨틱 (<time dateTime>) 노출.
  * - "복사" 버튼만 제공 (수정/삭제 액션 없음 — @Immutable).
  */
@@ -35,7 +38,12 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
     auditId,
     true,
   );
+  const [detailExpanded, setDetailExpanded] = useState(false);
   const errMsg = isError ? mapAuditError(error).message : null;
+  const detailKeyCount =
+    data?.detail && typeof data.detail === "object"
+      ? Object.keys(data.detail).length
+      : 0;
 
   const onCopy = () => {
     if (!data) return;
@@ -153,10 +161,51 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
                   ],
                   [
                     "멤버",
-                    <span key="m" style={{ fontFamily: "var(--font-mono)" }}>
-                      #{data.memberId}
-                      {data.memberName ? ` · ${data.memberName}` : ""}
-                      {data.memberEmail ? ` (${data.memberEmail})` : ""}
+                    <span
+                      key="m"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "baseline",
+                        flexWrap: "wrap",
+                        columnGap: 6,
+                        rowGap: 2,
+                      }}
+                    >
+                      {data.memberName ? (
+                        <>
+                          <span style={{ color: "#1f2937", fontWeight: 600 }}>
+                            {data.memberName}
+                          </span>
+                          {data.memberEmail && (
+                            <span style={{ color: "#475569", fontSize: 12 }}>
+                              {data.memberEmail}
+                            </span>
+                          )}
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              color: "#94a3b8",
+                              fontSize: 11,
+                            }}
+                          >
+                            #{data.memberId}
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span
+                            style={{
+                              fontFamily: "var(--font-mono)",
+                              color: "#1f2937",
+                            }}
+                          >
+                            #{data.memberId}
+                          </span>
+                          <Tag tone="info" style={{}}>
+                            탈퇴/식별 불가
+                          </Tag>
+                        </>
+                      )}
                     </span>,
                   ],
                   [
@@ -167,8 +216,8 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
                       </Tag>
                     ) : (
                       <span
-                        style={{ fontFamily: "var(--font-mono)" }}
-                      >{`#${data.projectId}`}</span>
+                        style={{ fontFamily: "var(--font-mono)", color: "#1f2937" }}
+                      >{`프로젝트 #${data.projectId}`}</span>
                     ),
                   ],
                   [
@@ -179,9 +228,28 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
                   ],
                   [
                     "대상",
-                    <span key="tgt" style={{ fontFamily: "var(--font-mono)" }}>
-                      {data.targetType}
-                      {data.targetId != null ? ` #${data.targetId}` : ""}
+                    <span
+                      key="tgt"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "baseline",
+                        gap: 6,
+                      }}
+                    >
+                      <Tag tone="info" style={{}}>
+                        {data.targetType}
+                      </Tag>
+                      {data.targetId != null && (
+                        <span
+                          style={{
+                            fontFamily: "var(--font-mono)",
+                            color: "#94a3b8",
+                            fontSize: 11,
+                          }}
+                        >
+                          #{data.targetId}
+                        </span>
+                      )}
                     </span>,
                   ],
                   [
@@ -212,22 +280,69 @@ export default function AuditLogDetailModal({ auditId, close }: Props) {
             </Card>
 
             <Card title="detail (JSON)" style={{}}>
-              <pre
+              <button
+                type="button"
+                onClick={() => setDetailExpanded((v) => !v)}
+                aria-expanded={detailExpanded}
                 style={{
-                  margin: 0,
-                  padding: 14,
-                  background: "#0f172a",
-                  color: "#e2e8f0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  padding: "10px 12px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 8,
+                  cursor: "pointer",
+                  fontSize: 12,
+                  color: "#1f2937",
                   fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  lineHeight: 1.6,
-                  overflow: "auto",
-                  maxHeight: 280,
                 }}
               >
-                {JSON.stringify(data.detail ?? null, null, 2)}
-              </pre>
+                <span>
+                  {detailExpanded ? "▾" : "▸"}{" "}
+                  {data.detail == null
+                    ? "detail 없음"
+                    : `detail · ${detailKeyCount}개 키`}
+                </span>
+                <span style={{ color: "#94a3b8", fontSize: 11 }}>
+                  {detailExpanded ? "접기" : "펼치기"}
+                </span>
+              </button>
+              {detailExpanded && (
+                <>
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: "8px 10px",
+                      background: "rgba(234,179,8,.08)",
+                      border: "1px solid #fde68a",
+                      borderRadius: 6,
+                      color: "#92400e",
+                      fontSize: 11,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    민감 정보가 포함될 수 있습니다. 화면 캡처·공유 시 주의하세요.
+                  </div>
+                  <pre
+                    style={{
+                      margin: "8px 0 0",
+                      padding: 14,
+                      background: "#0f172a",
+                      color: "#e2e8f0",
+                      borderRadius: 8,
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                      lineHeight: 1.6,
+                      overflow: "auto",
+                      maxHeight: 280,
+                    }}
+                  >
+                    {JSON.stringify(data.detail ?? null, null, 2)}
+                  </pre>
+                </>
+              )}
             </Card>
           </>
         )}

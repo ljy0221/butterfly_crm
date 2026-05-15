@@ -90,6 +90,35 @@ spec:
                   key: username
             - name: MAIL_BASE_URL
               value: "https://k14b101.p.ssafy.io"
+            # ClickHouse 토글 (S14P31B101-300, ADR-0023).
+            # true 면 ClickHouseUserDirectoryReaderAdapter 가 @Primary 로 등록되어 segment build
+            # 의 filtered/mixed 경로가 ClickHouse 컬럼형 쿼리로 수행. false(기본) 면 기존 MySQL
+            # UserDirectoryReaderAdapter 그대로 동작 → rollback 한 줄.
+            # JDBC URL 파라미터:
+            #   - socket_timeout=30000: long-running segment build SQL 여유
+            #   - max_execution_time=60: server-side execution 한도
+            #   - compress=true: 큰 결과셋 LZ4 압축 (clickhouse-jdbc 0.6.x 표준 param 명)
+            # 본 PR 시점엔 "false" 로 시작 — manifest 만 develop 에 들어가고 ClickHouse 어댑터는
+            # 비활성 (기존 MySQL 어댑터 그대로). Step 8 §5 에서 (a) PR 1 Java merge, (b) 백필 완료,
+            # (c) BEFORE 측정 박제가 끝난 시점에 본 값을 "true" 로 별도 commit. ADR-0023 §B-5
+            # 토글 rollback backbone 정신 — 매니페스트 첫 진입에서 즉시 활성화하지 않는다.
+            - name: BUTTERFLY_CLICKHOUSE_ENABLED
+              value: "false"
+            - name: CLICKHOUSE_URL
+              value: "jdbc:clickhouse://clickhouse.butterfly.svc.cluster.local:8123/butterfly?socket_timeout=30000&max_execution_time=60&compress=true"
+            - name: CLICKHOUSE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: username
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse-secret
+                  key: password
+            # HikariCP pool size — ClickHouse 는 stateless HTTP 라 작아도 OK (researcher 4~10).
+            - name: CLICKHOUSE_MAX_POOL_SIZE
+              value: "4"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
               value: "health,info,prometheus"
             - name: MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED
