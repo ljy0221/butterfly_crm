@@ -175,9 +175,6 @@ export default function NotificationLogDetailModal({
                       {CHANNEL_LABEL[data.channel ?? ""] ?? data.channel ?? "-"}
                     </span>,
                   ],
-                  ["캠페인", `#${data.campaignId}`],
-                  ["사용자", `#${data.userId}`],
-                  ["기기", data.deviceId != null ? `#${data.deviceId}` : "-"],
                   [
                     "수신자",
                     <span
