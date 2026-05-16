@@ -2,6 +2,7 @@ package com.b101.butterfly.payment.domain;
 
 import com.b101.butterfly.global.entity.BaseEntity;
 import com.b101.butterfly.payment.domain.enums.CreditReason;
+import com.b101.butterfly.payment.domain.enums.CreditReferenceType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,6 +39,13 @@ public class CreditTransaction extends BaseEntity {
     @Column(name = "payment_order_id")
     private Long paymentOrderId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reference_type", length = 32)
+    private CreditReferenceType referenceType;
+
+    @Column(name = "reference_id")
+    private Long referenceId;
+
     @Column(name = "delta", nullable = false)
     private Long delta;
 
@@ -53,9 +61,12 @@ public class CreditTransaction extends BaseEntity {
 
     @Builder
     private CreditTransaction(Long projectId, Long paymentOrderId, Long delta,
+                              CreditReferenceType referenceType, Long referenceId,
                               CreditReason reason, Long balanceAfter, String memo) {
         this.projectId = projectId;
         this.paymentOrderId = paymentOrderId;
+        this.referenceType = referenceType;
+        this.referenceId = referenceId;
         this.delta = delta;
         this.reason = reason;
         this.balanceAfter = balanceAfter;

@@ -32,6 +32,9 @@ public class CreditAccount extends BaseEntity {
     @Column(name = "balance", nullable = false)
     private Long balance;
 
+    @Column(name = "reserved_balance", nullable = false)
+    private Long reservedBalance;
+
     @Version
     @Column(name = "version", nullable = false)
     private Long version;
@@ -39,6 +42,7 @@ public class CreditAccount extends BaseEntity {
     private CreditAccount(Long projectId) {
         this.projectId = projectId;
         this.balance = 0L;
+        this.reservedBalance = 0L;
     }
 
     /** 프로젝트별 최초 1회 생성. */
@@ -52,6 +56,57 @@ public class CreditAccount extends BaseEntity {
             throw new IllegalArgumentException("credit delta must be positive: " + delta);
         }
         this.balance += delta;
+        return this.balance;
+    }
+
+    /** 현재 다른 실행이 선점하지 않은 사용 가능 잔액. */
+    public long availableBalance() {
+        return this.balance - this.reservedBalance;
+    }
+
+    /** 캠페인 발송 전 예상 비용을 선점한다. */
+    public long reserve(long amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("reserve amount must be non-negative: " + amount);
+        }
+        if (availableBalance() < amount) {
+            throw new BusinessException(PaymentErrorCode.PAY_INSUFFICIENT_BALANCE);
+        }
+        this.reservedBalance += amount;
+        return this.reservedBalance;
+    }
+
+    /** 예약만 해제한다. 실제 잔액은 변하지 않는다. */
+    public long releaseReserved(long amount) {
+        if (amount < 0) {
+            throw new IllegalArgumentException("release amount must be non-negative: " + amount);
+        }
+        if (this.reservedBalance < amount) {
+            throw new IllegalArgumentException("reserved balance is smaller than release amount: " + amount);
+        }
+        this.reservedBalance -= amount;
+        return this.reservedBalance;
+    }
+
+    /**
+     * 예약 금액을 실제 사용량으로 정산한다.
+     *
+     * <p>actualAmount가 reservedAmount보다 크면 초과분은 현재 availableBalance에서 추가 차감한다.
+     * 다른 캠페인이 잡아 둔 reservedBalance는 침범하지 않는다.
+     */
+    public long settleReserved(long reservedAmount, long actualAmount) {
+        if (reservedAmount < 0 || actualAmount < 0) {
+            throw new IllegalArgumentException("settle amounts must be non-negative");
+        }
+        if (this.reservedBalance < reservedAmount) {
+            throw new IllegalArgumentException("reserved balance is smaller than settle amount: " + reservedAmount);
+        }
+        long extraAmount = Math.max(0L, actualAmount - reservedAmount);
+        if (availableBalance() < extraAmount) {
+            throw new BusinessException(PaymentErrorCode.PAY_INSUFFICIENT_BALANCE);
+        }
+        this.reservedBalance -= reservedAmount;
+        this.balance -= actualAmount;
         return this.balance;
     }
 
