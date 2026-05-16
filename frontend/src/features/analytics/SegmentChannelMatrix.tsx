@@ -8,7 +8,7 @@ import type {
   SegmentChannelMatrixRow,
   SegmentChannelMatrixSortBy,
 } from "@/api/report";
-import { formatPeriod, formatRate, getDefaultPeriod } from "@/utils/analytics";
+import { formatPeriod, formatPct, formatRate, getDefaultPeriod } from "@/utils/analytics";
 import { fmtNum } from "@/utils/fmt.js";
 
 /**
@@ -302,8 +302,7 @@ function HighlightCard({ label, row, rateOf, tone = "default" }: HighlightCardPr
     );
   }
   const segLabel = row.segmentName ?? "세그먼트 미지정";
-  const raw = rateOf(row);
-  const rateLabel = formatRate(raw != null ? raw / 100 : null);
+  const rateLabel = formatPct(rateOf(row));
   const subline = `${segLabel} · ${CHANNEL_LABEL[row.channel]}`;
   return (
     <StatCard
@@ -456,7 +455,7 @@ function NumCell({ value, color = "#1f2937" }: { value: string; color?: string }
 }
 
 function RateCell({ value, color }: { value: number | null; color: string }) {
-  const text = formatRate(value != null ? value / 100 : null);
+  const text = formatPct(value);
   const isMissing = text === "—";
   return (
     <div

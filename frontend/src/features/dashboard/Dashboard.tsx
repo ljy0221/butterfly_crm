@@ -25,7 +25,7 @@ import type {
 import {
   dailyTrendToPath,
   formatPeriod,
-  formatRate,
+  formatPct,
   getDefaultPeriod,
   pct,
 } from "@/utils/analytics";
@@ -282,18 +282,18 @@ function KpiBlock({ summary, isLoading, isError }: KpiBlockProps) {
         value={fmtNum(summary.campaignsSentInPeriod) as string}
       />
       <StatCard label="총 발송" value={fmtNum(summary.totalSent) as string} />
-      <StatCard label="평균 전달률" value={formatRate(summary.avgDeliveryRate != null ? summary.avgDeliveryRate / 100 : null)} />
+      <StatCard label="평균 전달률" value={formatPct(summary.avgDeliveryRate)} />
       {/*
         ADR-0007 (2026-04-28 supersede ADR-0003) 적용 후 KPI 4종이 6종으로 확장.
         - avgOpenRate    = open / delivered
         - avgClickRate   = click / open  (이전 click/delivered 에서 분모 변경)
         - avgConvertRate = convert / sent
-        분모가 0이면 백엔드가 null을 보내고 formatRate가 "—"로 표기 (KPI 정의서 §3).
-        백엔드는 0~100 범위로 내려주므로 /100 변환 후 formatRate 호출.
+        분모가 0이면 백엔드가 null을 보내고 formatPct가 "—"로 표기 (KPI 정의서 §3).
+        백엔드는 0~100 범위(DECIMAL 5,2)로 내려주므로 formatPct로 직접 포맷.
       */}
-      <StatCard label="평균 오픈률" value={formatRate(summary.avgOpenRate != null ? summary.avgOpenRate / 100 : null)} />
-      <StatCard label="평균 클릭률" value={formatRate(summary.avgClickRate != null ? summary.avgClickRate / 100 : null)} />
-      <StatCard label="평균 전환률" value={formatRate(summary.avgConvertRate != null ? summary.avgConvertRate / 100 : null)} />
+      <StatCard label="평균 오픈률" value={formatPct(summary.avgOpenRate)} />
+      <StatCard label="평균 클릭률" value={formatPct(summary.avgClickRate)} />
+      <StatCard label="평균 전환률" value={formatPct(summary.avgConvertRate)} />
     </>
   );
 }
@@ -735,7 +735,7 @@ function RateCell({
   value: number | null;
   color: string;
 }) {
-  const text = formatRate(value != null ? value / 100 : null);
+  const text = formatPct(value);
   const isMissing = value === null;
   return (
     <div
