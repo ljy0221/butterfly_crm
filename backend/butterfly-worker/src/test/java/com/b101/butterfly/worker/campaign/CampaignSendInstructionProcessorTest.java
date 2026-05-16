@@ -17,6 +17,7 @@ import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
+import com.b101.butterfly.payment.application.CreditAccountService;
 import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import java.time.Instant;
@@ -54,6 +55,9 @@ class CampaignSendInstructionProcessorTest {
     @Mock
     private UserTagLookupPort userTagLookupPort;
 
+    @Mock
+    private CreditAccountService creditAccountService;
+
     private CampaignSendInstructionProcessor processor;
 
     @BeforeEach
@@ -64,7 +68,8 @@ class CampaignSendInstructionProcessorTest {
                 userContactPort,
                 userTagLookupPort,
                 deliveryCommandKafkaTemplate,
-                campaignExecutionResultRecorder
+                campaignExecutionResultRecorder,
+                creditAccountService
         );
     }
 
@@ -110,6 +115,7 @@ class CampaignSendInstructionProcessorTest {
         );
         assertThat(commandCaptor.getValue().targets().get(0).variables())
                 .containsEntry("name", "Alice");
+        verify(creditAccountService).reserveForCampaignExecution(100L, 123L, 999L, 3, 1L);
     }
 
     @Test
@@ -142,6 +148,7 @@ class CampaignSendInstructionProcessorTest {
                 commandCaptor.capture());
         assertThat(commandCaptor.getValue().targets().get(0).variables())
                 .containsEntry("name", "FallbackAlice");
+        verify(creditAccountService).reserveForCampaignExecution(100L, 123L, 999L, 1, 1L);
     }
 
     @Test
