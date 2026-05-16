@@ -112,3 +112,17 @@ export function formatRate(
   if (!Number.isFinite(value)) return "—";
   return `${(value * 100).toFixed(fractionDigits)}%`;
 }
+
+/**
+ * 0.00 ~ 100.00 퍼센트(백엔드 집계 저장값) → "12.3%" 또는 "—".
+ * 백엔드 campaign_stats_daily의 delivery_rate/open_rate 등
+ * DECIMAL(5,2) 컬럼은 0~100 범위로 저장되므로 ×100 변환 없이 직접 포맷한다.
+ */
+export function formatPct(
+  value: number | null | undefined,
+  fractionDigits = 1,
+): string {
+  if (value === null || value === undefined) return "—";
+  if (!Number.isFinite(value)) return "—";
+  return `${value.toFixed(fractionDigits)}%`;
+}
