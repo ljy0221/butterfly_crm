@@ -51,11 +51,15 @@ export interface PaymentConfirmedResponse {
 export interface CreditBalanceResponse {
   projectId: number;
   balance: number;
+  reservedBalance: number;
+  availableBalance: number;
 }
 
 export interface CreditTransactionItem {
   creditTransactionId: number;
   paymentOrderId: number | null;
+  referenceType: "CAMPAIGN_EXECUTION" | null;
+  referenceId: number | null;
   delta: number;
   reason: CreditReason;
   balanceAfter: number;
