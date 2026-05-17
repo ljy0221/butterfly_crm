@@ -14,7 +14,7 @@ resources:
 images:
 - name: butterfly-api
   newName: ghcr.io/ljy0221/butterfly-api
-  newTag: fefe6f32
+  newTag: be137887
 - name: butterfly-worker
   newName: ghcr.io/ljy0221/butterfly-worker
-  newTag: fefe6f32
+  newTag: be137887
