@@ -4,6 +4,7 @@ import com.b101.butterfly.segment.service.match.ActiveEventSegmentCache;
 import com.b101.butterfly.segment.service.match.SegmentEventMatchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -31,6 +32,7 @@ import java.util.List;
  */
 @Slf4j
 @Component
+@Lazy(false)
 @Profile("worker")
 @RequiredArgsConstructor
 public class SegmentEventMatchConsumer {
