@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -14,10 +15,12 @@ import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.event.port.UserTagLookupPort;
+import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
 import com.b101.butterfly.payment.application.CreditAccountService;
+import com.b101.butterfly.payment.exception.code.PaymentErrorCode;
 import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import java.time.Instant;
@@ -149,6 +152,46 @@ class CampaignSendInstructionProcessorTest {
         assertThat(commandCaptor.getValue().targets().get(0).variables())
                 .containsEntry("name", "FallbackAlice");
         verify(creditAccountService).reserveForCampaignExecution(100L, 123L, 999L, 1, 1L);
+    }
+
+    @Test
+    @DisplayName("크레딧이 부족하면 DeliveryCommand를 발행하지 않고 실행 실패 처리")
+    void skipWhenCreditIsInsufficient() {
+        // given
+        CampaignSendInstruction instruction = createSampleInstruction();
+
+        MessageTemplateSnapshot template = new MessageTemplateSnapshot(
+                1L, 100L, Channel.PUSH,
+                "테스트 제목", "테스트 본문", null
+        );
+        given(messageTemplateLookupPort.lookup(1L)).willReturn(template);
+
+        List<SegmentAudienceTarget> targets = List.of(
+                new SegmentAudienceTarget(1L, Map.of("name", "Alice")),
+                new SegmentAudienceTarget(2L, Map.of("name", "Bob")),
+                new SegmentAudienceTarget(3L, Map.of("name", "Carol"))
+        );
+        List<Long> userIds = List.of(1L, 2L, 3L);
+        given(segmentMemberLookupPort.getActiveTargets(10L, null, Integer.MAX_VALUE))
+                .willReturn(targets);
+
+        List<UserContactInfo> contacts = List.of(
+                new UserContactInfo(1L, 101L, "token1", "user1@test.com", "010-1111-1111"),
+                new UserContactInfo(2L, 102L, "token2", "user2@test.com", "010-2222-2222"),
+                new UserContactInfo(3L, 103L, "token3", "user3@test.com", "010-3333-3333")
+        );
+        given(userContactPort.getContactsByUserIds(100L, userIds, DeliveryCommand.Channel.PUSH))
+                .willReturn(contacts);
+        willThrow(new BusinessException(PaymentErrorCode.PAY_INSUFFICIENT_BALANCE))
+                .given(creditAccountService)
+                .reserveForCampaignExecution(100L, 123L, 999L, 3, 1L);
+
+        // when
+        processor.process(instruction);
+
+        // then
+        verify(deliveryCommandKafkaTemplate, never()).send(anyString(), anyString(), any());
+        verify(campaignExecutionResultRecorder).recordFailure(999L);
     }
 
     @Test
