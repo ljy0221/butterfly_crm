@@ -13,9 +13,10 @@ related: ADR-0005, ADR-0013, ADR-0014
 Butterfly는 멀티테넌트 CRM SaaS로 프로젝트(테넌트) 단위 유료 사용량 정산이 필요하다.
 초기 과금 모델은 **크레딧(포인트) 선불 충전 방식**:
 프로젝트 OWNER가 카드/간편결제로 충전 → 프로젝트 잔액에 적립 →
-이벤트 발송·세그먼트 빌드 등의 사용량 차감(차감 로직은 후속 PR).
+캠페인 실행 전 예상 발송량만큼 예약 → 실제 성공 발송량 기준으로 정산한다.
 
-이 ADR은 신규 도메인 모듈 `butterfly-payment` 의 경계, PG 통합, DB 스키마, 인가, 멱등성을 정한다.
+이 ADR은 신규 도메인 모듈 `butterfly-payment` 의 경계, PG 통합, DB 스키마, 인가, 멱등성,
+크레딧 예약/정산 계약을 정한다.
 
 ## Decision Drivers
 
@@ -83,6 +84,16 @@ butterfly-payment/
 
 ADR-0013 §4 는 도메인 모듈 자기 자리에 두기를 권장하지만, develop 현 시점 모든 마이그레이션이 `butterfly-api/src/main/resources/db/migration/` 에 집중되어 있다. 본 PR 도 **기존 관행을 따라 같은 디렉토리에 V16 부터 추가**한다 (번호 순서·충돌 감지 용이성 우선).
 
+### 크레딧 예약/정산 스키마 (V17)
+
+- `credit_account.reserved_balance` — 아직 실제 차감되지는 않았지만 캠페인 실행이 선점한 금액. `availableBalance = balance - reservedBalance`.
+- `credit_reservation` — `campaign_execution_id` 단위 예약 상태. 같은 실행 회차는 한 번만 예약된다.
+- `credit_transaction.reference_type/reference_id` — 충전 주문 외에도 캠페인 실행 같은 사용량 원인을 추적하기 위한 참조 키.
+
+`credit_account` 는 `reserved_balance >= 0`, `reserved_balance <= balance` 를 DB 제약으로 보장한다.
+동일 프로젝트에서 여러 캠페인이 동시에 시작되어도 `credit_account` row 를 `SELECT FOR UPDATE` 로 잠근 뒤
+사용 가능 잔액만 예약하므로 다른 실행이 잡아 둔 예약분을 침범하지 않는다.
+
 ### REST API (1차 PR)
 
 - `POST /api/v1/projects/{projectId}/payments/orders` — 충전 주문 생성, orderId 반환
@@ -91,6 +102,24 @@ ADR-0013 §4 는 도메인 모듈 자기 자리에 두기를 권장하지만, de
 - `GET  /api/v1/projects/{projectId}/credits/transactions` — 원장 페이징 조회
 
 모두 `@PreAuthorize("@projectPermission.hasRole(#projectId, 'OWNER')")`. memberId 는 SecurityContext 의 `Authentication#getName()` 에서 추출(ADR-0005 컨벤션).
+
+### 캠페인 실행 크레딧 계약
+
+캠페인 발송은 세그먼트 미리보기/발송 대상 산출 결과를 기준으로 먼저 예약하고, 실제 발송 결과 이벤트로 정산한다.
+
+1. 발송 직전 예약: `reserveForCampaignExecution(projectId, campaignId, campaignExecutionId, expectedCount, unitPrice)`
+   - `expectedCount * unitPrice` 만큼 `reserved_balance` 에 더한다.
+   - 같은 `campaignExecutionId` 로 이미 예약된 경우 멱등 반환한다.
+   - `availableBalance` 가 부족하면 `PAY_INSUFFICIENT_BALANCE` 를 던지고 예약/발송을 시작하지 않는다.
+2. 발송 결과 정산: `settleCampaignExecution(campaignExecutionId, sentCount)`
+   - 예약이 없거나 이미 닫힌 예약이면 멱등 반환한다.
+   - `sentCount == 0` 이면 실제 차감 없이 예약만 해제한다.
+   - 실제 발송량이 예상보다 적으면 성공 발송분만 `SPEND` 원장에 기록하고 나머지 예약분을 해제한다.
+   - 실제 발송량이 예상보다 많으면 같은 단가로 초과분을 `availableBalance` 에서 추가 차감한다.
+   - 초과분을 충당할 사용 가능 잔액이 없으면 `PAY_INSUFFICIENT_BALANCE` 로 실패한다.
+
+캠페인 `PAUSED/STOPPED` 판단, chunk 단위 중간 중단, 재개 정책은 캠페인 실행 도메인의 책임이다.
+결제 모듈은 실행 회차별 예약/정산의 원자성, 멱등성, 감사 추적을 제공한다.
 
 ### Toss Payments 통합 — Port + Adapter
 
@@ -139,9 +168,9 @@ butterfly:
 
 | PR | 범위 |
 |---|---|
-| **PR1 (본 PR)** | 본 ADR + V16 스키마 + 모듈 스켈레톤 + 주문 생성/카드·간편 confirm + 잔액/원장 조회 + 프론트 충전 화면 3종 + 단위/통합 테스트 |
+| **PR1 (본 PR)** | 본 ADR + V16/V17 스키마 + 모듈 스켈레톤 + 주문 생성/카드·간편 confirm + 잔액/원장 조회 + 캠페인 실행 크레딧 예약/정산 + 프론트 충전 화면 3종 + 단위/통합 테스트 |
 | PR2 | 환불·부분취소 API + 가상계좌 + Toss 웹훅(`DEPOSIT_CALLBACK`, `PAYMENT_STATUS_CHANGED`) |
-| PR3 (선택) | ArchUnit 경계 규칙, 관리자용 결제 조회, 사용량 차감 연동 |
+| PR3 (선택) | ArchUnit 경계 규칙, 관리자용 결제 조회, 캠페인 외 사용량 차감 연동 |
 
 ## Consequences
 
@@ -161,7 +190,7 @@ butterfly:
 ### Post-MVP
 
 - 가상계좌·휴대폰 결제 등 비동기 결제수단 지원 → 웹훅 도입 (PR2)
-- 사용량 기반 차감 — 캠페인 발송/세그먼트 빌드 시 `credit_account.balance` 차감 (별도 ADR)
+- 캠페인 외 사용량 기반 차감 — 세그먼트 빌드 등 다른 사용량 도메인의 예약/정산 계약 확장
 - 잔액 임계치 알림 (notification 모듈 연동)
 - 부분 환불·정산 보고서
 
