@@ -16,6 +16,7 @@ import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
+import com.b101.butterfly.segment.messaging.SegmentRebuildAcceptedEvent;
 import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
@@ -258,6 +259,48 @@ class SegmentServiceTest {
             Map<String, Object> after = (Map<String, Object>) event.detail().get("after");
             assertThat(before).containsEntry("name", "old").containsEntry("description", "desc");
             assertThat(after).containsEntry("name", "renamed").containsEntry("description", "new desc");
+            verify(eventPublisher, never()).publishEvent(any(SegmentRebuildAcceptedEvent.class));
+        }
+
+        @Test
+        @DisplayName("조건 트리 변경 시 rebuild 이벤트 발행 + 활성 이벤트 세그먼트 캐시 무효화")
+        void conditionTreeChangedPublishesRebuildEvent() {
+            GroupNode beforeTree = validTree();
+            GroupNode afterTree =
+                    new GroupNode(
+                            LogicOp.AND,
+                            List.of(
+                                    new TagNode(
+                                            "grade",
+                                            Operator.EQ,
+                                            JsonNodeFactory.instance.textNode("VIP"))));
+            Segment seg = sampleSegment(42L, "same");
+            when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
+            when(linkedCampaignChecker.hasActiveOrSending(42L)).thenReturn(false);
+            when(conditionTreeHasher.hash(PROJECT_ID, beforeTree)).thenReturn("before-hash");
+            when(conditionTreeHasher.hash(PROJECT_ID, afterTree)).thenReturn("after-hash");
+
+            UpdateSegmentRequest request = new UpdateSegmentRequest("same", "desc", afterTree);
+
+            segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
+
+            ArgumentCaptor<SegmentRebuildAcceptedEvent> rebuildCaptor =
+                    ArgumentCaptor.forClass(SegmentRebuildAcceptedEvent.class);
+            verify(eventPublisher).publishEvent(rebuildCaptor.capture());
+            SegmentRebuildAcceptedEvent rebuild = rebuildCaptor.getValue();
+            assertThat(rebuild.segmentId()).isEqualTo(42L);
+            assertThat(rebuild.projectId()).isEqualTo(PROJECT_ID);
+            assertThat(rebuild.memberId()).isEqualTo(MEMBER_ID);
+            assertThat(rebuild.requestedAt()).isNotNull();
+            assertThat(rebuild.conditionTreeHash()).isEqualTo("after-hash");
+            verify(activeEventSegmentCache).invalidate(PROJECT_ID);
+
+            ArgumentCaptor<AuditRecordedEvent> auditCaptor =
+                    ArgumentCaptor.forClass(AuditRecordedEvent.class);
+            verify(eventPublisher).publishEvent(auditCaptor.capture());
+            AuditRecordedEvent audit = auditCaptor.getValue();
+            assertThat(audit.action()).isEqualTo(AuditAction.SEGMENT_UPDATED);
+            assertThat(audit.detail()).containsEntry("conditionTreeChanged", true);
         }
 
         @Test
@@ -324,6 +367,7 @@ class SegmentServiceTest {
                     .existsByProjectIdAndName(anyLong(), eq("same"));
             // description 변경됨 → audit 발행
             verify(eventPublisher).publishEvent(any(AuditRecordedEvent.class));
+            verify(eventPublisher, never()).publishEvent(any(SegmentRebuildAcceptedEvent.class));
         }
 
         @Test
@@ -337,6 +381,7 @@ class SegmentServiceTest {
             segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
 
             verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
+            verify(eventPublisher, never()).publishEvent(any(SegmentRebuildAcceptedEvent.class));
         }
     }
 
