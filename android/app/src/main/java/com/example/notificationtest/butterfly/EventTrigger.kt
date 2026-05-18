@@ -88,7 +88,7 @@ object EventTrigger {
 
     @JvmStatic
     fun fireAppOpen(context: Context) {
-        sendEvent(context, "app_open", mapOf("appVersion" to "1.0.0"))
+        sendEvent(context, "app_open", mapOf("app_version" to "1.0.0"))
     }
 
     @JvmStatic
@@ -105,22 +105,22 @@ object EventTrigger {
     fun firePurchase(context: Context) {
         val orderId = "O-${System.currentTimeMillis()}"
         sendEvent(context, "purchase", mapOf(
-            "orderId" to orderId,
-            "productId" to DEMO_PRODUCT_ID,
-            "totalAmount" to DEMO_PRODUCT_PRICE
+            "order_id" to orderId,
+            "product_id" to DEMO_PRODUCT_ID,
+            "total_amount" to DEMO_PRODUCT_PRICE
         ))
     }
 
     @JvmStatic
     fun fireAppOpenSilently(context: Context) {
-        sendEventSilently(context, "app_open", mapOf("appVersion" to "1.0.0"))
+        sendEventSilently(context, "app_open", mapOf("app_version" to "1.0.0"))
     }
 
     @JvmStatic
     fun fireSearchSilently(context: Context, query: String, resultCount: Int) {
         sendEventSilently(context, "search", mapOf(
             "query" to query,
-            "resultCount" to resultCount
+            "result_count" to resultCount
         ))
     }
 
@@ -135,7 +135,7 @@ object EventTrigger {
     ) {
         sendEventSilently(context, "product_click", mapOf(
             "category" to category,
-            "productId" to productId,
+            "product_id" to productId,
             "price" to price
         ))
     }
@@ -147,8 +147,8 @@ object EventTrigger {
     ) {
         sendEventSilently(context, "product_view", mapOf(
             "category" to category,
-            "productId" to productId,
-            "productName" to productName,
+            "product_id" to productId,
+            "product_name" to productName,
             "price" to price
         ))
     }
@@ -159,7 +159,7 @@ object EventTrigger {
     ) {
         sendEventSilently(context, "add_to_cart", mapOf(
             "category" to category,
-            "productId" to productId,
+            "product_id" to productId,
             "quantity" to quantity,
             "price" to price
         ))
@@ -168,8 +168,8 @@ object EventTrigger {
     @JvmStatic
     fun fireCartViewSilently(context: Context, itemCount: Int, totalPrice: Int) {
         sendEventSilently(context, "cart_view", mapOf(
-            "itemCount" to itemCount,
-            "totalPrice" to totalPrice
+            "item_count" to itemCount,
+            "total_price" to totalPrice
         ))
     }
 
@@ -179,9 +179,9 @@ object EventTrigger {
         items: List<Map<String, Any>>, totalAmount: Int
     ) {
         sendEventSilently(context, "purchase", mapOf(
-            "orderId" to orderId,
+            "order_id" to orderId,
             "items" to items,
-            "totalAmount" to totalAmount
+            "total_amount" to totalAmount
         ))
     }
 
@@ -189,19 +189,19 @@ object EventTrigger {
     fun fireWishlistAddSilently(context: Context, category: String, productId: String) {
         sendEventSilently(context, "wishlist_add", mapOf(
             "category" to category,
-            "productId" to productId
+            "product_id" to productId
         ))
     }
 
     @JvmStatic
     fun fireLoginSilently(context: Context, userId: String) {
-        sendEventSilently(context, "login", mapOf("userId" to userId))
+        sendEventSilently(context, "login", mapOf("user_id" to userId))
     }
 
     private fun productViewPayload(): Map<String, Any> = mapOf(
         "category" to DEMO_PRODUCT_CATEGORY,
-        "productId" to DEMO_PRODUCT_ID,
-        "productName" to DEMO_PRODUCT_NAME,
+        "product_id" to DEMO_PRODUCT_ID,
+        "product_name" to DEMO_PRODUCT_NAME,
         "price" to DEMO_PRODUCT_PRICE
     )
 
