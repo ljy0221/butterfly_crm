@@ -11,7 +11,6 @@ const PRIMARY_TO_PATH: Record<string, string> = {
   세그먼트: "segments",
   캠페인: "campaigns",
   자동화: "journey",
-  템플릿: "templates",
   분석: "analytics",
   설정: "settings",
 };

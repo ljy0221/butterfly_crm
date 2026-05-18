@@ -10,7 +10,6 @@ const NAV = [
   { key: "세그먼트", label: "세그먼트",         icon: "segments"  },
   { key: "캠페인",   label: "캠페인",           icon: "campaigns" },
   { key: "자동화",   label: "자동화 플로우",    icon: "journey"   },
-  { key: "템플릿",   label: "메시지 템플릿",    icon: "templates" },
   { key: "분석",     label: "분석",            icon: "analytics" },
   { key: "설정",     label: "설정",            icon: "settings"  },
 ];
