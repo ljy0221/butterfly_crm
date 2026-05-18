@@ -119,6 +119,9 @@ export function useCredentialQuery(
         channel as CredentialChannel,
       ),
     enabled: enabled && projectId != null && channel != null,
+    // 404 = 미등록 상태 — 재시도 불필요. retry 기본값(3)이면 재시도마다 404가 발생해
+    // 불필요한 네트워크 요청이 늘고 상태 표시도 지연됨.
+    retry: false,
   });
 }
 
