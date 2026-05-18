@@ -12,6 +12,7 @@ import {
   useStartCampaignMutation,
   useUpdateCampaignMutation,
 } from "@/hooks/queries/campaign";
+import { useCreditBalanceQuery } from "@/hooks/queries/payment";
 import { useCampaignDraftMutation } from "@/hooks/queries/ai";
 import type { CampaignDraftResponse } from "@/api/ai";
 import {
@@ -90,6 +91,15 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
   );
   const [furthest, setFurthest] = useState<WizardStep>(1);
   const [submitting, setSubmitting] = useState(false);
+
+  const isOwner = role === "OWNER";
+  const balanceQuery = useCreditBalanceQuery(projectId, isOwner && state.step === 6);
+  const isInsufficientBalance = (() => {
+    if (!isOwner) return false;
+    const available = balanceQuery.data?.availableBalance;
+    const cost = state.draft.estimatedAudienceCount;
+    return available != null && cost != null && available < cost;
+  })();
 
   const { data: editTarget } = useCampaignDetailQuery(
     projectId,
@@ -358,8 +368,8 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
             projectId={projectId}
             draft={state.draft}
             errors={state.errors}
-            onSelect={(id, name) =>
-              dispatch({ type: "set/segment", segmentId: id, segmentName: name })
+            onSelect={(id, name, estimatedCount) =>
+              dispatch({ type: "set/segment", segmentId: id, segmentName: name, estimatedCount })
             }
           />
         );
@@ -501,7 +511,7 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
                     variant="primaryStrong"
                     size="md"
                     onClick={() => finalizeCreate(true)}
-                    disabled={submitting}
+                    disabled={submitting || isInsufficientBalance}
                     style={{}}
                   >
                     {submitting ? "처리 중..." : startAfterLabel}

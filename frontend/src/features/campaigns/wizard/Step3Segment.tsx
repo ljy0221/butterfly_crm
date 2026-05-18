@@ -16,7 +16,7 @@ export interface Step3SegmentProps {
   projectId: number;
   draft: WizardDraft;
   errors: FieldErrorMap;
-  onSelect: (segmentId: number | null, segmentName: string | null) => void;
+  onSelect: (segmentId: number | null, segmentName: string | null, estimatedCount: number | null) => void;
 }
 
 export default function Step3Segment({
@@ -63,7 +63,7 @@ export default function Step3Segment({
         type="button"
         role="radio"
         aria-checked={draft.segmentId === null}
-        onClick={() => onSelect(null, null)}
+        onClick={() => onSelect(null, null, null)}
         style={{
           ...optionCardStyle(draft.segmentId === null),
           width: "100%",
@@ -98,7 +98,7 @@ export default function Step3Segment({
                 <button
                   key={f.segmentId}
                   type="button"
-                  onClick={() => onSelect(f.segmentId, f.name)}
+                  onClick={() => onSelect(f.segmentId, f.name, f.estimatedCount ?? null)}
                   style={{
                     fontSize: 12,
                     padding: "5px 10px",
@@ -188,7 +188,7 @@ export default function Step3Segment({
               key={s.segmentId}
               segment={s}
               active={draft.segmentId === s.segmentId}
-              onSelect={() => onSelect(s.segmentId, s.name)}
+              onSelect={() => onSelect(s.segmentId, s.name, s.estimatedCount ?? null)}
             />
           ))}
         </div>
