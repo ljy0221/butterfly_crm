@@ -56,11 +56,11 @@ public class ChannelCredentialService {
     }
 
     public String getCredentialData(Long projectId, Channel channel) {
-        ChannelCredentialEntity entity = channelCredentialRepository
-                .findByProjectIdAndChannelAndActiveTrue(projectId, channel)
-                .orElseThrow(() -> new BusinessException(DeliveryErrorCode.CREDENTIAL_NOT_FOUND));
-
-        return entity.getCredentialData();
+        // 프론트 조회용: 등록 여부만 확인하므로 복호화 없이 마스킹 반환
+        if (!channelCredentialRepository.findByProjectIdAndChannelAndActiveTrue(projectId, channel).isPresent()) {
+            throw new BusinessException(DeliveryErrorCode.CREDENTIAL_NOT_FOUND);
+        }
+        return "***";
     }
 
     private ChannelCredential parseCredential(Channel channel, String json) {
