@@ -20,6 +20,7 @@ import {
   useCreateSegmentMutation,
   usePreviewSegmentMutation,
   useRebuildSegmentMutation,
+  useSegmentConditionMetadataQuery,
   useSegmentDetailQuery,
   useUpdateSegmentMutation,
   useLinkedCampaignsQuery,
@@ -154,6 +155,7 @@ function BuilderInner({
     segmentId,
     mode === "view",
   );
+  const conditionMetadataQuery = useSegmentConditionMetadataQuery(projectId);
 
   // ---------- mode + editMode ----------
   // create: 항상 edit 가능. view: 기본 readonly, [수정] 버튼으로 editMode 토글.
@@ -650,6 +652,7 @@ function BuilderInner({
               node={tree}
               path={[]}
               dispatch={dispatch}
+              userAttributes={conditionMetadataQuery.data?.userAttributes ?? []}
               disabled={isFormDisabled}
               rootDepth={0}
             />

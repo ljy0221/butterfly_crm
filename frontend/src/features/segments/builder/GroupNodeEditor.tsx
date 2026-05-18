@@ -1,5 +1,6 @@
 import { Icon, Menu, Tag } from "@/components/common";
-import type { ConditionLogic, GroupNode } from "@/schemas/segment";
+import type { UserConditionAttribute } from "@/api/segment";
+import type { ConditionLogic, GroupNode, UserNode } from "@/schemas/segment";
 import { treeDepth } from "@/schemas/segment";
 import type { LeafKind, TreeAction } from "./treeReducer";
 import ConditionTreeEditor from "./ConditionTreeEditor";
@@ -19,6 +20,7 @@ export interface GroupNodeEditorProps {
   /** root 여부. true 이면 ⋯ 삭제 메뉴를 노출하지 않음. */
   isRoot: boolean;
   dispatch: (action: TreeAction) => void;
+  userAttributes: UserConditionAttribute[];
   disabled?: boolean;
   /** 가장 바깥 root 트리 깊이 — depth check 에 사용. */
   rootDepth: number;
@@ -36,6 +38,7 @@ export default function GroupNodeEditor({
   path,
   isRoot,
   dispatch,
+  userAttributes,
   disabled,
   rootDepth,
 }: GroupNodeEditorProps) {
@@ -49,6 +52,18 @@ export default function GroupNodeEditor({
   };
 
   const addLeaf = (kind: LeafKind): void => {
+    if (kind === "user") {
+      const attribute = userAttributes[0];
+      if (!attribute) return;
+      const node: UserNode = {
+        type: "user",
+        key: attribute.key,
+        op: attribute.operators[0] ?? "eq",
+        value: attribute.valueType === "boolean" ? true : "",
+      };
+      dispatch({ type: "ADD_LEAF", path, kind, node });
+      return;
+    }
     dispatch({ type: "ADD_LEAF", path, kind });
   };
 
@@ -214,6 +229,7 @@ export default function GroupNodeEditor({
               node={child}
               path={[...path, idx]}
               dispatch={dispatch}
+              userAttributes={userAttributes}
               disabled={disabled}
               rootDepth={rootDepth}
             />
@@ -257,11 +273,15 @@ export default function GroupNodeEditor({
                 icon: <span style={{ color: "#3b5bdb" }}>●</span>,
                 onClick: () => addLeaf("event"),
               },
-              {
-                label: "사용자 속성",
-                icon: <span style={{ color: "#3b5bdb" }}>●</span>,
-                onClick: () => addLeaf("user"),
-              },
+              ...(userAttributes.length > 0
+                ? [
+                    {
+                      label: "사용자 속성",
+                      icon: <span style={{ color: "#3b5bdb" }}>●</span>,
+                      onClick: () => addLeaf("user"),
+                    },
+                  ]
+                : []),
               {
                 label: "태그",
                 icon: <span style={{ color: "#f59e0b" }}>●</span>,

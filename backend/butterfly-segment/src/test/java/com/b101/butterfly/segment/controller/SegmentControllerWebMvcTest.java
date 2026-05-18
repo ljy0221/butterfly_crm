@@ -18,10 +18,12 @@ import com.b101.butterfly.segment.dto.response.FavoritesResponse;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignSummary;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignsResponse;
 import com.b101.butterfly.segment.dto.response.RebuildResponse;
+import com.b101.butterfly.segment.dto.response.SegmentConditionMetadataResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.exception.SegmentValidationExceptionHandler;
 import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
+import com.b101.butterfly.segment.service.SegmentConditionMetadataService;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
@@ -77,6 +79,7 @@ class SegmentControllerWebMvcTest {
     @Autowired private ObjectMapper objectMapper;
 
     @MockitoBean private SegmentService segmentService;
+    @MockitoBean private SegmentConditionMetadataService segmentConditionMetadataService;
     @MockitoBean private SegmentFavoriteService segmentFavoriteService;
     @MockitoBean private PreviewService previewService;
     @MockitoBean private SegmentRebuildService segmentRebuildService;
@@ -160,6 +163,28 @@ class SegmentControllerWebMvcTest {
                         get("/api/v1/projects/1/segments?page=0&size=20").header("X-Member-Id", 17L))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("GET /segments/condition-metadata — 사용자 속성 메타데이터 응답")
+    void conditionMetadataReturnsResponse() throws Exception {
+        when(segmentConditionMetadataService.getMetadata())
+                .thenReturn(
+                        new SegmentConditionMetadataResponse(
+                                List.of(
+                                        new SegmentConditionMetadataResponse.UserAttributeResponse(
+                                                "signedUpAt",
+                                                "가입일",
+                                                "date",
+                                                List.of("eq", "neq")))));
+
+        mockMvc.perform(
+                        get("/api/v1/projects/1/segments/condition-metadata")
+                                .header("X-Member-Id", 17L))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.userAttributes[0].key").value("signedUpAt"))
+                .andExpect(jsonPath("$.data.userAttributes[0].label").value("가입일"))
+                .andExpect(jsonPath("$.data.userAttributes[0].valueType").value("date"));
     }
 
     @Test

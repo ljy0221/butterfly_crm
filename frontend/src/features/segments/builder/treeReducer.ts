@@ -28,7 +28,7 @@ export type LeafKind = "event" | "user" | "tag" | "device";
 export type TreeAction =
   | { type: "SET_TREE"; tree: GroupNode }
   | { type: "SET_LOGIC"; path: number[]; logic: ConditionLogic }
-  | { type: "ADD_LEAF"; path: number[]; kind: LeafKind }
+  | { type: "ADD_LEAF"; path: number[]; kind: LeafKind; node?: ConditionNode }
   | { type: "ADD_GROUP"; path: number[] }
   | { type: "WRAP_IN_GROUP"; path: number[] }
   | { type: "DUPLICATE"; path: number[] }
@@ -54,8 +54,8 @@ export function defaultEventNode(): EventNode {
 export function defaultUserNode(): UserNode {
   return {
     type: "user",
-    key: "joinedAt",
-    op: "gte",
+    key: "",
+    op: "eq",
     value: "",
   };
 }
@@ -238,7 +238,7 @@ export function treeReducer(state: GroupNode, action: TreeAction): GroupNode {
     }
 
     case "ADD_LEAF":
-      return pushChild(state, action.path, defaultLeaf(action.kind));
+      return pushChild(state, action.path, action.node ?? defaultLeaf(action.kind));
 
     case "ADD_GROUP":
       return pushChild(state, action.path, emptyGroup("and"));
