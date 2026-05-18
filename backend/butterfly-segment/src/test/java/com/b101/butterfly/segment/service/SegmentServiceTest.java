@@ -241,7 +241,7 @@ class SegmentServiceTest {
                     segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
 
             assertThat(response.name()).isEqualTo("renamed");
-            assertThat(response.buildStatus()).isEqualTo(BuildStatus.PENDING);
+            assertThat(response.buildStatus()).isEqualTo(BuildStatus.READY);
             verify(conditionTreeValidator).validate(request.conditionTree());
 
             AuditRecordedEvent event = captureAuditEvent();
@@ -283,6 +283,8 @@ class SegmentServiceTest {
             UpdateSegmentRequest request = new UpdateSegmentRequest("same", "desc", afterTree);
 
             segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
+
+            assertThat(seg.getBuildStatus()).isEqualTo(BuildStatus.PENDING);
 
             ArgumentCaptor<SegmentRebuildAcceptedEvent> rebuildCaptor =
                     ArgumentCaptor.forClass(SegmentRebuildAcceptedEvent.class);
@@ -380,6 +382,7 @@ class SegmentServiceTest {
             UpdateSegmentRequest request = new UpdateSegmentRequest("same", "desc", validTree());
             segmentService.update(PROJECT_ID, 42L, MEMBER_ID, request);
 
+            assertThat(seg.getBuildStatus()).isEqualTo(BuildStatus.READY);
             verify(eventPublisher, never()).publishEvent(any(AuditRecordedEvent.class));
             verify(eventPublisher, never()).publishEvent(any(SegmentRebuildAcceptedEvent.class));
         }
@@ -465,6 +468,7 @@ class SegmentServiceTest {
                         .createdBy(MEMBER_ID)
                         .build();
         org.springframework.test.util.ReflectionTestUtils.setField(segment, "id", id);
+        org.springframework.test.util.ReflectionTestUtils.setField(segment, "buildStatus", BuildStatus.READY);
         return segment;
     }
 }

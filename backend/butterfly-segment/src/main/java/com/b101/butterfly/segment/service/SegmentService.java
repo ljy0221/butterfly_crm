@@ -176,14 +176,16 @@ public class SegmentService {
         String beforeFullHash = conditionTreeHasher.hash(projectId, segment.getConditionTree());
         String beforeHash = auditHash(beforeFullHash);
 
-        segment.rename(request.name(), request.description());
-        segment.replaceConditionTree(request.conditionTree());
-
-        String afterFullHash = conditionTreeHasher.hash(projectId, segment.getConditionTree());
+        String afterFullHash = conditionTreeHasher.hash(projectId, request.conditionTree());
         String afterHash = auditHash(afterFullHash);
-        boolean nameChanged = !Objects.equals(beforeName, segment.getName());
-        boolean descriptionChanged = !Objects.equals(beforeDescription, segment.getDescription());
+        boolean nameChanged = !Objects.equals(beforeName, request.name());
+        boolean descriptionChanged = !Objects.equals(beforeDescription, request.description());
         boolean conditionTreeChanged = !Objects.equals(beforeFullHash, afterFullHash);
+
+        segment.rename(request.name(), request.description());
+        if (conditionTreeChanged) {
+            segment.replaceConditionTree(request.conditionTree());
+        }
 
         // no-op (실제로 아무것도 바뀌지 않음)이면 audit 발행 X
         if (nameChanged || descriptionChanged || conditionTreeChanged) {
