@@ -1,6 +1,7 @@
 package com.b101.butterfly.event.repository;
 
 import com.b101.butterfly.event.entity.EventDailyAgg;
+import com.b101.butterfly.event.dto.response.EventCategoryStatsRow;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
@@ -88,5 +89,36 @@ class EventDailyAggRepositoryIntegrationTest extends AbstractMySqlContainerTest 
         reload();
 
         assertThat(repository.findAll()).hasSize(5);
+    }
+
+    @Test
+    @DisplayName("aggregateCategoryStats — 최근 30일 수집량은 합산하고 마지막 수신은 전체 기간에서 계산")
+    void aggregateCategoryStats_sumsWindowCountAndKeepsAllTimeLastCollectedAt() {
+        LocalDate fromDate = LocalDate.of(2026, 4, 1);
+        LocalDate oldDate = fromDate.minusDays(1);
+        LocalDate recentDate = fromDate.plusDays(1);
+
+        upsert(recentDate, 100L, 1L, 7L, LocalDateTime.of(2026, 4, 2, 10, 0));
+        upsert(recentDate, 100L, 1L, 8L, LocalDateTime.of(2026, 4, 2, 11, 0));
+        upsert(oldDate, 100L, 1L, 7L, LocalDateTime.of(2026, 3, 31, 23, 0));
+        upsert(oldDate, 100L, 2L, 7L, LocalDateTime.of(2026, 3, 31, 9, 0));
+        reload();
+
+        List<EventCategoryStatsRow> stats =
+                repository.aggregateCategoryStats(100L, List.of(1L, 2L), fromDate);
+
+        EventCategoryStatsRow category1 = stats.stream()
+                .filter(s -> s.categoryId().equals(1L))
+                .findFirst()
+                .orElseThrow();
+        EventCategoryStatsRow category2 = stats.stream()
+                .filter(s -> s.categoryId().equals(2L))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(category1.eventCount()).isEqualTo(2L);
+        assertThat(category1.lastCollectedAt()).isEqualTo(LocalDateTime.of(2026, 4, 2, 11, 0));
+        assertThat(category2.eventCount()).isZero();
+        assertThat(category2.lastCollectedAt()).isEqualTo(LocalDateTime.of(2026, 3, 31, 9, 0));
     }
 }
