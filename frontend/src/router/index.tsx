@@ -12,7 +12,6 @@ import ApplyPage from "@/features/application/ApplyPage";
 import AdminApplications from "@/features/admin/AdminApplications";
 import SettingsLayout from "@/features/settings/SettingsLayout";
 import Dashboard from "@/features/dashboard/Dashboard";
-import Templates from "@/features/templates/Templates";
 import Segments from "@/features/segments/Segments";
 import SegmentBuilder from "@/features/segments/SegmentBuilder";
 import Campaigns from "@/features/campaigns/Campaigns";
@@ -158,10 +157,6 @@ export const router = createBrowserRouter([
         element: (
           <Placeholder title="자동화 플로우" domain="journey" sprint="Sprint 8" />
         ),
-      },
-      {
-        path: "templates",
-        element: <Templates />,
       },
       {
         // 분석 도메인 허브 — 대시보드/펀널/매트릭스/감사 로그 진입점.
