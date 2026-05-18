@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { loadTossPayments, ANONYMOUS } from "@tosspayments/tosspayments-sdk";
+import { loadTossPayments } from "@tosspayments/tosspayments-sdk";
 import { Button, Card, PageHeader } from "@/components/common";
 import { ApiError } from "@/api/types";
 import { toast } from "@/lib/ui-bus";
@@ -55,8 +55,7 @@ export default function CreditChargePage() {
     try {
       const order = await createOrder.mutateAsync({ amount });
       const tossPayments = await loadTossPayments(clientKey);
-      // customerKey: 로그인 멤버 ID 문자열 — Toss 가 동일 사용자를 인식해 간편결제 등록 기억 가능.
-      const customerKey = memberId != null ? String(memberId) : ANONYMOUS;
+      const customerKey = buildTossCustomerKey(memberId);
       const payment = tossPayments.payment({ customerKey });
       await payment.requestPayment({
         method: methodId,
@@ -159,6 +158,11 @@ export default function CreditChargePage() {
       </Card>
     </div>
   );
+}
+
+function buildTossCustomerKey(memberId: number | null): string {
+  // Toss customerKey는 2~50자의 영문/숫자 및 - _ = . @ 만 허용한다.
+  return memberId != null ? `member_${memberId}` : "member_anonymous";
 }
 
 function BalanceStat({ label, value }: { label: string; value?: number }) {
