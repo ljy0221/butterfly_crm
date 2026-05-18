@@ -1,6 +1,5 @@
 package com.b101.butterfly.worker.campaign;
 
-import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignExecutionResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,16 +8,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
 /**
- * 캠페인 회차 발송 결과 통보 consumer — {@code SEND → SUCCESS|FAIL} 전이를 수행한다.
- *
- * <p>판정 logic 의 단일 지점 (도메인 사양 S14P31B101-284):
- * <ul>
- *   <li>{@code sentCount >= 1} → {@link CampaignExecutionResultRecorder#recordCompletion}</li>
- *   <li>{@code sentCount == 0} → {@link CampaignExecutionResultRecorder#recordFailure}</li>
- * </ul>
- *
- * <p>실패 사유는 본 도메인이 보관하지 않으며, per-target 실패 메시지는 notification 의
- * {@code notification_logs.error_code/error_message} 가 단일 진실 원천이다.
+ * 캠페인 실행 결과를 받아 크레딧을 정산하고 실행 상태를 SUCCESS/FAIL로 전이한다.
  */
 @Slf4j
 @Component
@@ -26,7 +16,7 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class CampaignExecutionResultConsumer {
 
-    private final CampaignExecutionResultRecorder campaignExecutionResultRecorder;
+    private final CampaignExecutionBillingService campaignExecutionBillingService;
 
     @KafkaListener(
             topics = "campaign-execution-result",
@@ -41,16 +31,12 @@ public class CampaignExecutionResultConsumer {
                 result.failedCount());
 
         try {
-            if (result.sentCount() >= 1) {
-                campaignExecutionResultRecorder.recordCompletion(result.executionId());
-            } else {
-                campaignExecutionResultRecorder.recordFailure(result.executionId());
-            }
-            log.info("CampaignExecution status 전이 완료: executionId={}, verdict={}",
+            campaignExecutionBillingService.settleAndRecord(result);
+            log.info("CampaignExecution 정산/상태 전이 완료: executionId={}, verdict={}",
                     result.executionId(),
                     result.sentCount() >= 1 ? "SUCCESS" : "FAIL");
         } catch (Exception e) {
-            log.error("CampaignExecution status 전이 실패: executionId={}, error={}",
+            log.error("CampaignExecution 정산/상태 전이 실패: executionId={}, error={}",
                     result.executionId(), e.getMessage(), e);
             throw e;
         }
