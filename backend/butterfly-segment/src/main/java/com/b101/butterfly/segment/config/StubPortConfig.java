@@ -2,10 +2,12 @@ package com.b101.butterfly.segment.config;
 
 import com.b101.butterfly.segment.port.EventAggReader;
 import com.b101.butterfly.segment.port.LinkedCampaignChecker;
+import com.b101.butterfly.segment.port.SegmentVariableSnapshotWriter;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import com.b101.butterfly.segment.port.UserSummaryReader;
 import com.b101.butterfly.segment.port.stub.StubEventAggReader;
 import com.b101.butterfly.segment.port.stub.StubLinkedCampaignChecker;
+import com.b101.butterfly.segment.port.stub.StubSegmentVariableSnapshotWriter;
 import com.b101.butterfly.segment.port.stub.StubUserDirectoryReader;
 import com.b101.butterfly.segment.port.stub.StubUserSummaryReader;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -46,5 +48,11 @@ public class StubPortConfig {
     @ConditionalOnMissingBean(UserSummaryReader.class)
     public UserSummaryReader stubUserSummaryReader() {
         return new StubUserSummaryReader();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(SegmentVariableSnapshotWriter.class)
+    public SegmentVariableSnapshotWriter stubSegmentVariableSnapshotWriter() {
+        return new StubSegmentVariableSnapshotWriter();
     }
 }

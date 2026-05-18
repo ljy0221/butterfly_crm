@@ -5,6 +5,7 @@ import com.b101.butterfly.segment.domain.condition.GroupNode;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.port.EventAggReader;
 import com.b101.butterfly.segment.port.EventQueryContext;
+import com.b101.butterfly.segment.port.SegmentVariableSnapshotWriter;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
@@ -76,6 +77,7 @@ public class SegmentBuildJob {
     private final ConditionTreeToSqlConverter sqlConverter;
     private final UserDirectoryReader userDirectoryReader;
     private final EventAggReader eventAggReader;
+    private final SegmentVariableSnapshotWriter segmentVariableSnapshotWriter;
     private final ActiveEventSegmentCache activeEventSegmentCache;
 
     @KafkaListener(
@@ -183,6 +185,7 @@ public class SegmentBuildJob {
         long inserted =
                 userDirectoryReader.materializeUserMatchesIntoSegment(
                         segmentId, fragment.sql(), fragment.params());
+        segmentVariableSnapshotWriter.refresh(projectId, segmentId, tree);
         return Math.toIntExact(inserted);
     }
 
