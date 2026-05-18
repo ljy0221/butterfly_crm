@@ -6,6 +6,7 @@ import com.b101.butterfly.event.dto.request.UpdateSchemaRequest;
 import com.b101.butterfly.event.dto.response.DeleteCategoryResponse;
 import com.b101.butterfly.event.dto.response.EventCategoryDetailResponse;
 import com.b101.butterfly.event.dto.response.EventCategorySummaryResponse;
+import com.b101.butterfly.event.dto.response.EventCategoryStatsRow;
 import com.b101.butterfly.event.dto.response.PropertyResponse;
 import com.b101.butterfly.event.dto.response.RecentSampleResponse;
 import com.b101.butterfly.event.entity.Event;
@@ -15,6 +16,7 @@ import com.b101.butterfly.event.entity.EventSchema;
 import com.b101.butterfly.event.entity.EventSchemaField;
 import com.b101.butterfly.event.exception.EventErrorCode;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
+import com.b101.butterfly.event.repository.EventDailyAggRepository;
 import com.b101.butterfly.event.repository.EventRepository;
 import com.b101.butterfly.event.repository.EventSchemaFieldRepository;
 import com.b101.butterfly.event.repository.EventSchemaRepository;
@@ -25,9 +27,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 카테고리 + 스키마 CRUD 서비스. frontend {@code /api/v1/projects/{}/events/categories} 7 종 endpoint 를
@@ -45,21 +51,30 @@ public class EventCategoryService {
     private final EventCategoryRepository categoryRepository;
     private final EventSchemaRepository schemaRepository;
     private final EventSchemaFieldRepository fieldRepository;
+    private final EventDailyAggRepository dailyAggRepository;
     private final EventRepository eventRepository;
     private final ObjectMapper objectMapper;
 
     /** 프로젝트 카테고리 LIST — frontend dropdown 채움용. */
     public List<EventCategorySummaryResponse> list(Long projectId) {
         List<EventCategory> categories = categoryRepository.findAllByProjectIdOrderByNameAsc(projectId);
+        Map<Long, CategoryStats> statsByCategoryId = statsByCategoryId(projectId,
+                categories.stream().map(EventCategory::getId).toList());
         return categories.stream()
-                .map(c -> EventCategorySummaryResponse.of(c, countCurrentFields(c.getId())))
+                .map(c -> {
+                    CategoryStats stats = statsByCategoryId.getOrDefault(c.getId(), CategoryStats.empty());
+                    return EventCategorySummaryResponse.of(c, countCurrentFields(c.getId()),
+                            stats.eventCount(), stats.lastCollectedAt());
+                })
                 .toList();
     }
 
     /** categoryName 기반 단건 상세. */
     public EventCategoryDetailResponse get(Long projectId, String categoryName) {
         EventCategory category = findByName(projectId, categoryName);
-        return EventCategoryDetailResponse.of(category);
+        CategoryStats stats = statsByCategoryId(projectId, List.of(category.getId()))
+                .getOrDefault(category.getId(), CategoryStats.empty());
+        return EventCategoryDetailResponse.of(category, stats.eventCount(), stats.lastCollectedAt());
     }
 
     /** 현재(is_current=true) 스키마의 필드 리스트. 스키마 미등록이면 빈 리스트. */
@@ -141,6 +156,20 @@ public class EventCategoryService {
         return findCurrentFields(categoryId).size();
     }
 
+    private Map<Long, CategoryStats> statsByCategoryId(Long projectId, List<Long> categoryIds) {
+        if (categoryIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return dailyAggRepository.aggregateCategoryStats(projectId, categoryIds, thirtyDayWindowStart()).stream()
+                .map(CategoryStats::from)
+                .collect(Collectors.toMap(CategoryStats::categoryId, Function.identity()));
+    }
+
+    private LocalDate thirtyDayWindowStart() {
+        return LocalDate.now().minusDays(29);
+    }
+
     private List<EventSchemaField> findCurrentFields(Long categoryId) {
         return schemaRepository.findByCategoryIdAndIsCurrentTrue(categoryId)
                 .map(s -> fieldRepository.findBySchemaId(s.getId()))
@@ -179,6 +208,21 @@ public class EventCategoryService {
             return objectMapper.writeValueAsString(properties);
         } catch (JsonProcessingException e) {
             throw new BusinessException(EventErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    private record CategoryStats(Long categoryId, long eventCount, LocalDateTime lastCollectedAt) {
+
+        private static CategoryStats from(EventCategoryStatsRow row) {
+            Long eventCount = row.eventCount();
+            return new CategoryStats(
+                    row.categoryId(),
+                    eventCount == null ? 0L : eventCount,
+                    row.lastCollectedAt());
+        }
+
+        private static CategoryStats empty() {
+            return new CategoryStats(null, 0L, null);
         }
     }
 }

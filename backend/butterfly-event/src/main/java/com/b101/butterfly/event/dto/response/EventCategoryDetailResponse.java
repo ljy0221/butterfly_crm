@@ -25,6 +25,11 @@ public record EventCategoryDetailResponse(
         String updatedAt) {
 
     public static EventCategoryDetailResponse of(EventCategory category) {
+        return of(category, 0L, null);
+    }
+
+    public static EventCategoryDetailResponse of(EventCategory category, long eventCount,
+                                                 LocalDateTime lastCollectedAt) {
         String description = category.getDescription();
         return new EventCategoryDetailResponse(
                 category.getId(),
@@ -33,9 +38,9 @@ public record EventCategoryDetailResponse(
                 description,
                 description,
                 toKind(category.getType()),
-                0L,
+                eventCount,
                 100.0,
-                null,
+                toIsoString(lastCollectedAt),
                 toIsoString(category.getCreatedAt()),
                 toIsoString(category.getUpdatedAt()));
     }
