@@ -1,19 +1,20 @@
-# Prometheus — pull(scrape) + push(remote_write_receiver) 동시 운영
+# Prometheus scrape 설정 — 서버 실제 구성 기준
 #
-# ADR-0018: node-exporter (NodePort 30090) pull + Spring Boot Actuator (/actuator/prometheus) pull.
-# 향후 K8s pod ServiceMonitor 패턴 도입 시 prometheus-operator로 교체 가능.
+# ADR-0018: node-exporter (K8s DaemonSet NodePort 30090) pull
+# cardinality 금지 라벨: userId / projectId / campaignId / requestId / traceId
 #
-# 라벨 cardinality 금지 (메모리 project_observability_stack.md):
-#   userId / projectId / campaignId / requestId / traceId 는 라벨 X. exemplar/attribute로.
-#
-# 본 파일은 K8s 클러스터 프로비저닝 후 AWS_NODE_*_EIP placeholder를 실제 EIP로 치환해야 함.
+# K8s 노드 EIP는 AWS 콘솔 확인 후 아래 placeholder 치환:
+#   master:  AWS_MASTER_EIP  (3.34.240.94)
+#   worker1: AWS_WORKER1_EIP (butterfly-api, butterfly-worker 실행 노드)
+#   worker2: AWS_WORKER2_EIP
+#   worker3: AWS_WORKER3_EIP
+#   worker4: AWS_WORKER4_EIP
 
 global:
   scrape_interval: 15s
-  scrape_timeout: 10s
   evaluation_interval: 15s
   external_labels:
-    env: prod          # 발급 EC2 환경 (개발/스테이징 분리되면 dev/staging로)
+    env: prod
     cluster: butterfly
 
 rule_files:
@@ -22,63 +23,57 @@ rule_files:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: [alertmanager:9093]
+        - targets: []   # Alertmanager 미운영 (Phase 3 예정)
 
 scrape_configs:
 
-  # ===========================================================================
-  # Prometheus 자기 자신 (메타 모니터링)
-  # ===========================================================================
+  # Prometheus 자기 자신
   - job_name: prometheus
     static_configs:
       - targets: [localhost:9090]
         labels:
           service: prometheus
 
-  # ===========================================================================
-  # AWS K3s 노드 메트릭 (node-exporter, Phase 2 도입 후 활성)
-  # K8s 클러스터 프로비저닝 시 AWS_*_EIP를 실제 EIP로 치환:
-  #   sed -i 's/AWS_MASTER_EIP/<실제 IP>/g' prometheus.yml
-  # ===========================================================================
-  - job_name: kubernetes-nodes
+  # 로그 서버(k14b101) node-exporter — Docker 컨테이너가 host network로 실행 중
+  - job_name: node-exporter-logserver
+    static_configs:
+      - targets: [172.18.0.1:9100]   # monitoring_default 브리지 게이트웨이 → host node-exporter
+        labels:
+          service: node-exporter
+          node: logserver
+
+  # K8s 노드 node-exporter (DaemonSet NodePort 30090)
+  # 실제 EIP로 치환 필요 — kubectl get nodes -o wide 또는 AWS 콘솔 확인
+  - job_name: node-exporter-k8s
     scrape_interval: 30s
     static_configs:
-      - targets: [AWS_MASTER_EIP:30090]
+      - targets: [3.34.240.94:30090]
         labels:
           node: master
           tier: control-plane
-      - targets: [AWS_WORKER1_EIP:30090]
+      - targets: [15.165.115.142:30090]
         labels:
           node: worker-1
-          tier: heavy
-      - targets: [AWS_WORKER2_EIP:30090]
+          tier: app
+      - targets: [43.202.126.218:30090]
         labels:
           node: worker-2
-          tier: light
-      - targets: [AWS_MYSQL_EIP:30090]
+          tier: app
+      - targets: [AWS_WORKER3_EIP:30090]   # ip-10-0-2-199 (mysql node) — EIP 미확인
         labels:
-          node: mysql-node
-          tier: database
+          node: worker-3
+          tier: db
+      - targets: [AWS_WORKER4_EIP:30090]   # ip-10-0-2-191 (clickhouse node) — EIP 미확인
+        labels:
+          node: worker-4
+          tier: db
 
-  # ===========================================================================
-  # Spring Boot Actuator (Phase 2 도입 후 활성)
-  # butterfly-api / butterfly-worker 의 /actuator/prometheus 풀
-  # K8s 측에서 NodePort 또는 ServiceMonitor 라벨로 주소 결정
-  # ===========================================================================
+  # Spring Boot Actuator — butterfly-api (worker-1 NodePort 30080)
   - job_name: butterfly-api
     metrics_path: /actuator/prometheus
     scrape_interval: 30s
     static_configs:
-      - targets: [AWS_WORKER1_EIP:30080]
+      - targets: [15.165.115.142:30080]
         labels:
           service: butterfly-api
           module: api
-
-  - job_name: butterfly-worker
-    metrics_path: /actuator/prometheus
-    scrape_interval: 30s
-    static_configs:
-      - targets: [AWS_WORKER2_EIP:30081]   # NodePort 미정 — Phase 2에서 확정
-        labels:
-          service: butterfly-worker
-          module: worker
