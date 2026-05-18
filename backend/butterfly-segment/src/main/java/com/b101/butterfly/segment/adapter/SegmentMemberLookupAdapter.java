@@ -1,6 +1,7 @@
 package com.b101.butterfly.segment.adapter;
 
 import com.b101.butterfly.segment.entity.SegmentMember;
+import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import java.time.LocalDateTime;
@@ -36,6 +37,26 @@ public class SegmentMemberLookupAdapter implements SegmentMemberLookupPort {
                 .findActiveBySegmentId(segmentId, LocalDateTime.now(), PageRequest.ofSize(Integer.MAX_VALUE))
                 .stream()
                 .map(SegmentMember::getUserId)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SegmentAudienceTarget> getActiveTargets(
+            Long segmentId, Long afterUserId, int limit) {
+        if (segmentId == null || limit <= 0) {
+            return Collections.emptyList();
+        }
+
+        Long cursor = afterUserId != null ? afterUserId : Long.MIN_VALUE;
+        return segmentMemberRepository
+                .findActiveBySegmentIdAfterUserId(
+                        segmentId,
+                        cursor,
+                        LocalDateTime.now(),
+                        PageRequest.ofSize(limit))
+                .stream()
+                .map(sm -> new SegmentAudienceTarget(sm.getUserId(), sm.getVariables()))
                 .toList();
     }
 }

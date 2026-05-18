@@ -19,4 +19,17 @@ public interface SegmentMemberLookupPort {
      * @return 사용자 ID 목록 (활성 멤버만, 만료된 멤버 제외)
      */
     List<Long> getActiveUserIds(Long segmentId);
+
+    /**
+     * 세그먼트에 속한 활성 대상자를 cursor 방식으로 조회한다.
+     *
+     * <p>발송 worker가 100만 명 세그먼트를 한 번에 메모리로 올리지 않고,
+     * {@code userId} 기준으로 다음 chunk를 가져가기 위한 인터페이스.
+     *
+     * @param segmentId 세그먼트 ID (nullable)
+     * @param afterUserId 직전에 처리한 userId. null 이면 처음부터 조회.
+     * @param limit 최대 조회 건수
+     * @return 사용자 ID와 개인화 변수 snapshot
+     */
+    List<SegmentAudienceTarget> getActiveTargets(Long segmentId, Long afterUserId, int limit);
 }
