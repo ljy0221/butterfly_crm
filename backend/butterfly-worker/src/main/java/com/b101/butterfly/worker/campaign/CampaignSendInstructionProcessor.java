@@ -6,9 +6,12 @@ import com.b101.butterfly.campaign.messagetemplate.domain.Channel;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateLookupPort;
 import com.b101.butterfly.campaign.messagetemplate.port.MessageTemplateSnapshot;
 import com.b101.butterfly.event.port.UserTagLookupPort;
+import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
+import com.b101.butterfly.payment.application.CreditAccountService;
+import com.b101.butterfly.payment.exception.code.PaymentErrorCode;
 import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import java.time.LocalDate;
@@ -23,20 +26,14 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * 캠페인 발송 지시를 DeliveryCommand로 변환하는 핵심 로직.
- *
- * <p>책임:
- * <ul>
- *   <li>templateId → MessageTemplate 조회 (title, body, imageUrl)</li>
- *   <li>segmentId → 활성 사용자 목록 조회</li>
- *   <li>사용자 연락처 정보 조회 (pushToken, email 등)</li>
- *   <li>DeliveryCommand 조립 및 Kafka 발행</li>
- * </ul>
+ * 캠페인 발송 지시를 DeliveryCommand로 변환하고, 발송 전 크레딧을 예약한다.
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CampaignSendInstructionProcessor {
+
+    private static final String DELIVERY_REQUESTS_TOPIC = "delivery-requests";
 
     private final MessageTemplateLookupPort messageTemplateLookupPort;
     private final SegmentMemberLookupPort segmentMemberLookupPort;
@@ -44,16 +41,13 @@ public class CampaignSendInstructionProcessor {
     private final UserTagLookupPort userTagLookupPort;
     private final KafkaTemplate<String, DeliveryCommand> deliveryCommandKafkaTemplate;
     private final CampaignExecutionResultRecorder campaignExecutionResultRecorder;
-
-    private static final String DELIVERY_REQUESTS_TOPIC = "delivery-requests";
+    private final CreditAccountService creditAccountService;
 
     public void process(CampaignSendInstruction instruction) {
-        // 1. 템플릿 조회
         MessageTemplateSnapshot template = messageTemplateLookupPort.lookup(instruction.templateId());
         log.debug("템플릿 조회 완료: templateId={}, title={}",
                 instruction.templateId(), template.title());
 
-        // 2. 수신자 목록 조회
         List<SegmentAudienceTarget> audienceTargets =
                 segmentMemberLookupPort.getActiveTargets(
                         instruction.segmentId(),
@@ -68,29 +62,28 @@ public class CampaignSendInstructionProcessor {
         if (userIds.isEmpty()) {
             log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
                     instruction.executionId(), instruction.segmentId());
-            // segment empty → 발송 시도 0건 → 사양상 FAIL (sent_count == 0).
-            // Kafka publish 를 거치지 않고 직접 Recorder 호출 — notification 측 publisher 가
-            // 호출될 일이 없는 분기이므로 worker 가 종결 책임.
             campaignExecutionResultRecorder.recordFailure(instruction.executionId());
             return;
         }
 
-        // 3. 사용자 연락처 정보 조회 (pushToken, email 등)
         DeliveryCommand.Channel deliveryChannel = mapChannel(instruction.channel());
         List<UserContactInfo> contacts = userContactPort.getContactsByUserIds(
                 instruction.projectId(),
                 userIds,
                 deliveryChannel
         );
+        if (contacts.isEmpty()) {
+            log.warn("발송 가능한 연락처가 없습니다: executionId={}, segmentId={}",
+                    instruction.executionId(), instruction.segmentId());
+            campaignExecutionResultRecorder.recordFailure(instruction.executionId());
+            return;
+        }
 
-        // 3.5. 사용자별 개인화 변수 조회.
-        // segment_members.variables_json snapshot 이 아직 비어 있는 세그먼트는 기존 user_tags 경로로 fallback.
         Map<Long, Map<String, String>> variablesByUser = resolveVariablesByUser(
                 instruction.projectId(),
                 userIds,
                 audienceTargets);
 
-        // 4. DeliveryCommand 조립
         DeliveryCommand deliveryCommand = new DeliveryCommand(
                 instruction.projectId(),
                 instruction.campaignId(),
@@ -100,22 +93,50 @@ public class CampaignSendInstructionProcessor {
                         template.title(),
                         template.body(),
                         template.imageUrl(),
-                        null   // data (FCM native payload — 향후 활용)
+                        null
                 ),
                 userIds,
-                null,  // credential (DeliveryService가 자체 조회)
+                null,
                 mapToDeliveryTargets(contacts, variablesByUser)
         );
 
-        // 5. delivery-requests 토픽으로 발행
+        if (!reserveCredits(instruction, deliveryCommand, deliveryChannel)) {
+            return;
+        }
+
         deliveryCommandKafkaTemplate.send(
                 DELIVERY_REQUESTS_TOPIC,
-                instruction.projectId().toString(),  // partition key
+                instruction.projectId().toString(),
                 deliveryCommand
         );
 
-        log.info("DeliveryCommand 발행 완료: topic={}, campaignId={}, userCount={}",
-                DELIVERY_REQUESTS_TOPIC, instruction.campaignId(), userIds.size());
+        log.info("DeliveryCommand 발행 완료: topic={}, campaignId={}, targetCount={}",
+                DELIVERY_REQUESTS_TOPIC, instruction.campaignId(), deliveryCommand.targets().size());
+    }
+
+    private boolean reserveCredits(
+            CampaignSendInstruction instruction,
+            DeliveryCommand deliveryCommand,
+            DeliveryCommand.Channel deliveryChannel
+    ) {
+        try {
+            creditAccountService.reserveForCampaignExecution(
+                    instruction.projectId(),
+                    instruction.campaignId(),
+                    instruction.executionId(),
+                    deliveryCommand.targets().size(),
+                    CampaignCreditPricePolicy.unitPriceOf(deliveryChannel)
+            );
+            return true;
+        } catch (BusinessException e) {
+            if (e.getErrorCode() == PaymentErrorCode.PAY_INSUFFICIENT_BALANCE) {
+                log.warn("크레딧 부족으로 발송을 시작하지 않습니다: executionId={}, campaignId={}",
+                        instruction.executionId(), instruction.campaignId());
+                campaignExecutionResultRecorder.recordFailure(instruction.executionId());
+                return false;
+            }
+            throw e;
+        }
     }
 
     private DeliveryCommand.Channel mapChannel(Channel channel) {

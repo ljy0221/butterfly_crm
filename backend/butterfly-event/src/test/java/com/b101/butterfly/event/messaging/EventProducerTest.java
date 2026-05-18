@@ -9,8 +9,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.serializer.JsonSerializer;
 import org.springframework.kafka.support.SendResult;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.concurrent.CompletableFuture;
 
@@ -51,6 +53,20 @@ class EventProducerTest {
 
         verify(kafkaTemplate).send(EventProducer.TOPIC, "100:7", p);
         assertThat(EventProducer.TOPIC).isEqualTo("events.collected");
+    }
+
+    @Test
+    @DisplayName("serialize — occurred_at은 ClickHouse Kafka Engine이 읽을 수 있는 ISO 문자열로 직렬화")
+    void serializeUsesIsoStringTimestampForClickHouse() {
+        JsonSerializer<EventPayload> serializer = new JsonSerializer<>();
+
+        String json =
+                new String(
+                        serializer.serialize(EventProducer.TOPIC, payload()),
+                        StandardCharsets.UTF_8);
+
+        assertThat(json).contains("\"occurred_at\":\"2026-04-30T12:00:00\"");
+        assertThat(json).doesNotContain("\"occurred_at\":[");
     }
 
     @Test

@@ -13,6 +13,7 @@ import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
+import com.b101.butterfly.payment.application.CreditAccountService;
 import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import com.b101.butterfly.worker.config.WorkerKafkaConfig;
@@ -98,6 +99,9 @@ class CampaignSendPipelineIntegrationTest {
 
     @MockitoBean
     private CampaignExecutionResultRecorder campaignExecutionResultRecorder;
+
+    @MockitoBean
+    private CreditAccountService creditAccountService;
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;

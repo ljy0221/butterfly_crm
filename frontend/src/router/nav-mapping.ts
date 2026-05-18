@@ -10,6 +10,7 @@ const PRIMARY_TO_PATH: Record<string, string> = {
   고객: "customers",
   세그먼트: "segments",
   캠페인: "campaigns",
+  크레딧: "credits/charge",
   자동화: "journey",
   분석: "analytics",
   설정: "settings",
@@ -18,6 +19,7 @@ const PRIMARY_TO_PATH: Record<string, string> = {
 const PATH_TO_PRIMARY: Record<string, string> = Object.fromEntries(
   Object.entries(PRIMARY_TO_PATH).map(([k, v]) => [v, k]),
 );
+PATH_TO_PRIMARY.credits = "크레딧";
 
 const SUB_TO_SEGMENT: Record<string, string> = {
   신규: "new",
