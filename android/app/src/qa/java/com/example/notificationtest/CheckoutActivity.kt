@@ -32,7 +32,8 @@ class CheckoutActivity : AppCompatActivity() {
             val orderId = "O-${System.currentTimeMillis()}"
             val payload: List<Map<String, Any>> = items.map { item ->
                 mapOf(
-                    "productId" to item.product.id,
+                    "product_id" to item.product.id,
+                    "product_name" to item.product.name,
                     "category" to item.product.category,
                     "quantity" to item.quantity,
                     "price" to (item.product.discountedPrice ?: item.product.price)
