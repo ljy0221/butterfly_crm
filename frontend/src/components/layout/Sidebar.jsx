@@ -14,6 +14,16 @@ const NAV = [
   { key: "설정",     label: "설정",            icon: "settings"  },
 ];
 
+function roleBadgeStyle(role) {
+  const map = {
+    OWNER:  { background: "rgba(99,127,255,.2)",  color: "#637fff" },
+    ADMIN:  { background: "rgba(225,29,72,.2)",   color: "#f87171" },
+    EDITOR: { background: "rgba(5,150,105,.2)",   color: "#34d399" },
+    VIEWER: { background: "rgba(148,163,184,.15)", color: "#94a3b8" },
+  };
+  return map[role] ?? map.VIEWER;
+}
+
 export default function Sidebar({ active, onNavigate, collapsed }) {
   const member = useAuthStore((s) => s.member);
   const w = collapsed ? 64 : 240;
@@ -125,7 +135,7 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
       {!collapsed && (
         <div
           style={{
-            margin: "10px 16px 16px", padding: 12,
+            margin: "10px 16px 16px", padding: "10px 12px",
             background: "rgba(255,255,255,.04)",
             border: "1px solid rgba(255,255,255,.06)",
             borderRadius: 10,
@@ -133,11 +143,21 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
           }}
         >
           <Avatar name={userName} size={30} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ color: "#fff", fontSize: 12, fontWeight: 600 }}>{userName}</div>
-            <div style={{ color: "#94a3b8", fontSize: 10 }}>{userRole || "—"}</div>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ color: "#fff", fontSize: 12, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {userName}
+            </div>
           </div>
-          <span style={{ color: "#94a3b8" }}>{Icon.chevronDown(12)}</span>
+          {userRole && (
+            <div style={{
+              display: "inline-flex", alignItems: "center",
+              fontSize: 12, fontWeight: 600, letterSpacing: "0.04em",
+              padding: "2px 7px", borderRadius: 20, flexShrink: 0, lineHeight: 1,
+              ...roleBadgeStyle(userRole),
+            }}>
+              {userRole}
+            </div>
+          )}
         </div>
       )}
     </aside>

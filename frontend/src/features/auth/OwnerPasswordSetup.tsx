@@ -104,9 +104,10 @@ export default function OwnerPasswordSetup() {
               label="새 비밀번호"
               type={showPassword ? "text" : "password"}
               value={password}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setPassword(e.target.value)
-              }
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setPassword(e.target.value);
+                if (Object.keys(errors).length > 0) setErrors({});
+              }}
               autoComplete="new-password"
               autoFocus
               error={errors.password}
@@ -130,9 +131,10 @@ export default function OwnerPasswordSetup() {
               label="비밀번호 확인"
               type={showPasswordConfirm ? "text" : "password"}
               value={passwordConfirm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setPasswordConfirm(e.target.value)
-              }
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setPasswordConfirm(e.target.value);
+                if (Object.keys(errors).length > 0) setErrors({});
+              }}
               autoComplete="new-password"
               error={errors.passwordConfirm}
               style={{}}
