@@ -57,6 +57,7 @@ class SegmentBuildCancelServiceTest {
         ArgumentCaptor<LocalDateTime> nowCap = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(segmentRepository).cancelBuildIfPossible(eq(SEGMENT_ID), markerCap.capture(), nowCap.capture());
         assertThat(markerCap.getValue()).startsWith("cancel-");
+        assertThat(markerCap.getValue()).hasSizeLessThanOrEqualTo(36);
         assertThat(nowCap.getValue()).isNotNull();
 
         // audit SEGMENT_BUILD_CANCELED 발행 확인.
