@@ -11,6 +11,9 @@ import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
 import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -129,15 +132,25 @@ public class CampaignSendInstructionProcessor {
             List<UserContactInfo> contacts,
             Map<Long, Map<String, String>> variablesByUser
     ) {
+        String today = LocalDate.now(ZoneId.of("Asia/Seoul")).toString();
         return contacts.stream()
-                .map(contact -> new DeliveryCommand.DeliveryTarget(
-                        contact.userId(),
-                        contact.deviceId(),
-                        contact.pushToken(),
-                        contact.email(),
-                        contact.phoneNumber(),
-                        variablesByUser.getOrDefault(contact.userId(), Map.of())
-                ))
+                .map(contact -> {
+                    Map<String, String> vars = new HashMap<>(
+                            variablesByUser.getOrDefault(contact.userId(), Map.of()));
+                    vars.putIfAbsent("email", contact.email() != null ? contact.email() : "");
+                    vars.putIfAbsent("phone", contact.phoneNumber() != null ? contact.phoneNumber() : "");
+                    vars.putIfAbsent("today", today);
+                    if (contact.birthDate() != null) vars.putIfAbsent("birth_date", contact.birthDate());
+                    if (contact.signedUpAt() != null) vars.putIfAbsent("signed_up_at", contact.signedUpAt());
+                    return new DeliveryCommand.DeliveryTarget(
+                            contact.userId(),
+                            contact.deviceId(),
+                            contact.pushToken(),
+                            contact.email(),
+                            contact.phoneNumber(),
+                            vars
+                    );
+                })
                 .toList();
     }
 

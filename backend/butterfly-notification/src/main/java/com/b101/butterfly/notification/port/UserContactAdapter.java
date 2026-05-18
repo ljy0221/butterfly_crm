@@ -22,7 +22,8 @@ public class UserContactAdapter implements UserContactPort {
     private static final String PLACEHOLDER_EXTERNAL_ID = "__anonymous__";
 
     private static final String PUSH_SQL =
-            "SELECT u.user_id, d.device_id, d.push_token, u.email, u.phone "
+            "SELECT u.user_id, d.device_id, d.push_token, u.email, u.phone,"
+                    + " u.birth_date, u.signed_up_at "
                     + "FROM users u "
                     + "JOIN devices d ON d.user_id = u.user_id AND d.project_id = u.project_id "
                     + "WHERE u.project_id = :projectId "
@@ -32,7 +33,8 @@ public class UserContactAdapter implements UserContactPort {
                     + "  AND d.token_valid = true";
 
     private static final String EMAIL_SQL =
-            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone "
+            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
+                    + " birth_date, signed_up_at "
                     + "FROM users "
                     + "WHERE project_id = :projectId "
                     + "  AND user_id IN (:userIds) "
@@ -40,7 +42,8 @@ public class UserContactAdapter implements UserContactPort {
                     + "  AND email IS NOT NULL";
 
     private static final String SMS_SQL =
-            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone "
+            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
+                    + " birth_date, signed_up_at "
                     + "FROM users "
                     + "WHERE project_id = :projectId "
                     + "  AND user_id IN (:userIds) "
@@ -48,7 +51,8 @@ public class UserContactAdapter implements UserContactPort {
                     + "  AND phone IS NOT NULL";
 
     private static final String DEFAULT_SQL =
-            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone "
+            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
+                    + " birth_date, signed_up_at "
                     + "FROM users "
                     + "WHERE project_id = :projectId "
                     + "  AND user_id IN (:userIds) "
@@ -80,7 +84,9 @@ public class UserContactAdapter implements UserContactPort {
                 rs.getObject("device_id") != null ? rs.getLong("device_id") : null,
                 rs.getString("push_token"),
                 rs.getString("email"),
-                rs.getString("phone")
+                rs.getString("phone"),
+                rs.getString("birth_date"),
+                rs.getString("signed_up_at")
         ));
     }
 }
