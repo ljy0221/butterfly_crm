@@ -25,3 +25,5 @@ jwt:
 butterfly:
   cors:
     allowed-origins: 'http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:8080'
+    allowed-headers: 'Content-Type,Authorization,X-API-Key,X-Member-Id,X-Project-Id,Idempotency-Key'
+    allow-credentials: true
