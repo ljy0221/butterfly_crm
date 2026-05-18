@@ -65,6 +65,18 @@ spec:
                 secretKeyRef:
                   name: app-secret
                   key: jwt-secret
+            # Toss Payments — K8s Secret(toss-secret)은 클러스터에 수동/운영 채널로 생성한다.
+            # application.yml: butterfly.payment.toss.{client-key,secret-key}
+            - name: TOSS_CLIENT_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: toss-secret
+                  key: client-key
+            - name: TOSS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: toss-secret
+                  key: secret-key
             # SMTP — Gmail 통합 (S14P31B101-290).
             # application.yml의 mail.{host,port,username,password,from,base-url}는 모두
             # env placeholder. 자격증명은 mail-secret(K8s Secret, 수동 생성)에서 주입.
