@@ -67,3 +67,5 @@ deploy/k8s/overlays/*/regcred.yaml
 backend/scripts/demo-seed/firebase-service-account.json
 backend/scripts/demo-inject/.env
 
+*/node_modules/
+*/dist/
