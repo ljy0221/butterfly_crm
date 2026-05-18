@@ -10,6 +10,7 @@ import com.b101.butterfly.segment.domain.condition.LogicOp;
 import com.b101.butterfly.segment.domain.condition.Operator;
 import com.b101.butterfly.segment.domain.condition.Period;
 import com.b101.butterfly.segment.domain.condition.TagNode;
+import com.b101.butterfly.segment.domain.condition.UserConditionAttributes;
 import com.b101.butterfly.segment.domain.condition.UserNode;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
 import com.b101.butterfly.segment.port.EventQueryContext;
@@ -44,12 +45,7 @@ public class ConditionTreeToSqlConverter {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     static final Map<String, String> USER_KEY_TO_COLUMN =
-            Map.of(
-                    "email", "email",
-                    "phone", "phone",
-                    "birthDate", "birth_date",
-                    "pushOptIn", "push_opt_in",
-                    "signedUpAt", "signed_up_at");
+            UserConditionAttributes.columnByKey();
 
     static final Map<String, String> DEVICE_KEY_TO_COLUMN =
             Map.of(
