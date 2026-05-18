@@ -47,13 +47,13 @@ class DeliveryKafkaConsumerIntegrationTest {
     @MockitoBean
     private DeliveryService deliveryService;
 
-    @Autowired
-    private EmbeddedKafkaBroker embeddedKafkaBroker;
+//    @Autowired
+//    private EmbeddedKafkaBroker embeddedKafkaBroker;
 
     @Test
     @DisplayName("Kafka 토픽에 메시지를 발행하면 Consumer가 수신하여 deliver()를 호출한다")
-    void publishAndConsume() {
-        KafkaTemplate<String, DeliveryCommand> kafkaTemplate = createProducer();
+    void publishAndConsume(EmbeddedKafkaBroker broker) {
+        KafkaTemplate<String, DeliveryCommand> kafkaTemplate = createProducer(broker);
 
         DeliveryCommand command = new DeliveryCommand(
                 1L, 100L, 999L, Channel.PUSH,
@@ -67,9 +67,9 @@ class DeliveryKafkaConsumerIntegrationTest {
                 .untilAsserted(() -> verify(deliveryService).deliver(any(DeliveryCommand.class)));
     }
 
-    private KafkaTemplate<String, DeliveryCommand> createProducer() {
+    private KafkaTemplate<String, DeliveryCommand> createProducer(EmbeddedKafkaBroker broker) {
         Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, embeddedKafkaBroker.getBrokersAsString());
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, broker.getBrokersAsString());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
 
