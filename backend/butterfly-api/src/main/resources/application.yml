@@ -151,6 +151,14 @@ butterfly:
   # butterfly-api 컨텍스트에서 활성화 — worker 는 분석 컨트롤러가 없어 영향 없음.
   analytics:
     impl: real
+  # 결제(ADR-0019) — 토스페이먼츠 v2 confirm API 연동.
+  # 시크릿 키는 운영 시 K8s Secret 으로 주입. client-key 는 public 이라 프론트 빌드 환경변수로 노출.
+  # 테스트 키 발급: https://developers.tosspayments.com (test_ck_*, test_sk_*)
+  payment:
+    toss:
+      client-key: ${TOSS_CLIENT_KEY:}
+      secret-key: ${TOSS_SECRET_KEY:}
+      base-url: ${TOSS_BASE_URL:https://api.tosspayments.com}
 
 mail:
   from: ${MAIL_FROM}

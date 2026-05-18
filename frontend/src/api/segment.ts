@@ -15,6 +15,7 @@ import {
   toBackendTree,
   type BackendGroupNode,
   type GroupNode,
+  type Operator,
 } from "@/schemas/segment";
 
 /**
@@ -162,6 +163,12 @@ export interface RebuildResponse {
   queuedAt: string;
 }
 
+export interface CancelBuildResponse {
+  segmentId: number;
+  buildStatus: BuildStatus;
+  canceledAt: string;
+}
+
 export interface LinkedCampaignsResponse {
   active: LinkedCampaignSummary[];
   paused: LinkedCampaignSummary[];
@@ -184,6 +191,19 @@ export interface SegmentUserListResponse {
   size: number;
   totalElements: number;
   totalPages: number;
+}
+
+export type UserConditionValueType = "string" | "date" | "boolean";
+
+export interface UserConditionAttribute {
+  key: string;
+  label: string;
+  valueType: UserConditionValueType;
+  operators: Operator[];
+}
+
+export interface SegmentConditionMetadata {
+  userAttributes: UserConditionAttribute[];
 }
 
 // ---------- 요청 본문 ----------
@@ -269,6 +289,16 @@ export async function getSegment(
     `/api/v1/projects/${projectId}/segments/${segmentId}`,
   );
   return detailFromBackend(res.data);
+}
+
+/** GET /api/v1/projects/{pid}/segments/condition-metadata — VIEWER↑. */
+export async function getConditionMetadata(
+  projectId: number,
+): Promise<SegmentConditionMetadata> {
+  const res = await api.get<SegmentConditionMetadata>(
+    `/api/v1/projects/${projectId}/segments/condition-metadata`,
+  );
+  return res.data;
 }
 
 /** 4. PUT /api/v1/projects/{pid}/segments/{sid} — EDITOR↑. */
@@ -393,7 +423,18 @@ export async function rebuildSegment(
   );
 }
 
-/** 12. GET /api/v1/projects/{pid}/segments/{sid}/campaigns — VIEWER↑. mock-fallback. */
+/** 12. POST /api/v1/projects/{pid}/segments/{sid}/build/cancel — EDITOR↑. */
+export async function cancelSegmentBuild(
+  projectId: number,
+  segmentId: number,
+): Promise<CancelBuildResponse> {
+  const res = await api.post<CancelBuildResponse>(
+    `/api/v1/projects/${projectId}/segments/${segmentId}/build/cancel`,
+  );
+  return res.data;
+}
+
+/** 13. GET /api/v1/projects/{pid}/segments/{sid}/campaigns — VIEWER↑. mock-fallback. */
 export async function getLinkedCampaigns(
   projectId: number,
   segmentId: number,

@@ -1,5 +1,6 @@
 package com.b101.butterfly.event.messaging;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
@@ -21,6 +22,7 @@ public record EventPayload(
         @JsonProperty("user_id")        Long userId,
         @JsonProperty("device_id")      Long deviceId,
         @JsonProperty("category_id")    Long categoryId,
+        @JsonFormat(shape = JsonFormat.Shape.STRING)
         @JsonProperty("occurred_at")    LocalDateTime occurredAt,
         @JsonProperty("schema_version") Integer schemaVersion,
         @JsonProperty("event_data")     String eventData

@@ -12,6 +12,8 @@ import type {
   ListSegmentsParams,
   PreviewResponse,
   RebuildResponse,
+  CancelBuildResponse,
+  SegmentConditionMetadata,
   SegmentDetail,
   SegmentListResponse,
   SegmentSummary,
@@ -38,6 +40,8 @@ import type { GroupNode } from "@/schemas/segment";
 
 export const segmentKeys = {
   all: (projectId: number) => ["segments", projectId] as const,
+  conditionMetadata: (projectId: number) =>
+    ["segments", projectId, "conditionMetadata"] as const,
   list: (projectId: number, params: ListSegmentsParams) =>
     ["segments", projectId, "list", params] as const,
   lists: (projectId: number) =>
@@ -63,6 +67,18 @@ export function useSegmentListQuery(
     queryKey: segmentKeys.list(projectId ?? -1, params),
     queryFn: () => segmentApi.listSegments(projectId as number, params),
     enabled: enabled && projectId != null,
+  });
+}
+
+export function useSegmentConditionMetadataQuery(
+  projectId: number | null,
+  enabled: boolean = true,
+) {
+  return useQuery<SegmentConditionMetadata>({
+    queryKey: segmentKeys.conditionMetadata(projectId ?? -1),
+    queryFn: () => segmentApi.getConditionMetadata(projectId as number),
+    enabled: enabled && projectId != null,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -204,6 +220,31 @@ export function useRebuildSegmentMutation(projectId: number) {
         (prev) => (prev ? { ...prev, buildStatus: data.buildStatus } : prev),
       );
       qc.invalidateQueries({ queryKey: segmentKeys.lists(projectId) });
+    },
+  });
+}
+
+export function useCancelSegmentBuildMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<CancelBuildResponse, unknown, number>({
+    mutationFn: (segmentId) => segmentApi.cancelSegmentBuild(projectId, segmentId),
+    onSuccess: (data, segmentId) => {
+      qc.setQueryData<SegmentDetail | undefined>(
+        segmentKeys.detail(projectId, segmentId),
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                buildStatus: data.buildStatus,
+                buildStartedAt: null,
+                currentMemberCount: prev.estimatedCount,
+              }
+            : prev,
+      );
+      qc.invalidateQueries({ queryKey: segmentKeys.lists(projectId) });
+      qc.invalidateQueries({
+        queryKey: segmentKeys.detail(projectId, segmentId),
+      });
     },
   });
 }

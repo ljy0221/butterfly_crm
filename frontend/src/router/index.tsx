@@ -12,7 +12,6 @@ import ApplyPage from "@/features/application/ApplyPage";
 import AdminApplications from "@/features/admin/AdminApplications";
 import SettingsLayout from "@/features/settings/SettingsLayout";
 import Dashboard from "@/features/dashboard/Dashboard";
-import Templates from "@/features/templates/Templates";
 import Segments from "@/features/segments/Segments";
 import SegmentBuilder from "@/features/segments/SegmentBuilder";
 import Campaigns from "@/features/campaigns/Campaigns";
@@ -26,6 +25,9 @@ import SegmentChannelMatrix from "@/features/analytics/SegmentChannelMatrix";
 import CampaignFunnel from "@/features/analytics/CampaignFunnel";
 import DemoLogin from "@/pages/DemoLogin";
 import UserProfile from "@/features/users/UserProfile";
+import CreditChargePage from "@/features/payment/CreditChargePage";
+import PaymentSuccessPage from "@/features/payment/PaymentSuccessPage";
+import PaymentFailPage from "@/features/payment/PaymentFailPage";
 
 /**
  * Sprint 1 진행 중 — auth/application 도메인 element 실제 페이지로 교체 완료.
@@ -160,10 +162,6 @@ export const router = createBrowserRouter([
         ),
       },
       {
-        path: "templates",
-        element: <Templates />,
-      },
-      {
         // 분석 도메인 허브 — 대시보드/펀널/매트릭스/감사 로그 진입점.
         path: "analytics",
         element: <AnalyticsHome />,
@@ -181,6 +179,20 @@ export const router = createBrowserRouter([
       {
         path: "settings",
         element: <SettingsLayout />,
+      },
+      // ADR-0019 — 크레딧 충전. OWNER 가드는 백엔드 @PreAuthorize 가 강제, UI 노출 정책은
+      // 추후 settings 사이드바에 OWNER 전용 메뉴로 추가.
+      {
+        path: "credits/charge",
+        element: <CreditChargePage />,
+      },
+      {
+        path: "credits/charge/success",
+        element: <PaymentSuccessPage />,
+      },
+      {
+        path: "credits/charge/fail",
+        element: <PaymentFailPage />,
       },
     ],
   },

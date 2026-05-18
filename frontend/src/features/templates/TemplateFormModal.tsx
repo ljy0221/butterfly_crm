@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { Button, Tag } from "@/components/common";
 import { ApiError } from "@/api/types";
+import type { RecommendedVariableItem } from "@/api/personalization";
 import { toast } from "@/lib/ui-bus";
 import {
   useCreateTemplateMutation,
@@ -60,12 +61,12 @@ const CHANNEL_OPTIONS: Array<{ value: Channel; label: string }> = [
  * API 응답이 없거나 빈 결과일 때 표시할 기본 변수. 프로젝트에 user_tags 가 아직
  * 적재되지 않은 초기 상태에서도 운영자가 형식을 익힐 수 있도록 남겨둔다.
  */
-const FALLBACK_SUGGESTED_VARS = [
-  "name",
-  "product_name",
-  "item_count",
-  "coupon_code",
-  "order_id",
+const FALLBACK_SUGGESTED_VARS: RecommendedVariableItem[] = [
+  fallbackVar("name"),
+  fallbackVar("product_name"),
+  fallbackVar("item_count"),
+  fallbackVar("coupon_code"),
+  fallbackVar("order_id"),
 ];
 
 interface FieldErrors {
@@ -109,8 +110,8 @@ export default function TemplateFormModal({
   const detectedVars = useMemo(() => extractVariables(body), [body]);
 
   const recommendedQuery = useRecommendedVariablesQuery(projectId, segmentId);
-  const suggestedVars = useMemo<string[]>(() => {
-    const apiVars = recommendedQuery.data?.variables.map((v) => v.key) ?? [];
+  const suggestedVars = useMemo<RecommendedVariableItem[]>(() => {
+    const apiVars = recommendedQuery.data?.variables ?? [];
     return apiVars.length > 0 ? apiVars : FALLBACK_SUGGESTED_VARS;
   }, [recommendedQuery.data]);
 
@@ -397,22 +398,19 @@ export default function TemplateFormModal({
           </span>
           {suggestedVars.map((v) => (
             <button
-              key={v}
+              key={v.key}
               type="button"
-              onClick={() => insertVariable(v)}
-              style={{
-                fontSize: 11,
-                fontFamily: "var(--font-mono)",
-                padding: "3px 8px",
-                border: "1px solid #e2e8f0",
-                borderRadius: 4,
-                background: "#fff",
-                color: "#3b5bdb",
-                cursor: "pointer",
-                fontWeight: 600,
-              }}
+              onClick={() => insertVariable(v.key)}
+              disabled={v.status === "MISSING"}
+              title={variableTitle(v)}
+              style={suggestedVariableButtonStyle(v)}
             >
-              + {`{{${v}}}`}
+              + {v.insertToken ?? `{{${v.key}}}`}
+              {v.source && (
+                <span style={suggestedVariableMetaStyle(v)}>
+                  {sourceLabel(v.source)}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -445,6 +443,78 @@ export default function TemplateFormModal({
       </div>
     </div>
   );
+}
+
+function fallbackVar(key: string): RecommendedVariableItem {
+  return {
+    key,
+    userCount: 0,
+    source: "USER_TAG",
+    status: "READY",
+    availableCount: 0,
+    missingCount: 0,
+    insertToken: `{{${key}}}`,
+  };
+}
+
+function sourceLabel(source: NonNullable<RecommendedVariableItem["source"]>): string {
+  switch (source) {
+    case "USER_TAG":
+      return "태그";
+    case "COUPON":
+      return "쿠폰";
+    case "CAMPAIGN":
+      return "캠페인";
+    case "SYSTEM":
+      return "시스템";
+    case "EVENT_CONTEXT":
+      return "이벤트";
+  }
+}
+
+function variableTitle(item: RecommendedVariableItem): string {
+  const status = item.status ?? "READY";
+  const available = item.availableCount ?? item.userCount;
+  const missing = item.missingCount ?? 0;
+  if (status === "PARTIAL") {
+    return `${item.key}: ${available}명 사용 가능, ${missing}명 누락`;
+  }
+  if (status === "MISSING") {
+    return `${item.key}: 선택한 세그먼트에서 사용할 수 없습니다`;
+  }
+  if (status === "SYSTEM_PROVIDED") {
+    return `${item.key}: 발송 시점에 시스템이 제공합니다`;
+  }
+  return `${item.key}: 사용 가능`;
+}
+
+function suggestedVariableButtonStyle(item: RecommendedVariableItem): CSSProperties {
+  const status = item.status ?? "READY";
+  const disabled = status === "MISSING";
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 5,
+    fontSize: 11,
+    fontFamily: "var(--font-mono)",
+    padding: "3px 8px",
+    border: `1px solid ${status === "PARTIAL" ? "#facc15" : "#e2e8f0"}`,
+    borderRadius: 4,
+    background: disabled ? "#f1f5f9" : "#fff",
+    color: disabled ? "#94a3b8" : status === "PARTIAL" ? "#a16207" : "#3b5bdb",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontWeight: 600,
+  };
+}
+
+function suggestedVariableMetaStyle(item: RecommendedVariableItem): CSSProperties {
+  const status = item.status ?? "READY";
+  return {
+    fontFamily: "var(--font-sans)",
+    fontSize: 10,
+    color: status === "PARTIAL" ? "#a16207" : "#64748b",
+    fontWeight: 700,
+  };
 }
 
 function Field({

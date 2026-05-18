@@ -11,10 +11,12 @@ import com.b101.butterfly.segment.dto.response.FavoritesResponse;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignsResponse;
 import com.b101.butterfly.segment.dto.response.PreviewResponse;
 import com.b101.butterfly.segment.dto.response.RebuildResponse;
+import com.b101.butterfly.segment.dto.response.SegmentConditionMetadataResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.dto.response.SegmentUserResponse;
 import com.b101.butterfly.segment.service.SegmentBuildCancelService;
+import com.b101.butterfly.segment.service.SegmentConditionMetadataService;
 import com.b101.butterfly.segment.service.SegmentFavoriteService;
 import com.b101.butterfly.segment.service.SegmentRebuildService;
 import com.b101.butterfly.segment.service.SegmentService;
@@ -56,6 +58,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SegmentController {
 
     private final SegmentService segmentService;
+    private final SegmentConditionMetadataService segmentConditionMetadataService;
     private final SegmentFavoriteService segmentFavoriteService;
     private final PreviewService previewService;
     private final SegmentUsersService segmentUsersService;
@@ -85,6 +88,13 @@ public class SegmentController {
     public ApiResponse<PageResponse<SegmentSummaryResponse>> list(
             @PathVariable Long projectId, Pageable pageable) {
         return ApiResponse.ok(segmentService.list(projectId, currentMemberId(), pageable));
+    }
+
+    @GetMapping("/condition-metadata")
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
+    public ApiResponse<SegmentConditionMetadataResponse> conditionMetadata(
+            @PathVariable Long projectId) {
+        return ApiResponse.ok(segmentConditionMetadataService.getMetadata());
     }
 
     @GetMapping("/{segmentId}")

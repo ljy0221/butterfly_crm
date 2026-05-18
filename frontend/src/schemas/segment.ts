@@ -122,7 +122,7 @@ export type EventNode = z.infer<typeof EventNodeSchema>;
 
 export const UserNodeSchema = z.object({
   type: z.literal("user"),
-  /** 백엔드 UserNode.key — birthDate | joinedAt | etc. */
+  /** 백엔드 UserNode.key — condition-metadata 응답의 userAttributes.key. */
   key: z.string().min(1),
   op: OperatorSchema,
   value: ConditionValueSchema,

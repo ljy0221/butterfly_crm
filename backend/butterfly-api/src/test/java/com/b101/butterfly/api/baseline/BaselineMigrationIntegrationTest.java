@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 베이스라인 V1~V10 마이그레이션이 클린 MySQL 8 testcontainer에서 단독 적용되는지 검증한다.
+ * 베이스라인 V1~V20 마이그레이션이 클린 MySQL 8 testcontainer에서 단독 적용되는지 검증한다.
  *
  * - V1: 22개 테이블 (core_baseline)
  * - V2: 10개 테이블 (reporting_baseline)
@@ -32,7 +32,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * - V13: members.member_status 컬럼 추가 (PENDING/ACTIVE)
  * - V14: message_templates 의 legacy plural 컬럼 5개 drop (S14P31B101-254) — 도메인 매핑(singular) 정렬
  * - V15: campaign_executions 의 결과 통계 3개 컬럼 (sent_count/failed_count/fail_reason) drop (S14P31B101-282)
- * - flyway_schema_history: 15 row
+ * - V17: segment_members 변수 스냅샷 컬럼 추가 + segment_variable_stats 테이블 생성
+ * - V18: segment_variable_snapshot_stage 테이블 생성
+ * - V19: payment_order / credit_account / credit_transaction 테이블 생성
+ * - V20: credit_account 예약 잔액 컬럼 + credit_reservation 테이블 생성 + credit_transaction reference 컬럼 추가
+ * - flyway_schema_history: 19 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해
  * 다른 도메인 모듈의 @EnableJpaRepositories 자동 스캔을 격리한다.
@@ -63,23 +67,24 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
     JdbcTemplate jdbc;
 
     @Test
-    void v1_v10_적용_후_테이블_31개_생성() {
-        // V9: token_blacklist DROP → 32개 → 31개. V10 은 enum 확장만이라 테이블 수 변화 없음.
+    void v1_v20_적용_후_테이블_37개_생성() {
+        // V9: token_blacklist DROP → 32개 → 31개.
+        // V17/V18 변수 스냅샷 테이블 2개, V19 결제 테이블 3개, V20 예약 테이블 1개를 추가한다.
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM information_schema.tables " +
                 "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
                 "AND table_name <> 'flyway_schema_history'",
                 Integer.class, CONTAINER.getDatabaseName());
-        assertThat(count).isEqualTo(31);
+        assertThat(count).isEqualTo(37);
     }
 
     @Test
-    void schema_history_15개_row_성공_상태() {
-        // V1 ~ V15
+    void schema_history_19개_row_성공_상태() {
+        // V1 ~ V15, V17 ~ V20
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                 Integer.class);
-        assertThat(count).isEqualTo(15);
+        assertThat(count).isEqualTo(19);
     }
 
     @Test
@@ -153,6 +158,40 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 "AND column_name IN ('sent_count', 'failed_count', 'fail_reason')",
                 Integer.class, CONTAINER.getDatabaseName());
         assertThat(count).isEqualTo(0);
+    }
+
+    @Test
+    void v19_결제_크레딧_테이블_3개_생성() {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables " +
+                "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
+                "AND table_name IN ('payment_order', 'credit_account', 'credit_transaction')",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(count).isEqualTo(3);
+    }
+
+    @Test
+    void v20_크레딧_예약_스키마_추가() {
+        Integer reservationTableCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.tables " +
+                "WHERE table_schema = ? AND table_type = 'BASE TABLE' " +
+                "AND table_name = 'credit_reservation'",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(reservationTableCount).isEqualTo(1);
+
+        Integer accountReservedColumnCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'credit_account' " +
+                "AND column_name = 'reserved_balance'",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(accountReservedColumnCount).isEqualTo(1);
+
+        Integer transactionReferenceColumnCount = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                "WHERE table_schema = ? AND table_name = 'credit_transaction' " +
+                "AND column_name IN ('reference_type', 'reference_id')",
+                Integer.class, CONTAINER.getDatabaseName());
+        assertThat(transactionReferenceColumnCount).isEqualTo(2);
     }
 
     @Test

@@ -173,15 +173,17 @@ public class SegmentService {
         // before snapshot — rename/replace 호출 전에 캡처해야 진짜 이전 값이 남는다
         String beforeName = segment.getName();
         String beforeDescription = segment.getDescription();
-        String beforeHash = auditHash(projectId, segment.getConditionTree());
+        String beforeFullHash = conditionTreeHasher.hash(projectId, segment.getConditionTree());
+        String beforeHash = auditHash(beforeFullHash);
 
         segment.rename(request.name(), request.description());
         segment.replaceConditionTree(request.conditionTree());
 
-        String afterHash = auditHash(projectId, segment.getConditionTree());
+        String afterFullHash = conditionTreeHasher.hash(projectId, segment.getConditionTree());
+        String afterHash = auditHash(afterFullHash);
         boolean nameChanged = !Objects.equals(beforeName, segment.getName());
         boolean descriptionChanged = !Objects.equals(beforeDescription, segment.getDescription());
-        boolean conditionTreeChanged = !Objects.equals(beforeHash, afterHash);
+        boolean conditionTreeChanged = !Objects.equals(beforeFullHash, afterFullHash);
 
         // no-op (실제로 아무것도 바뀌지 않음)이면 audit 발행 X
         if (nameChanged || descriptionChanged || conditionTreeChanged) {
@@ -209,9 +211,12 @@ public class SegmentService {
                             detail));
         }
 
-        // Phase 6-3: 트리 변경 시 활성 segment 캐시 무효화 (categoryId 변경 가능성)
+        // 트리 변경 시 매칭 캐시를 비우고, 커밋 이후 worker rebuild를 요청한다.
         if (conditionTreeChanged) {
             activeEventSegmentCache.invalidate(projectId);
+            eventPublisher.publishEvent(
+                    new SegmentRebuildAcceptedEvent(
+                            segment.getId(), projectId, memberId, Instant.now(), afterFullHash));
         }
 
         return toDetail(segment, memberId);
@@ -332,7 +337,7 @@ public class SegmentService {
      * audit detail용 conditionTree 짧은 hash. {@link ConditionTreeHasher}의 64-hex 결과 앞 8자.
      * 변경 추적 용도라 충돌 위험이 무시 가능 (같은 segment 내 단일 트리만 비교).
      */
-    private String auditHash(Long projectId, GroupNode tree) {
-        return conditionTreeHasher.hash(projectId, tree).substring(0, AUDIT_HASH_PREFIX_LENGTH);
+    private static String auditHash(String fullHash) {
+        return fullHash.substring(0, AUDIT_HASH_PREFIX_LENGTH);
     }
 }
