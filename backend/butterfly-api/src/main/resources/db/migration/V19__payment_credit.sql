@@ -1,4 +1,4 @@
--- V16: 결제 도메인 (ADR-0019) — Toss Payments 기반 프로젝트 단위 크레딧 충전
+-- V19: 결제 도메인 (ADR-0019) — Toss Payments 기반 프로젝트 단위 크레딧 충전
 --
 -- 테이블:
 --   payment_order        : 결제 주문/거래 (PENDING → CONFIRMED/FAILED/CANCELLED/PARTIAL_CANCELLED)

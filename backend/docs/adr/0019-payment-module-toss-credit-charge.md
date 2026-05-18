@@ -76,15 +76,15 @@ butterfly-payment/
 
 `butterfly-api/build.gradle` 에 `implementation project(':butterfly-payment')` 추가, `settings.gradle` 에 모듈 등록.
 
-### DB 스키마 (V16)
+### DB 스키마 (V19)
 
 - `payment_order` — 결제 주문/거래 (PENDING → CONFIRMED/FAILED/CANCELLED). 환불용 컬럼(`cancel_amount`, `cancelled_at`) 미리 정의.
 - `credit_account` — 프로젝트 1행, `balance BIGINT CHECK(balance>=0)`, `version BIGINT` (낙관 락).
 - `credit_transaction` — 모든 잔액 변동의 append-only 원장. `UNIQUE(payment_order_id, reason)` 로 중복 적립 차단.
 
-ADR-0013 §4 는 도메인 모듈 자기 자리에 두기를 권장하지만, develop 현 시점 모든 마이그레이션이 `butterfly-api/src/main/resources/db/migration/` 에 집중되어 있다. 본 PR 도 **기존 관행을 따라 같은 디렉토리에 V16 부터 추가**한다 (번호 순서·충돌 감지 용이성 우선).
+ADR-0013 §4 는 도메인 모듈 자기 자리에 두기를 권장하지만, develop 현 시점 모든 마이그레이션이 `butterfly-api/src/main/resources/db/migration/` 에 집중되어 있다. 본 PR 도 **기존 관행을 따라 같은 디렉토리에 V19 부터 추가**한다 (번호 순서·충돌 감지 용이성 우선).
 
-### 크레딧 예약/정산 스키마 (V17)
+### 크레딧 예약/정산 스키마 (V20)
 
 - `credit_account.reserved_balance` — 아직 실제 차감되지는 않았지만 캠페인 실행이 선점한 금액. `availableBalance = balance - reservedBalance`.
 - `credit_reservation` — `campaign_execution_id` 단위 예약 상태. 같은 실행 회차는 한 번만 예약된다.
@@ -168,7 +168,7 @@ butterfly:
 
 | PR | 범위 |
 |---|---|
-| **PR1 (본 PR)** | 본 ADR + V16/V17 스키마 + 모듈 스켈레톤 + 주문 생성/카드·간편 confirm + 잔액/원장 조회 + 캠페인 실행 크레딧 예약/정산 + 프론트 충전 화면 3종 + 단위/통합 테스트 |
+| **PR1 (본 PR)** | 본 ADR + V19/V20 스키마 + 모듈 스켈레톤 + 주문 생성/카드·간편 confirm + 잔액/원장 조회 + 캠페인 실행 크레딧 예약/정산 + 프론트 충전 화면 3종 + 단위/통합 테스트 |
 | PR2 | 환불·부분취소 API + 가상계좌 + Toss 웹훅(`DEPOSIT_CALLBACK`, `PAYMENT_STATUS_CHANGED`) |
 | PR3 (선택) | ArchUnit 경계 규칙, 관리자용 결제 조회, 캠페인 외 사용량 차감 연동 |
 
