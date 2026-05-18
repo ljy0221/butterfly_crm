@@ -40,6 +40,7 @@ export default function CreditChargePage() {
   const createOrder = useCreatePaymentOrderMutation(projectId ?? -1);
 
   const clientKey = import.meta.env.VITE_TOSS_CLIENT_KEY as string | undefined;
+  const balance = balanceQuery.data;
 
   if (projectId == null) {
     return <div>잘못된 접근입니다.</div>;
@@ -84,9 +85,21 @@ export default function CreditChargePage() {
 
       <Card>
         <div style={{ padding: 16 }}>
-          <div style={{ fontSize: 13, color: "#666" }}>현재 잔액</div>
-          <div style={{ fontSize: 28, fontWeight: 600 }}>
-            {balanceQuery.data ? balanceQuery.data.balance.toLocaleString() : "—"} 크레딧
+          <div style={{ fontSize: 13, color: "#64748b" }}>사용 가능 크레딧</div>
+          <div style={{ fontSize: 28, fontWeight: 700, color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>
+            {balance ? balance.availableBalance.toLocaleString() : "—"} 크레딧
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 10,
+              marginTop: 14,
+              fontSize: 12,
+            }}
+          >
+            <BalanceStat label="총 보유" value={balance?.balance} />
+            <BalanceStat label="예약 중" value={balance?.reservedBalance} />
           </div>
         </div>
       </Card>
@@ -144,6 +157,24 @@ export default function CreditChargePage() {
           </div>
         </div>
       </Card>
+    </div>
+  );
+}
+
+function BalanceStat({ label, value }: { label: string; value?: number }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        padding: "10px 12px",
+        background: "#f8fafc",
+      }}
+    >
+      <div style={{ color: "#64748b", marginBottom: 4 }}>{label}</div>
+      <div style={{ color: "#1f2937", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+        {value != null ? value.toLocaleString() : "—"} 크레딧
+      </div>
     </div>
   );
 }
