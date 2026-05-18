@@ -27,6 +27,7 @@ export default function Button({
 
   return (
     <button
+      type="button"
       {...rest}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}

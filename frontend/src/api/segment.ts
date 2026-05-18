@@ -163,6 +163,12 @@ export interface RebuildResponse {
   queuedAt: string;
 }
 
+export interface CancelBuildResponse {
+  segmentId: number;
+  buildStatus: BuildStatus;
+  canceledAt: string;
+}
+
 export interface LinkedCampaignsResponse {
   active: LinkedCampaignSummary[];
   paused: LinkedCampaignSummary[];
@@ -417,7 +423,18 @@ export async function rebuildSegment(
   );
 }
 
-/** 12. GET /api/v1/projects/{pid}/segments/{sid}/campaigns — VIEWER↑. mock-fallback. */
+/** 12. POST /api/v1/projects/{pid}/segments/{sid}/build/cancel — EDITOR↑. */
+export async function cancelSegmentBuild(
+  projectId: number,
+  segmentId: number,
+): Promise<CancelBuildResponse> {
+  const res = await api.post<CancelBuildResponse>(
+    `/api/v1/projects/${projectId}/segments/${segmentId}/build/cancel`,
+  );
+  return res.data;
+}
+
+/** 13. GET /api/v1/projects/{pid}/segments/{sid}/campaigns — VIEWER↑. mock-fallback. */
 export async function getLinkedCampaigns(
   projectId: number,
   segmentId: number,
