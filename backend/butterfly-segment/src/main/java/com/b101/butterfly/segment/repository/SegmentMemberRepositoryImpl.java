@@ -1,6 +1,7 @@
 package com.b101.butterfly.segment.repository;
 
 import com.b101.butterfly.segment.entity.SegmentMember;
+import com.b101.butterfly.segment.entity.converter.VariablesJsonConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -21,8 +22,13 @@ import java.util.List;
 public class SegmentMemberRepositoryImpl implements SegmentMemberRepositoryCustom {
 
     private static final String SQL =
-            "INSERT IGNORE INTO segment_members (segment_id, user_id, matched_at, expires_at) "
-                    + "VALUES (:segmentId, :userId, :matchedAt, :expiresAt)";
+            "INSERT IGNORE INTO segment_members "
+                    + "(segment_id, user_id, matched_at, expires_at, variables_json, variables_captured_at) "
+                    + "VALUES (:segmentId, :userId, :matchedAt, :expiresAt, "
+                    + ":variablesJson, :variablesCapturedAt)";
+
+    private static final VariablesJsonConverter VARIABLES_CONVERTER =
+            new VariablesJsonConverter();
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -44,6 +50,8 @@ public class SegmentMemberRepositoryImpl implements SegmentMemberRepositoryCusto
                 .addValue("segmentId", m.getSegmentId())
                 .addValue("userId", m.getUserId())
                 .addValue("matchedAt", m.getMatchedAt())
-                .addValue("expiresAt", m.getExpiresAt());
+                .addValue("expiresAt", m.getExpiresAt())
+                .addValue("variablesJson", VARIABLES_CONVERTER.convertToDatabaseColumn(m.getVariables()))
+                .addValue("variablesCapturedAt", m.getVariablesCapturedAt());
     }
 }

@@ -3,6 +3,8 @@ package com.b101.butterfly.event.service;
 import com.b101.butterfly.event.dto.response.RecommendedVariableResponse;
 import com.b101.butterfly.event.repository.UserTagRepository;
 import com.b101.butterfly.event.repository.UserTagRepository.RecommendedTagKey;
+import com.b101.butterfly.segment.entity.SegmentVariableStats;
+import com.b101.butterfly.segment.repository.SegmentVariableStatsRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,14 +27,39 @@ public class PersonalizationVariableService {
     private static final int DEFAULT_LIMIT = 10;
 
     private final UserTagRepository userTagRepository;
+    private final SegmentVariableStatsRepository segmentVariableStatsRepository;
 
     @Transactional(readOnly = true)
     public RecommendedVariableResponse getRecommended(Long projectId, Long segmentId) {
+        if (segmentId != null) {
+            List<SegmentVariableStats> stats =
+                    segmentVariableStatsRepository
+                            .findByProjectIdAndSegmentIdOrderByVariableKeyAsc(projectId, segmentId);
+            if (!stats.isEmpty()) {
+                List<RecommendedVariableResponse.Item> items = stats.stream()
+                        .limit(DEFAULT_LIMIT)
+                        .map(this::toItem)
+                        .toList();
+                return new RecommendedVariableResponse(items);
+            }
+        }
+
         List<RecommendedTagKey> rows = userTagRepository.findRecommendedTagKeys(
                 projectId, segmentId, DEFAULT_LIMIT);
         List<RecommendedVariableResponse.Item> items = rows.stream()
                 .map(r -> new RecommendedVariableResponse.Item(r.getTagKey(), r.getUserCount()))
                 .toList();
         return new RecommendedVariableResponse(items);
+    }
+
+    private RecommendedVariableResponse.Item toItem(SegmentVariableStats stats) {
+        return new RecommendedVariableResponse.Item(
+                stats.getVariableKey(),
+                stats.getAvailableCount(),
+                stats.getSourceType().name(),
+                stats.getStatus().name(),
+                stats.getAvailableCount(),
+                stats.getMissingCount(),
+                "{{" + stats.getVariableKey() + "}}");
     }
 }

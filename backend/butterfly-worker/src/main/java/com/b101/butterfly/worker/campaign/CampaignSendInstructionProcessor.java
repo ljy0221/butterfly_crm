@@ -9,9 +9,11 @@ import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
+import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -49,7 +51,14 @@ public class CampaignSendInstructionProcessor {
                 instruction.templateId(), template.title());
 
         // 2. 수신자 목록 조회
-        List<Long> userIds = segmentMemberLookupPort.getActiveUserIds(instruction.segmentId());
+        List<SegmentAudienceTarget> audienceTargets =
+                segmentMemberLookupPort.getActiveTargets(
+                        instruction.segmentId(),
+                        null,
+                        Integer.MAX_VALUE);
+        List<Long> userIds = audienceTargets.stream()
+                .map(SegmentAudienceTarget::userId)
+                .toList();
         log.debug("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
                 instruction.segmentId(), userIds.size());
 
@@ -71,11 +80,12 @@ public class CampaignSendInstructionProcessor {
                 deliveryChannel
         );
 
-        // 3.5. 사용자별 개인화 변수 조회 (user_tags 테이블, S14P31B101-289) — userId → (tagKey → tagValue)
-        Map<Long, Map<String, String>> userTags = userTagLookupPort.getTagsByUserIds(
+        // 3.5. 사용자별 개인화 변수 조회.
+        // segment_members.variables_json snapshot 이 아직 비어 있는 세그먼트는 기존 user_tags 경로로 fallback.
+        Map<Long, Map<String, String>> variablesByUser = resolveVariablesByUser(
                 instruction.projectId(),
-                userIds
-        );
+                userIds,
+                audienceTargets);
 
         // 4. DeliveryCommand 조립
         DeliveryCommand deliveryCommand = new DeliveryCommand(
@@ -91,7 +101,7 @@ public class CampaignSendInstructionProcessor {
                 ),
                 userIds,
                 null,  // credential (DeliveryService가 자체 조회)
-                mapToDeliveryTargets(contacts, userTags)
+                mapToDeliveryTargets(contacts, variablesByUser)
         );
 
         // 5. delivery-requests 토픽으로 발행
@@ -117,7 +127,7 @@ public class CampaignSendInstructionProcessor {
 
     private List<DeliveryCommand.DeliveryTarget> mapToDeliveryTargets(
             List<UserContactInfo> contacts,
-            Map<Long, Map<String, String>> userTags
+            Map<Long, Map<String, String>> variablesByUser
     ) {
         return contacts.stream()
                 .map(contact -> new DeliveryCommand.DeliveryTarget(
@@ -126,8 +136,24 @@ public class CampaignSendInstructionProcessor {
                         contact.pushToken(),
                         contact.email(),
                         contact.phoneNumber(),
-                        userTags.getOrDefault(contact.userId(), Map.of())
+                        variablesByUser.getOrDefault(contact.userId(), Map.of())
                 ))
                 .toList();
+    }
+
+    private Map<Long, Map<String, String>> resolveVariablesByUser(
+            Long projectId,
+            List<Long> userIds,
+            List<SegmentAudienceTarget> audienceTargets
+    ) {
+        boolean hasSnapshotVariables =
+                audienceTargets.stream().anyMatch(target -> !target.variables().isEmpty());
+        if (!hasSnapshotVariables) {
+            return userTagLookupPort.getTagsByUserIds(projectId, userIds);
+        }
+        return audienceTargets.stream()
+                .collect(Collectors.toMap(
+                        SegmentAudienceTarget::userId,
+                        SegmentAudienceTarget::variables));
     }
 }
