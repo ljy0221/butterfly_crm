@@ -21,11 +21,6 @@ import { useAuthStore } from "@/stores/auth";
  * 4. Toss 가 successUrl 로 redirect — `PaymentSuccessPage` 가 confirm 처리
  */
 
-const PAY_METHODS = [
-  { id: "CARD" as const, label: "카드" },
-  { id: "EASY_PAY" as const, label: "간편결제" },
-];
-
 export default function CreditChargePage() {
   const { projectId: pidParam } = useParams<{ projectId: string }>();
   const projectId = pidParam ? Number(pidParam) : null;
@@ -33,7 +28,6 @@ export default function CreditChargePage() {
   const navigate = useNavigate();
 
   const [amount, setAmount] = useState<CreditChargeTier>(CREDIT_CHARGE_TIERS[0]);
-  const [methodId, setMethodId] = useState<(typeof PAY_METHODS)[number]["id"]>("CARD");
   const [submitting, setSubmitting] = useState(false);
 
   const balanceQuery = useCreditBalanceQuery(projectId);
@@ -58,7 +52,7 @@ export default function CreditChargePage() {
       const customerKey = buildTossCustomerKey(memberId);
       const payment = tossPayments.payment({ customerKey });
       await payment.requestPayment({
-        method: methodId,
+        method: "CARD",
         amount: { currency: "KRW", value: order.amount },
         orderId: order.orderId,
         orderName: `Butterfly 크레딧 ${order.amount.toLocaleString()}원 충전`,
@@ -122,26 +116,6 @@ export default function CreditChargePage() {
                 }}
               >
                 {tier.toLocaleString()}원
-              </button>
-            ))}
-          </div>
-
-          <div style={{ marginTop: 16, marginBottom: 8, fontWeight: 600 }}>결제 수단</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {PAY_METHODS.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => setMethodId(m.id)}
-                style={{
-                  padding: "10px 20px",
-                  border: methodId === m.id ? "2px solid #3b82f6" : "1px solid #ddd",
-                  borderRadius: 8,
-                  background: methodId === m.id ? "#eff6ff" : "#fff",
-                  cursor: "pointer",
-                }}
-              >
-                {m.label}
               </button>
             ))}
           </div>
