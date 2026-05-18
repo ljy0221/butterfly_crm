@@ -15,6 +15,7 @@ import {
   toBackendTree,
   type BackendGroupNode,
   type GroupNode,
+  type Operator,
 } from "@/schemas/segment";
 
 /**
@@ -186,6 +187,19 @@ export interface SegmentUserListResponse {
   totalPages: number;
 }
 
+export type UserConditionValueType = "string" | "date" | "boolean";
+
+export interface UserConditionAttribute {
+  key: string;
+  label: string;
+  valueType: UserConditionValueType;
+  operators: Operator[];
+}
+
+export interface SegmentConditionMetadata {
+  userAttributes: UserConditionAttribute[];
+}
+
 // ---------- 요청 본문 ----------
 
 export interface CreateSegmentRequest {
@@ -269,6 +283,16 @@ export async function getSegment(
     `/api/v1/projects/${projectId}/segments/${segmentId}`,
   );
   return detailFromBackend(res.data);
+}
+
+/** GET /api/v1/projects/{pid}/segments/condition-metadata — VIEWER↑. */
+export async function getConditionMetadata(
+  projectId: number,
+): Promise<SegmentConditionMetadata> {
+  const res = await api.get<SegmentConditionMetadata>(
+    `/api/v1/projects/${projectId}/segments/condition-metadata`,
+  );
+  return res.data;
 }
 
 /** 4. PUT /api/v1/projects/{pid}/segments/{sid} — EDITOR↑. */
