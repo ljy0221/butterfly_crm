@@ -24,6 +24,7 @@ export interface WizardDraft {
   // Step 3
   segmentId: number | null; // null = 전체 사용자 발송
   segmentName: string | null;
+  estimatedAudienceCount: number | null;
   // Step 4
   schedule: ScheduleInput;
   // Step 5
@@ -60,6 +61,7 @@ export type WizardAction =
       type: "set/segment";
       segmentId: number | null;
       segmentName: string | null;
+      estimatedCount: number | null;
     }
   | { type: "set/scheduleType"; value: ScheduleInput["type"] }
   | { type: "set/scheduledAt"; value: string }
@@ -84,6 +86,7 @@ export const initialDraft: WizardDraft = {
   channel: "EMAIL",
   segmentId: null,
   segmentName: null,
+  estimatedAudienceCount: null,
   schedule: { type: "immediate" },
   messageTemplateId: null,
   messageTemplateName: null,
@@ -149,6 +152,7 @@ export function wizardReducer(
         ...state.draft,
         segmentId: action.segmentId,
         segmentName: action.segmentName,
+        estimatedAudienceCount: action.estimatedCount,
       });
       return { ...state, draft };
     }

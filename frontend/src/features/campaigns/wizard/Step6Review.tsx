@@ -217,11 +217,10 @@ function CostEstimateCard({
   isError: boolean;
 }) {
   const navigate = useNavigate();
-  const target = draft.segmentId == null ? 25000 : 1500;
-  const estimate = target;
+  const estimate = draft.estimatedAudienceCount; // null = 전체 사용자 또는 예상 모수 없음
   const available = balance?.availableBalance;
   const reserved = balance?.reservedBalance;
-  const isInsufficient = available != null && available < estimate;
+  const isInsufficient = available != null && estimate != null && available < estimate;
 
   return (
     <div
@@ -235,14 +234,22 @@ function CostEstimateCard({
       <div style={{ fontSize: 11, fontWeight: 700, color: isInsufficient ? "#c2410c" : "#3b5bdb", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 8 }}>
         예상 예약 크레딧
       </div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ fontSize: 22, fontWeight: 700, color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>
-          {estimate.toLocaleString()} 크레딧
-        </span>
-        <span style={{ fontSize: 11, color: "#64748b" }}>
-          ({target.toLocaleString()}건 × 1)
-        </span>
-      </div>
+      {estimate != null ? (
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+          <span style={{ fontSize: 22, fontWeight: 700, color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>
+            {estimate.toLocaleString()} 크레딧
+          </span>
+          <span style={{ fontSize: 11, color: "#64748b" }}>
+            ({estimate.toLocaleString()}건 × 1)
+          </span>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+          {draft.segmentId == null
+            ? "전체 사용자 발송 — 발송 시 실제 대상 수 기준으로 예약됩니다."
+            : "세그먼트 예상 모수가 없습니다."}
+        </div>
+      )}
 
       <div
         style={{
@@ -279,7 +286,7 @@ function CostEstimateCard({
           </Button>
         </div>
       )}
-      {!isInsufficient && (
+      {!isInsufficient && estimate != null && (
         <div style={{ fontSize: 11, color: "#64748b", marginTop: 10 }}>
           발송 시작 시점에 실제 대상 수 기준으로 다시 예약됩니다.
         </div>
