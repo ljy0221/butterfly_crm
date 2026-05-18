@@ -9,6 +9,7 @@ import MembersTab from "./tabs/MembersTab";
 import ApiKeysTab from "./tabs/ApiKeysTab";
 import AuditTab from "./tabs/AuditTab";
 import ProfileTab from "./tabs/ProfileTab";
+import CredentialsTab from "./tabs/CredentialsTab";
 
 /**
  * Sprint 2 — `/p/:projectId/settings` 탭 컨테이너.
@@ -24,6 +25,7 @@ const TABS = [
   { key: "project", label: "프로젝트 정보" },
   { key: "members", label: "멤버" },
   { key: "api-keys", label: "API 키" },
+  { key: "credentials", label: "채널 인증정보" },
   { key: "audit", label: "감사 로그" },
 ] as const;
 
@@ -98,6 +100,7 @@ export default function SettingsLayout() {
     if (tab === "project") return <ProjectInfoTab projectId={projectId} />;
     if (tab === "members") return <MembersTab projectId={projectId} />;
     if (tab === "api-keys") return <ApiKeysTab projectId={projectId} />;
+    if (tab === "credentials") return <CredentialsTab projectId={projectId} />;
     if (tab === "audit") return <AuditTab projectId={projectId} />;
     return null;
   }, [tab, projectId]);
