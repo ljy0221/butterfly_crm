@@ -2,6 +2,13 @@ import React from "react";
 
 // Lucide-style line icons, 1.5–2px stroke. Returns JSX at the given pixel size.
 export const Icon = {
+  wallet: (s = 18) => (
+    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 7H5a2 2 0 0 1 0-4h13v4" />
+      <path d="M4 7h16a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5" />
+      <path d="M16 14h.01" />
+    </svg>
+  ),
   dashboard: (s = 18) => (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="7" height="9" rx="1.5" />

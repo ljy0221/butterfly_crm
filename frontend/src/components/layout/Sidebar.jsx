@@ -2,6 +2,7 @@ import React from "react";
 import { Icon } from "../common/Icon.jsx";
 import Avatar from "../common/Avatar.jsx";
 import { useAuthStore } from "@/stores/auth";
+import { useProjectStore } from "@/stores/project";
 
 const NAV = [
   { key: "대시보드",  label: "대시보드",       icon: "dashboard" },
@@ -9,6 +10,7 @@ const NAV = [
   { key: "고객",     label: "고객",            icon: "customers" },
   { key: "세그먼트", label: "세그먼트",         icon: "segments"  },
   { key: "캠페인",   label: "캠페인",           icon: "campaigns" },
+  { key: "크레딧",   label: "크레딧",           icon: "wallet", ownerOnly: true },
   { key: "자동화",   label: "자동화 플로우",    icon: "journey"   },
   { key: "분석",     label: "분석",            icon: "analytics" },
   { key: "설정",     label: "설정",            icon: "settings"  },
@@ -26,6 +28,7 @@ function roleBadgeStyle(role) {
 
 export default function Sidebar({ active, onNavigate, collapsed }) {
   const member = useAuthStore((s) => s.member);
+  const projectRole = useProjectStore((s) => s.current?.role);
   const w = collapsed ? 64 : 240;
 
   const userName = member?.name ?? "Guest";
@@ -93,7 +96,7 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
           display: "flex", flexDirection: "column", gap: 1,
         }}
       >
-        {NAV.map((n) => {
+        {NAV.filter((n) => !n.ownerOnly || projectRole === "OWNER").map((n) => {
           const isActive = active === n.key;
           return (
             <div
