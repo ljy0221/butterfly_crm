@@ -12,6 +12,7 @@ import type {
   ListSegmentsParams,
   PreviewResponse,
   RebuildResponse,
+  CancelBuildResponse,
   SegmentConditionMetadata,
   SegmentDetail,
   SegmentListResponse,
@@ -219,6 +220,31 @@ export function useRebuildSegmentMutation(projectId: number) {
         (prev) => (prev ? { ...prev, buildStatus: data.buildStatus } : prev),
       );
       qc.invalidateQueries({ queryKey: segmentKeys.lists(projectId) });
+    },
+  });
+}
+
+export function useCancelSegmentBuildMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<CancelBuildResponse, unknown, number>({
+    mutationFn: (segmentId) => segmentApi.cancelSegmentBuild(projectId, segmentId),
+    onSuccess: (data, segmentId) => {
+      qc.setQueryData<SegmentDetail | undefined>(
+        segmentKeys.detail(projectId, segmentId),
+        (prev) =>
+          prev
+            ? {
+                ...prev,
+                buildStatus: data.buildStatus,
+                buildStartedAt: null,
+                currentMemberCount: prev.estimatedCount,
+              }
+            : prev,
+      );
+      qc.invalidateQueries({ queryKey: segmentKeys.lists(projectId) });
+      qc.invalidateQueries({
+        queryKey: segmentKeys.detail(projectId, segmentId),
+      });
     },
   });
 }

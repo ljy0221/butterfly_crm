@@ -18,6 +18,7 @@ import { useEventCategoriesQuery } from "@/hooks/queries/event";
 import AiLaunchButton from "@/features/ai/AiLaunchButton";
 import {
   useCreateSegmentMutation,
+  useCancelSegmentBuildMutation,
   usePreviewSegmentMutation,
   useRebuildSegmentMutation,
   useSegmentConditionMetadataQuery,
@@ -180,11 +181,13 @@ function BuilderInner({
   const updateMut = useUpdateSegmentMutation(projectId);
   const previewMut = usePreviewSegmentMutation(projectId);
   const rebuildMut = useRebuildSegmentMutation(projectId);
+  const cancelBuildMut = useCancelSegmentBuildMutation(projectId);
   const submitting = createMut.isPending || updateMut.isPending;
 
   // ---------- Detail → form 초기화 ----------
   useEffect(() => {
     if (mode !== "view") return;
+    if (editMode) return;
     const detail = detailQuery.data;
     if (!detail) return;
     setName(detail.name);
@@ -201,7 +204,7 @@ function BuilderInner({
       });
       setPreviewCallCount(1);
     }
-  }, [mode, detailQuery.data]);
+  }, [mode, editMode, detailQuery.data]);
 
   // ---------- Form 변경 추적 (dirty) ----------
   useEffect(() => {
@@ -392,6 +395,25 @@ function BuilderInner({
     try {
       await rebuildMut.mutateAsync(segmentId);
       toast("재계산 요청을 큐에 넣었습니다. 완료까지 잠시 기다려 주세요.", "info");
+    } catch (err) {
+      const m = mapSegmentError(err);
+      toast(m.message, "error");
+    }
+  };
+
+  const onCancelBuild = async (): Promise<void> => {
+    if (segmentId == null) return;
+    const ok = await confirmDialog({
+      title: "빌드를 취소하시겠습니까?",
+      message: "현재 대기/진행 중인 빌드를 실패 상태로 바꿉니다. 이후 재계산을 다시 요청할 수 있습니다.",
+      confirmText: "빌드 취소",
+      cancelText: "닫기",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await cancelBuildMut.mutateAsync(segmentId);
+      toast("빌드를 취소했습니다. 필요하면 재계산을 다시 실행해 주세요.", "success");
     } catch (err) {
       const m = mapSegmentError(err);
       toast(m.message, "error");
@@ -730,26 +752,44 @@ function BuilderInner({
                   : "빌드 이력 없음"}
               </div>
               {canEdit && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={onRebuild}
-                  disabled={
-                    rebuildMut.isPending ||
-                    detail.buildStatus === "PENDING" ||
-                    detail.buildStatus === "BUILDING"
-                  }
-                  style={{
-                    width: "100%",
-                    justifyContent: "center",
-                  }}
-                >
-                  {detail.buildStatus === "PENDING"
-                    ? "대기 중..."
-                    : detail.buildStatus === "BUILDING"
-                      ? "빌드 중..."
-                      : "재계산"}
-                </Button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {(detail.buildStatus === "PENDING" ||
+                    detail.buildStatus === "BUILDING") && (
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={onCancelBuild}
+                      disabled={cancelBuildMut.isPending}
+                      style={{
+                        width: "100%",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {cancelBuildMut.isPending ? "취소 중..." : "빌드 취소"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={onRebuild}
+                    disabled={
+                      rebuildMut.isPending ||
+                      cancelBuildMut.isPending ||
+                      detail.buildStatus === "PENDING" ||
+                      detail.buildStatus === "BUILDING"
+                    }
+                    style={{
+                      width: "100%",
+                      justifyContent: "center",
+                    }}
+                  >
+                    {detail.buildStatus === "PENDING"
+                      ? "대기 중..."
+                      : detail.buildStatus === "BUILDING"
+                        ? "빌드 중..."
+                        : "재계산"}
+                  </Button>
+                </div>
               )}
             </Card>
           )}

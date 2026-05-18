@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Tag } from "@/components/common";
 import type { EventFilter, EventNode, Operator } from "@/schemas/segment";
 import { useEventCategoriesQuery, useEventSchemaQuery } from "@/hooks/queries/event";
@@ -76,9 +76,13 @@ export default function EventNodeEditor({
   onChange,
   disabled,
 }: EventNodeEditorProps) {
+  const [minCountText, setMinCountText] = useState(String(value.minCount));
   const projectId = useProjectStore((s) => s.current?.projectId ?? null);
   const categoriesQuery = useEventCategoriesQuery(projectId);
-  const categories = categoriesQuery.data ?? [];
+  const categories = useMemo(
+    () => categoriesQuery.data ?? [],
+    [categoriesQuery.data],
+  );
   const selectedCategory = categories.find((c) => c.categoryId === value.categoryId);
   const schemaQuery = useEventSchemaQuery(
     projectId,
@@ -94,6 +98,10 @@ export default function EventNodeEditor({
     if (disabled || value.categoryId > 0 || categories.length === 0) return;
     onChange({ ...value, categoryId: categories[0].categoryId });
   }, [categories, disabled, onChange, value]);
+
+  useEffect(() => {
+    setMinCountText(String(value.minCount));
+  }, [value.minCount]);
 
   const updateFilter = (idx: number, next: EventFilter): void => {
     const filters = value.filters.map((f, i) => (i === idx ? next : f));
@@ -147,14 +155,27 @@ export default function EventNodeEditor({
         <input
           type="number"
           min={1}
-          value={value.minCount}
+          value={minCountText}
           disabled={disabled}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              minCount: Math.max(1, Number(e.target.value) || 1),
-            })
-          }
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (!/^\d*$/.test(raw)) return;
+            setMinCountText(raw);
+            if (raw === "") return;
+            const parsed = Number(raw);
+            if (Number.isSafeInteger(parsed) && parsed >= 1) {
+              onChange({ ...value, minCount: parsed });
+            }
+          }}
+          onBlur={() => {
+            const parsed = Number(minCountText);
+            const next =
+              Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : 1;
+            setMinCountText(String(next));
+            if (next !== value.minCount) {
+              onChange({ ...value, minCount: next });
+            }
+          }}
           style={{ ...inputStyle, width: 70 }}
         />
         <span style={{ fontSize: 11, color: "#64748b" }}>회 발생</span>
