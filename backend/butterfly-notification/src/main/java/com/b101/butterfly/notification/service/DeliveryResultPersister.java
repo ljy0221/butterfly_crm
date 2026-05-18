@@ -44,6 +44,11 @@ class DeliveryResultPersister {
             LocalDateTime now = LocalDateTime.now();
             String recipient = resolveRecipient(command.channel(), target);
 
+            DeliveryCommand.MessagePayload msg = command.message();
+            String title = msg != null ? msg.title() : null;
+            String body = msg != null ? msg.body() : null;
+            String clickUrl = msg != null ? msg.data() : null;
+
             if (result.successful()) {
                 logEntries.add(NotificationLog.builder()
                         .projectId(command.projectId())
@@ -52,6 +57,9 @@ class DeliveryResultPersister {
                         .deviceId(target.deviceId())
                         .channel(command.channel())
                         .recipient(recipient)
+                        .title(title)
+                        .body(body)
+                        .clickUrl(clickUrl)
                         .status(NotificationStatus.SENT)
                         .sentAt(now)
                         .build());
@@ -64,6 +72,9 @@ class DeliveryResultPersister {
                         .deviceId(target.deviceId())
                         .channel(command.channel())
                         .recipient(recipient)
+                        .title(title)
+                        .body(body)
+                        .clickUrl(clickUrl)
                         .status(NotificationStatus.FAILED)
                         .errorCode(result.errorCode())
                         .errorMessage(result.errorMessage())

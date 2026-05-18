@@ -50,6 +50,6 @@ public class DeviceService {
                                 .build()
                 ));
 
-        return new DeviceRegisterResponse(device.getTokenValid());
+        return new DeviceRegisterResponse(device.getId(), device.getTokenValid());
     }
 }

@@ -10,4 +10,6 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
     Optional<Device> findByProjectIdAndExternalId(Long projectId, String externalId);
 
     Optional<Device> findFirstByProjectIdAndUserIdOrderByLastActiveAtDesc(Long projectId, Long userId);
+
+    Optional<Device> findByExternalId(String externalId);
 }

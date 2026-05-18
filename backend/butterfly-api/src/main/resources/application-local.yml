@@ -1,0 +1,29 @@
+# 로컬 개발 전용 설정. Git에 커밋되므로 실제 시크릿은 넣지 말 것.
+# 운영 환경은 application-prod.yml 또는 K8s Secret으로 관리.
+
+spring:
+  datasource:
+    username: butterfly
+    password: butterfly
+  mail:
+    password: dummy
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.chat.client.autoconfigure.ChatClientAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+
+mail:
+  from: noreply@localhost
+
+jwt:
+  secret: localdevlocalsecretkey1234567890abcdef1234
+
+butterfly:
+  cors:
+    allowed-origins: 'http://localhost:3000,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:8080'
+    allowed-headers: 'Content-Type,Authorization,X-API-Key,X-Member-Id,X-Project-Id,Idempotency-Key'
+    allow-credentials: true
