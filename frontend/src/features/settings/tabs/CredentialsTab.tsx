@@ -4,7 +4,6 @@ import {
   useCredentialQuery,
   useSaveCredentialMutation,
   useDeleteCredentialMutation,
-  useInvalidateFcmCacheMutation,
 } from "@/hooks/queries/notification";
 import { useAuthStore } from "@/stores/auth";
 import { confirmDialog, toast } from "@/lib/ui-bus";
@@ -16,7 +15,6 @@ export default function CredentialsTab({ projectId }: { projectId: number }) {
   const credentialQ = useCredentialQuery(projectId, "PUSH");
   const saveMut = useSaveCredentialMutation(projectId);
   const deleteMut = useDeleteCredentialMutation(projectId);
-  const invalidateMut = useInvalidateFcmCacheMutation(projectId);
 
   const isRegistered = !!credentialQ.data && !credentialQ.isError;
   const [jsonText, setJsonText] = useState("");
@@ -47,7 +45,7 @@ export default function CredentialsTab({ projectId }: { projectId: number }) {
     const ok = await confirmDialog({
       title: isRegistered ? "FCM 인증정보를 교체할까요?" : "FCM 인증정보를 등록할까요?",
       message: isRegistered
-        ? "기존 서비스 계정 JSON이 새 JSON으로 교체됩니다. 서버 캐시도 함께 무효화됩니다."
+        ? "기존 서비스 계정 JSON이 새 JSON으로 교체됩니다."
         : "Firebase 서비스 계정 JSON을 등록합니다. 이후 PUSH 캠페인 발송이 가능해집니다.",
       confirmText: isRegistered ? "교체" : "등록",
     });
@@ -55,9 +53,6 @@ export default function CredentialsTab({ projectId }: { projectId: number }) {
 
     try {
       await saveMut.mutateAsync({ channel: "PUSH", req: { credentialData: jsonText } });
-      if (isRegistered) {
-        await invalidateMut.mutateAsync();
-      }
       toast("FCM 인증정보가 저장되었습니다.", "success");
       setJsonText("");
     } catch {
@@ -76,20 +71,10 @@ export default function CredentialsTab({ projectId }: { projectId: number }) {
 
     try {
       await deleteMut.mutateAsync("PUSH");
-      await invalidateMut.mutateAsync();
       toast("FCM 인증정보가 삭제되었습니다.", "success");
       setJsonText("");
     } catch {
       toast("삭제에 실패했습니다.", "error");
-    }
-  };
-
-  const handleInvalidateCache = async () => {
-    try {
-      await invalidateMut.mutateAsync();
-      toast("서버 캐시가 초기화되었습니다.", "success");
-    } catch {
-      toast("캐시 초기화에 실패했습니다.", "error");
     }
   };
 
@@ -183,14 +168,6 @@ export default function CredentialsTab({ projectId }: { projectId: number }) {
                     disabled={deleteMut.isPending}
                   >
                     {deleteMut.isPending ? "삭제 중..." : "삭제"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="md"
-                    onClick={handleInvalidateCache}
-                    disabled={invalidateMut.isPending}
-                  >
-                    {invalidateMut.isPending ? "초기화 중..." : "서버 캐시 무효화"}
                   </Button>
                 </>
               )}
