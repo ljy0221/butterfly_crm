@@ -36,6 +36,21 @@ public interface SegmentMemberRepository
             Pageable pageable);
 
     /**
+     * 발송 worker용 cursor 조회. 대량 세그먼트를 offset 없이 user_id 기준으로 순회한다.
+     */
+    @Query(
+            "SELECT sm FROM SegmentMember sm "
+                    + "WHERE sm.segmentId = :segmentId "
+                    + "AND sm.userId > :afterUserId "
+                    + "AND (sm.expiresAt IS NULL OR sm.expiresAt > :now) "
+                    + "ORDER BY sm.userId ASC")
+    Page<SegmentMember> findActiveBySegmentIdAfterUserId(
+            @Param("segmentId") Long segmentId,
+            @Param("afterUserId") Long afterUserId,
+            @Param("now") LocalDateTime now,
+            Pageable pageable);
+
+    /**
      * rebuild 시점에 기존 멤버 일괄 삭제. 새 매칭으로 INSERT 전 호출.
      *
      * @return 삭제된 row 수 (estimated 기준 비교용)
@@ -67,21 +82,48 @@ public interface SegmentMemberRepository
     @Query(
             value =
                     """
-                    INSERT INTO segment_members (segment_id, user_id, matched_at, expires_at)
-                    VALUES (:segmentId, :userId, :matchedAt, :expiresAt)
+                    INSERT INTO segment_members (
+                        segment_id,
+                        user_id,
+                        matched_at,
+                        expires_at,
+                        variables_json,
+                        variables_captured_at
+                    )
+                    VALUES (
+                        :segmentId,
+                        :userId,
+                        :matchedAt,
+                        :expiresAt,
+                        :variablesJson,
+                        :variablesCapturedAt
+                    )
                     ON DUPLICATE KEY UPDATE
                       matched_at = VALUES(matched_at),
                       expires_at = CASE
                         WHEN expires_at IS NULL OR VALUES(expires_at) IS NULL THEN NULL
                         ELSE GREATEST(expires_at, VALUES(expires_at))
-                      END
+                      END,
+                      variables_json = COALESCE(VALUES(variables_json), variables_json),
+                      variables_captured_at = COALESCE(VALUES(variables_captured_at), variables_captured_at)
                     """,
             nativeQuery = true)
-    int upsertMember(
+    int upsertMemberWithVariables(
             @Param("segmentId") Long segmentId,
             @Param("userId") Long userId,
             @Param("matchedAt") LocalDateTime matchedAt,
-            @Param("expiresAt") LocalDateTime expiresAt);
+            @Param("expiresAt") LocalDateTime expiresAt,
+            @Param("variablesJson") String variablesJson,
+            @Param("variablesCapturedAt") LocalDateTime variablesCapturedAt);
+
+    default int upsertMember(
+            Long segmentId,
+            Long userId,
+            LocalDateTime matchedAt,
+            LocalDateTime expiresAt
+    ) {
+        return upsertMemberWithVariables(segmentId, userId, matchedAt, expiresAt, null, null);
+    }
 
     /**
      * 만료된 멤버 일괄 삭제. KST 03:00 cron이 호출.
