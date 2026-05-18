@@ -3,6 +3,8 @@ package com.b101.butterfly.worker.config;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignExecutionResult;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
+import java.util.Map;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,6 +15,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 /**
  * Worker 프로세스의 Kafka Consumer/Producer 설정.
@@ -31,7 +34,11 @@ public class WorkerKafkaConfig {
     public ConsumerFactory<String, CampaignSendInstruction> campaignSendInstructionConsumerFactory(
             KafkaProperties properties
     ) {
-        return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(null));
+        Map<String, Object> props = new java.util.HashMap<>(properties.buildConsumerProperties(null));
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, CampaignSendInstruction.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.b101.butterfly.*");
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
+                new JsonDeserializer<>(CampaignSendInstruction.class, false));
     }
 
     /**
@@ -70,6 +77,32 @@ public class WorkerKafkaConfig {
     }
 
     /**
+     * DeliveryCommand 메시지 Consumer Factory.
+     * DeliveryKafkaConsumer 가 containerFactory = "kafkaListenerContainerFactory" (default 이름) 를 사용.
+     */
+    @Bean
+    public ConsumerFactory<String, DeliveryCommand> deliveryCommandConsumerFactory(
+            KafkaProperties properties
+    ) {
+        Map<String, Object> props = new java.util.HashMap<>(properties.buildConsumerProperties(null));
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, DeliveryCommand.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.b101.butterfly.*");
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
+                new JsonDeserializer<>(DeliveryCommand.class, false));
+    }
+
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, DeliveryCommand>
+    kafkaListenerContainerFactory(
+            ConsumerFactory<String, DeliveryCommand> deliveryCommandConsumerFactory
+    ) {
+        ConcurrentKafkaListenerContainerFactory<String, DeliveryCommand> factory =
+                new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(deliveryCommandConsumerFactory);
+        return factory;
+    }
+
+    /**
      * CampaignExecutionResult 메시지 Consumer Factory — notification 측 publisher 가 보낸
      * per-execution summary 를 받아 SEND → SUCCESS|FAIL 전이를 수행한다 (S14P31B101-284).
      */
@@ -77,7 +110,11 @@ public class WorkerKafkaConfig {
     public ConsumerFactory<String, CampaignExecutionResult> campaignExecutionResultConsumerFactory(
             KafkaProperties properties
     ) {
-        return new DefaultKafkaConsumerFactory<>(properties.buildConsumerProperties(null));
+        Map<String, Object> props = new java.util.HashMap<>(properties.buildConsumerProperties(null));
+        props.put(JsonDeserializer.VALUE_DEFAULT_TYPE, CampaignExecutionResult.class.getName());
+        props.put(JsonDeserializer.TRUSTED_PACKAGES, "com.b101.butterfly.*");
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
+                new JsonDeserializer<>(CampaignExecutionResult.class, false));
     }
 
     /**
