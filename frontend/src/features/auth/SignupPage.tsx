@@ -255,7 +255,10 @@ export default function SignupPage() {
         {step === 4 && (
           <PasswordStep
             value={passwordValue}
-            onChange={setPasswordValue}
+            onChange={(next) => {
+              setPasswordValue(next);
+              if (Object.keys(passwordErrors).length > 0) setPasswordErrors({});
+            }}
             errors={passwordErrors}
           />
         )}
