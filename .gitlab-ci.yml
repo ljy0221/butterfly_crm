@@ -325,6 +325,9 @@ frontend-build:
     VITE_API_BASE_URL: "https://k14b101.p.ssafy.io"
   before_script:
     - cd $FRONTEND_DIR
+    # Toss Payments client key는 Vite 빌드 시점에 import.meta.env로 정적 치환된다.
+    # GitLab CI/CD Variables에 VITE_TOSS_CLIENT_KEY를 등록하지 않으면 배포 번들에 값이 빠진다.
+    - 'test -n "$VITE_TOSS_CLIENT_KEY" || (echo "ERROR: VITE_TOSS_CLIENT_KEY not set (GitLab CI/CD Variables)"; exit 1)'
     - npm ci --prefer-offline --no-audit
   script:
     # tsc -b --noEmit + vite build (package.json의 build 스크립트 정의)
