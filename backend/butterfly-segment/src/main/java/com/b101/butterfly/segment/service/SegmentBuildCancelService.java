@@ -43,6 +43,7 @@ import java.util.UUID;
 public class SegmentBuildCancelService {
 
     private static final String CANCEL_MARKER_PREFIX = "cancel-";
+    private static final int BUILD_TOKEN_MAX_LENGTH = 36;
 
     private final SegmentRepository segmentRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -51,7 +52,7 @@ public class SegmentBuildCancelService {
     public CancelBuildResponse cancelBuild(Long projectId, Long segmentId, Long memberId) {
         // segment 존재 여부는 cancelBuildIfPossible 의 row 매칭으로 판정 — 별도 findById 안 함
         // (race 최소화: 단일 UPDATE statement).
-        String marker = CANCEL_MARKER_PREFIX + UUID.randomUUID();
+        String marker = cancelMarker();
         LocalDateTime now = LocalDateTime.now();
         int updated = segmentRepository.cancelBuildIfPossible(segmentId, marker, now);
 
@@ -79,5 +80,11 @@ public class SegmentBuildCancelService {
                 marker);
 
         return new CancelBuildResponse(segmentId, BuildStatus.FAILED, now);
+    }
+
+    private static String cancelMarker() {
+        int suffixLength = BUILD_TOKEN_MAX_LENGTH - CANCEL_MARKER_PREFIX.length();
+        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, suffixLength);
+        return CANCEL_MARKER_PREFIX + suffix;
     }
 }
