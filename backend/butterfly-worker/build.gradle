@@ -13,6 +13,7 @@ dependencies {
     implementation project(':butterfly-campaign')
     implementation project(':butterfly-notification')
     implementation project(':butterfly-reporting')
+    implementation project(':butterfly-payment')
 
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'

@@ -25,14 +25,25 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-            CorsConfigurationSource corsSource) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOriginPatterns(java.util.List.of("*"));
+        cfg.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        cfg.addAllowedHeader("*");
+        cfg.setExposedHeaders(java.util.List.of("Idempotency-Key"));
+        cfg.setAllowCredentials(true);
+        cfg.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource corsSource = new UrlBasedCorsConfigurationSource();
+        corsSource.registerCorsConfiguration("/**", cfg);
+
         http
                 .cors(cors -> cors.configurationSource(corsSource))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().permitAll()
                 );
 
@@ -43,11 +54,11 @@ public class SecurityConfig {
     @Primary
     public CorsConfigurationSource corsConfigurationSource(CorsProperties props) {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(props.allowedOrigins());
+        cfg.setAllowedOriginPatterns(java.util.List.of("*"));
         cfg.setAllowedMethods(props.allowedMethods());
-        cfg.setAllowedHeaders(props.allowedHeaders());
+        cfg.addAllowedHeader("*");
         cfg.setExposedHeaders(props.exposedHeaders());
-        cfg.setAllowCredentials(props.allowCredentials());
+        cfg.setAllowCredentials(true);
         cfg.setMaxAge(props.maxAgeSeconds());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

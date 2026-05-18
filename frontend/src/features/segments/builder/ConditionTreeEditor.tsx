@@ -1,4 +1,5 @@
 import { Icon, Menu } from "@/components/common";
+import type { UserConditionAttribute } from "@/api/segment";
 import type { ConditionNode } from "@/schemas/segment";
 import type { TreeAction } from "./treeReducer";
 import EventNodeEditor from "./EventNodeEditor";
@@ -18,6 +19,7 @@ export interface ConditionTreeEditorProps {
   node: ConditionNode;
   path: number[];
   dispatch: (action: TreeAction) => void;
+  userAttributes: UserConditionAttribute[];
   disabled?: boolean;
   rootDepth: number;
 }
@@ -26,6 +28,7 @@ export default function ConditionTreeEditor({
   node,
   path,
   dispatch,
+  userAttributes,
   disabled,
   rootDepth,
 }: ConditionTreeEditorProps) {
@@ -36,6 +39,7 @@ export default function ConditionTreeEditor({
         path={path}
         isRoot={path.length === 0}
         dispatch={dispatch}
+        userAttributes={userAttributes}
         disabled={disabled}
         rootDepth={rootDepth}
       />
@@ -68,6 +72,7 @@ export default function ConditionTreeEditor({
         {node.type === "user" && (
           <UserNodeEditor
             value={node}
+            userAttributes={userAttributes}
             disabled={disabled}
             onChange={(next) =>
               dispatch({ type: "UPDATE_NODE", path, node: next })

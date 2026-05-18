@@ -13,6 +13,8 @@ import com.b101.butterfly.event.port.UserTagLookupPort;
 import com.b101.butterfly.notification.dto.request.DeliveryCommand;
 import com.b101.butterfly.notification.port.UserContactInfo;
 import com.b101.butterfly.notification.port.UserContactPort;
+import com.b101.butterfly.payment.application.CreditAccountService;
+import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
 import com.b101.butterfly.worker.config.WorkerKafkaConfig;
 import java.time.Duration;
@@ -98,6 +100,9 @@ class CampaignSendPipelineIntegrationTest {
     @MockitoBean
     private CampaignExecutionResultRecorder campaignExecutionResultRecorder;
 
+    @MockitoBean
+    private CreditAccountService creditAccountService;
+
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
 
@@ -116,7 +121,12 @@ class CampaignSendPipelineIntegrationTest {
         given(messageTemplateLookupPort.lookup(templateId)).willReturn(template);
 
         List<Long> userIds = List.of(1L, 2L, 3L);
-        given(segmentMemberLookupPort.getActiveUserIds(segmentId)).willReturn(userIds);
+        given(segmentMemberLookupPort.getActiveTargets(segmentId, null, Integer.MAX_VALUE))
+                .willReturn(List.of(
+                        new SegmentAudienceTarget(1L, Map.of("name", "Alice")),
+                        new SegmentAudienceTarget(2L, Map.of("name", "Bob")),
+                        new SegmentAudienceTarget(3L, Map.of("name", "Carol"))
+                ));
 
         List<UserContactInfo> contacts = List.of(
                 new UserContactInfo(1L, 101L, "token1", "user1@test.com", "010-1111-1111"),
@@ -153,6 +163,7 @@ class CampaignSendPipelineIntegrationTest {
             assertThat(command.userIds()).containsExactly(1L, 2L, 3L);
             assertThat(command.targets()).hasSize(3);
             assertThat(command.targets().get(0).pushToken()).isEqualTo("token1");
+            assertThat(command.targets().get(0).variables()).containsEntry("name", "Alice");
         });
 
         outputConsumer.close();
@@ -172,7 +183,8 @@ class CampaignSendPipelineIntegrationTest {
                 "제목", "본문", null
         );
         given(messageTemplateLookupPort.lookup(templateId)).willReturn(template);
-        given(segmentMemberLookupPort.getActiveUserIds(segmentId)).willReturn(Collections.emptyList());
+        given(segmentMemberLookupPort.getActiveTargets(segmentId, null, Integer.MAX_VALUE))
+                .willReturn(Collections.emptyList());
 
         CampaignSendInstruction instruction = CampaignSendInstruction.of(
                 888L, 456L, projectId, templateId, segmentId, Channel.PUSH, Instant.now()

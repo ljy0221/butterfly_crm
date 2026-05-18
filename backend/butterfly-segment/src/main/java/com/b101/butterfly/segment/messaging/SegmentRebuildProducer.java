@@ -1,5 +1,6 @@
 package com.b101.butterfly.segment.messaging;
 
+import com.b101.butterfly.segment.repository.SegmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -26,6 +27,7 @@ import java.util.concurrent.ExecutionException;
 public class SegmentRebuildProducer {
 
     private final KafkaTemplate<String, SegmentRebuildMessage> segmentRebuildKafkaTemplate;
+    private final SegmentRepository segmentRepository;
 
     /**
      * {@link SegmentRebuildAcceptedEvent} 를 받아 Kafka 토픽으로 발행.
@@ -36,13 +38,23 @@ public class SegmentRebuildProducer {
      */
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRebuildAccepted(SegmentRebuildAcceptedEvent event) {
-        publishRebuild(
+        SegmentRebuildMessage message =
                 new SegmentRebuildMessage(
                         event.segmentId(),
                         event.projectId(),
                         event.memberId(),
                         event.requestedAt(),
-                        event.conditionTreeHash()));
+                        event.conditionTreeHash());
+        try {
+            publishRebuild(message);
+        } catch (RuntimeException e) {
+            int updated = segmentRepository.forceFailById(event.segmentId());
+            log.error(
+                    "Segment rebuild publish 실패 → FAILED 강제 강등: segmentId={}, updated={}",
+                    event.segmentId(),
+                    updated,
+                    e);
+        }
     }
 
     /**

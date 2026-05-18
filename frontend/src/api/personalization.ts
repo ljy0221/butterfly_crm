@@ -12,8 +12,18 @@ import { api } from "./client";
 export interface RecommendedVariableItem {
   /** 변수명 (tag_key) — 클릭 시 본문에 `{{key}}` 로 삽입됨. */
   key: string;
-  /** 해당 key 를 보유한 사용자 수. */
+  /** 기존 호환 필드. 신규 응답에서는 availableCount 와 동일 의미. */
   userCount: number;
+  /** 변수 출처. */
+  source?: "USER_TAG" | "COUPON" | "CAMPAIGN" | "SYSTEM" | "EVENT_CONTEXT";
+  /** 선택 세그먼트 기준 사용 가능 상태. */
+  status?: "READY" | "PARTIAL" | "MISSING" | "SYSTEM_PROVIDED";
+  /** 값을 보유한 대상자 수. */
+  availableCount?: number;
+  /** 값을 보유하지 않은 대상자 수. */
+  missingCount?: number;
+  /** 본문에 삽입할 토큰. */
+  insertToken?: string;
 }
 
 export interface RecommendedVariableResponse {

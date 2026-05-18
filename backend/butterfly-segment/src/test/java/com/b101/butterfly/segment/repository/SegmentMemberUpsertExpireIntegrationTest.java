@@ -109,6 +109,51 @@ class SegmentMemberUpsertExpireIntegrationTest extends AbstractMySqlContainerTes
             entityManager.clear();
             assertThat(find(SEGMENT_ID, USER_ID).orElseThrow().getMatchedAt()).isEqualTo(second);
         }
+
+        @Test
+        @DisplayName("변수 snapshot을 함께 UPSERT하면 variables_json과 captured_at이 저장된다")
+        void upsertStoresVariableSnapshot() {
+            LocalDateTime capturedAt = LocalDateTime.of(2026, 5, 18, 10, 30);
+
+            repository.upsertMemberWithVariables(
+                    SEGMENT_ID,
+                    USER_ID,
+                    LocalDateTime.now(),
+                    null,
+                    "{\"name\":\"Alice\",\"grade\":\"VIP\"}",
+                    capturedAt);
+
+            entityManager.clear();
+            SegmentMember saved = find(SEGMENT_ID, USER_ID).orElseThrow();
+            assertThat(saved.getVariables())
+                    .containsEntry("name", "Alice")
+                    .containsEntry("grade", "VIP");
+            assertThat(saved.getVariablesCapturedAt()).isEqualTo(capturedAt);
+        }
+
+        @Test
+        @DisplayName("변수 없는 기존 UPSERT는 이미 저장된 snapshot을 지우지 않는다")
+        void legacyUpsertKeepsExistingVariableSnapshot() {
+            LocalDateTime capturedAt = LocalDateTime.of(2026, 5, 18, 10, 30);
+            repository.upsertMemberWithVariables(
+                    SEGMENT_ID,
+                    USER_ID,
+                    LocalDateTime.now(),
+                    null,
+                    "{\"name\":\"Alice\"}",
+                    capturedAt);
+
+            repository.upsertMember(
+                    SEGMENT_ID,
+                    USER_ID,
+                    LocalDateTime.of(2026, 5, 18, 11, 0),
+                    LocalDateTime.of(2026, 6, 1, 0, 0));
+
+            entityManager.clear();
+            SegmentMember saved = find(SEGMENT_ID, USER_ID).orElseThrow();
+            assertThat(saved.getVariables()).containsEntry("name", "Alice");
+            assertThat(saved.getVariablesCapturedAt()).isEqualTo(capturedAt);
+        }
     }
 
     @Nested

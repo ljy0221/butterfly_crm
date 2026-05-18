@@ -16,12 +16,14 @@ import {
   useDashboardQuery,
   useRecentCampaignsQuery,
 } from "@/hooks/queries/analytics";
+import { useCreditBalanceQuery } from "@/hooks/queries/payment";
 import type {
   CampaignMetricItem,
   ChannelMetricItem,
   DailyPoint,
   DashboardSummary,
 } from "@/api/analytics";
+import type { CreditBalanceResponse } from "@/api/payment";
 import {
   dailyTrendToPath,
   formatPeriod,
@@ -73,6 +75,7 @@ export default function Dashboard() {
   const projectId = project?.projectId ?? null;
   const role = project?.role ?? "VIEWER";
   const canEdit = role !== "VIEWER";
+  const isOwner = role === "OWNER";
 
   const [periodKey, setPeriodKey] = useState<PeriodKey>("30");
   const period = useMemo(
@@ -96,6 +99,7 @@ export default function Dashboard() {
     to: period.to,
     size: 5,
   });
+  const creditBalanceQ = useCreditBalanceQuery(projectId, isOwner);
 
   const goCampaignDetail = (campaignId: number) => {
     navigate(`/p/${projectId}/campaigns/${campaignId}`);
@@ -237,9 +241,20 @@ export default function Dashboard() {
             onRetry={() => recentQ.refetch()}
           />
         </Card>
-        <Card title="빠른 작업">
-          <QuickActions canEdit={canEdit} projectId={projectId} />
-        </Card>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {isOwner && (
+            <CreditBalanceCard
+              projectId={projectId}
+              balance={creditBalanceQ.data}
+              isLoading={creditBalanceQ.isLoading}
+              isError={creditBalanceQ.isError}
+              onRetry={() => creditBalanceQ.refetch()}
+            />
+          )}
+          <Card title="빠른 작업">
+            <QuickActions canEdit={canEdit} projectId={projectId} />
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -748,6 +763,110 @@ function RateCell({
       title={isMissing ? "분모가 0이라 비율을 계산할 수 없습니다" : undefined}
     >
       {text}
+    </div>
+  );
+}
+
+// ============================================================
+// 크레딧 요약
+// ============================================================
+
+interface CreditBalanceCardProps {
+  projectId: number | null;
+  balance?: CreditBalanceResponse;
+  isLoading: boolean;
+  isError: boolean;
+  onRetry: () => void;
+}
+
+function CreditBalanceCard({
+  projectId,
+  balance,
+  isLoading,
+  isError,
+  onRetry,
+}: CreditBalanceCardProps) {
+  const navigate = useNavigate();
+
+  return (
+    <Card
+      title="크레딧"
+      subtitle="캠페인 발송 예약 기준"
+      action={
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={Icon.wallet(12)}
+          onClick={() => {
+            if (projectId != null) navigate(`/p/${projectId}/credits/charge`);
+          }}
+          disabled={projectId == null}
+        >
+          충전
+        </Button>
+      }
+    >
+      {isLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <SkeletonBar height={24} width="62%" />
+          <SkeletonBar height={12} width="100%" />
+          <SkeletonBar height={12} width="82%" />
+        </div>
+      ) : isError ? (
+        <ErrorBox message="크레딧 잔액을 불러오지 못했습니다." onRetry={onRetry} />
+      ) : (
+        <div>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
+            사용 가능
+          </div>
+          <div
+            style={{
+              fontSize: 26,
+              fontWeight: 800,
+              color: "#1f2937",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {balance ? balance.availableBalance.toLocaleString() : "—"} 크레딧
+          </div>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+              gap: 8,
+              marginTop: 14,
+            }}
+          >
+            <CreditMiniStat label="총 보유" value={balance?.balance} />
+            <CreditMiniStat label="예약 중" value={balance?.reservedBalance} />
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function CreditMiniStat({ label, value }: { label: string; value?: number }) {
+  return (
+    <div
+      style={{
+        border: "1px solid #e2e8f0",
+        borderRadius: 8,
+        padding: "9px 10px",
+        background: "#f8fafc",
+      }}
+    >
+      <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{label}</div>
+      <div
+        style={{
+          fontSize: 12,
+          color: "#1f2937",
+          fontWeight: 700,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value != null ? value.toLocaleString() : "—"}
+      </div>
     </div>
   );
 }

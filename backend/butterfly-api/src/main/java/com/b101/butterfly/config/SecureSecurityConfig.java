@@ -46,6 +46,7 @@ public class SecureSecurityConfig {
                         new JwtAuthenticationFilter(jwtTokenProvider, redisService),
                         UsernamePasswordAuthenticationFilter.class)
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                         // 공개 인증 경로
                         .requestMatchers(
                                 "/api/v1/auth/login",
@@ -81,9 +82,11 @@ public class SecureSecurityConfig {
     @Primary
     public CorsConfigurationSource corsConfigurationSource(CorsProperties props) {
         CorsConfiguration cfg = new CorsConfiguration();
-        cfg.setAllowedOrigins(props.allowedOrigins());
+        // setAllowedOrigins + allowCredentials=true 조합은 wildcard 불가 — setAllowedOriginPatterns 사용
+        cfg.setAllowedOriginPatterns(props.allowedOrigins());
         cfg.setAllowedMethods(props.allowedMethods());
-        cfg.setAllowedHeaders(props.allowedHeaders());
+        // setAllowedHeaders("*") + allowCredentials=true 조합은 Spring이 거부 — addAllowedHeader 사용
+        cfg.addAllowedHeader("*");
         cfg.setExposedHeaders(props.exposedHeaders());
         cfg.setAllowCredentials(props.allowCredentials());
         cfg.setMaxAge(props.maxAgeSeconds());

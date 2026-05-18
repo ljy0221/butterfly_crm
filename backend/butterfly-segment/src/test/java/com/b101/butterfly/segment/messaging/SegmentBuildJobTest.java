@@ -10,6 +10,7 @@ import com.b101.butterfly.segment.domain.condition.TagNode;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.port.EventAggReader;
 import com.b101.butterfly.segment.port.EventQueryContext;
+import com.b101.butterfly.segment.port.SegmentVariableSnapshotWriter;
 import com.b101.butterfly.segment.port.UserDirectoryReader;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
@@ -56,6 +57,7 @@ class SegmentBuildJobTest {
     @Mock private ConditionTreeToSqlConverter sqlConverter;
     @Mock private UserDirectoryReader userDirectoryReader;
     @Mock private EventAggReader eventAggReader;
+    @Mock private SegmentVariableSnapshotWriter segmentVariableSnapshotWriter;
     @Mock private com.b101.butterfly.segment.service.match.ActiveEventSegmentCache
             activeEventSegmentCache;
 
@@ -85,6 +87,7 @@ class SegmentBuildJobTest {
         verify(userDirectoryReader)
                 .materializeUserMatchesIntoSegment(
                         eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params()));
+        verify(segmentVariableSnapshotWriter).refresh(PROJECT_ID, SEGMENT_ID, segment.getConditionTree());
         verify(userDirectoryReader, never()).queryUserIds(any(), any());
         verify(eventAggReader, never()).queryMatchingUserIds(any(), any());
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
@@ -139,6 +142,7 @@ class SegmentBuildJobTest {
         verify(userDirectoryReader)
                 .materializeUserMatchesIntoSegment(
                         eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params()));
+        verify(segmentVariableSnapshotWriter).refresh(PROJECT_ID, SEGMENT_ID, segment.getConditionTree());
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
                 .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());
@@ -165,6 +169,7 @@ class SegmentBuildJobTest {
         verify(userDirectoryReader)
                 .materializeUserMatchesIntoSegment(
                         eq(SEGMENT_ID), eq(fragment.sql()), eq(fragment.params()));
+        verify(segmentVariableSnapshotWriter).refresh(PROJECT_ID, SEGMENT_ID, segment.getConditionTree());
         ArgumentCaptor<Integer> countCaptor = ArgumentCaptor.forClass(Integer.class);
         verify(segmentRepository)
                 .completeBuildIfOwner(eq(SEGMENT_ID), any(), countCaptor.capture(), any());

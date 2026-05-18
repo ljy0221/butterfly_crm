@@ -35,7 +35,7 @@ import java.util.Optional;
  */
 @Slf4j
 @Component
-@Profile("prod")
+@Profile("!test")
 @RequiredArgsConstructor
 public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
@@ -90,6 +90,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
+        // CORS preflight는 인증 없이 통과
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
         String uri = request.getRequestURI();
         // SDK 표면: /api/v1/events/** (이벤트 수집/액션), /api/v1/devices/** (디바이스 등록)
         // 두 prefix 모두 X-API-Key 인증 + projectId resolve가 필요. ADR-0017 §"인증 필터" 적용 범위.
