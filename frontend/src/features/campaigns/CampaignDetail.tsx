@@ -7,6 +7,7 @@ import {
   StatCard,
   Tag,
 } from "@/components/common";
+import InfoTooltip from "@/components/common/InfoTooltip";
 import { ApiError } from "@/api/types";
 import { confirmDialog, toast } from "@/lib/ui-bus";
 import { mapCampaignError } from "@/lib/campaign-errors";
@@ -18,6 +19,8 @@ import {
   usePauseCampaignMutation,
   useStartCampaignMutation,
 } from "@/hooks/queries/campaign";
+import { useCreditBalanceQuery } from "@/hooks/queries/payment";
+import { useSegmentDetailQuery } from "@/hooks/queries/segment";
 import { useQuery } from "@tanstack/react-query";
 import { getCampaignStats } from "@/api/analytics";
 import { describeRecurring } from "@/lib/cron-preview";
@@ -105,8 +108,33 @@ export default function CampaignDetail() {
   const pauseMut = usePauseCampaignMutation(projectId);
   const deleteMut = useDeleteCampaignMutation(projectId);
 
+  const isOwner = role === "OWNER";
+  const isDraftStatus = campaign?.campaignStatus === "DRAFT";
+  const { data: segmentDetail } = useSegmentDetailQuery(
+    projectId,
+    campaign?.segmentId ?? null,
+    isDraftStatus && campaign?.segmentId != null,
+  );
+  const { data: balance } = useCreditBalanceQuery(projectId, isOwner && isDraftStatus);
+  const segmentAudienceCount = campaign?.segmentId != null
+    ? (segmentDetail?.estimatedCount ?? null)
+    : null;
+  const isZeroAudience = segmentAudienceCount === 0;
+  const isInsufficientBalance = isOwner
+    && balance?.availableBalance != null
+    && segmentAudienceCount != null
+    && balance.availableBalance < segmentAudienceCount;
+
   const onStart = async (): Promise<void> => {
     if (!campaign) return;
+    if (isZeroAudience) {
+      toast("발송 대상이 0명입니다. 세그먼트를 변경한 후 다시 시도해주세요.", "error");
+      return;
+    }
+    if (isInsufficientBalance) {
+      toast("잔액이 부족하여 캠페인을 시작할 수 없습니다.", "error");
+      return;
+    }
     const ok = await confirmDialog({
       title: "캠페인을 시작하시겠습니까?",
       message: "캠페인이 ACTIVE 상태로 전환됩니다.",
@@ -203,6 +231,8 @@ export default function CampaignDetail() {
       onDelete={onDelete}
       onBack={() => navigate(`/p/${projectId}/campaigns`)}
       onEdit={() => navigate(`/p/${projectId}/campaigns/${campaignId}/edit`)}
+      isZeroAudience={isZeroAudience}
+      isInsufficientBalance={isInsufficientBalance}
     />
   );
 }
@@ -217,6 +247,8 @@ interface CampaignDetailBodyProps {
   onDelete: () => void;
   onBack: () => void;
   onEdit: () => void;
+  isZeroAudience: boolean;
+  isInsufficientBalance: boolean;
 }
 
 function CampaignDetailBody({
@@ -229,6 +261,8 @@ function CampaignDetailBody({
   onDelete,
   onBack,
   onEdit,
+  isZeroAudience,
+  isInsufficientBalance,
 }: CampaignDetailBodyProps) {
   // ?tab=overview|logs (Sprint 7)
   const [searchParams, setSearchParams] = useSearchParams();
@@ -287,9 +321,26 @@ function CampaignDetailBody({
                 <Button variant="secondary" size="md" icon={Icon.edit(12)} onClick={onEdit} style={{}}>
                   수정
                 </Button>
-                <Button variant="primaryStrong" size="md" onClick={onStart} style={{}}>
-                  발송 시작
-                </Button>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Button
+                    variant="primaryStrong"
+                    size="md"
+                    onClick={onStart}
+                    disabled={isZeroAudience || isInsufficientBalance}
+                    style={{}}
+                  >
+                    발송 시작
+                  </Button>
+                  <InfoTooltip
+                    message={
+                      isZeroAudience
+                        ? "발송 대상이 0명입니다. 세그먼트를 변경해주세요."
+                        : isInsufficientBalance
+                        ? "잔액 부족 — 충전 후 시작 가능합니다."
+                        : undefined
+                    }
+                  />
+                </div>
               </>
             )}
             {canEdit && isActive && (
