@@ -64,7 +64,7 @@ class CampaignRemoverTest {
     }
 
     @Test
-    @DisplayName("ACTIVE 캠페인은 삭제 거부 (NOT_MODIFIABLE)")
+    @DisplayName("ACTIVE 캠페인은 삭제 거부 (NOT_DELETABLE)")
     void activeCampaignRejected() {
         Campaign campaign = persistedCampaign(PROJECT_ID);
         campaign.activate();
@@ -73,9 +73,38 @@ class CampaignRemoverTest {
         assertThatThrownBy(() -> remover.deleteCampaign(CAMPAIGN_ID, PROJECT_ID))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(CampaignErrorCode.NOT_MODIFIABLE);
+                .isEqualTo(CampaignErrorCode.NOT_DELETABLE);
 
         verify(campaignRepository, never()).delete(any(Campaign.class));
+    }
+
+    @Test
+    @DisplayName("PAUSED 캠페인은 삭제 거부 (NOT_DELETABLE)")
+    void pausedCampaignRejected() {
+        Campaign campaign = persistedCampaign(PROJECT_ID);
+        campaign.activate();
+        campaign.pause();
+        given(campaignRepository.getByCampaignId(CAMPAIGN_ID)).willReturn(campaign);
+
+        assertThatThrownBy(() -> remover.deleteCampaign(CAMPAIGN_ID, PROJECT_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(CampaignErrorCode.NOT_DELETABLE);
+
+        verify(campaignRepository, never()).delete(any(Campaign.class));
+    }
+
+    @Test
+    @DisplayName("ENDED 캠페인 soft delete 허용")
+    void deleteEnded() {
+        Campaign campaign = persistedCampaign(PROJECT_ID);
+        campaign.activate();
+        campaign.complete();
+        given(campaignRepository.getByCampaignId(CAMPAIGN_ID)).willReturn(campaign);
+
+        remover.deleteCampaign(CAMPAIGN_ID, PROJECT_ID);
+
+        verify(campaignRepository, times(1)).delete(campaign);
     }
 
     private Campaign persistedCampaign(Long projectId) {
