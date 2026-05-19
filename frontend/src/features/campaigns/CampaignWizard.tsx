@@ -100,6 +100,7 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
     const cost = state.draft.estimatedAudienceCount;
     return available != null && cost != null && available < cost;
   })();
+  const isZeroAudience = state.draft.estimatedAudienceCount === 0;
 
   const { data: editTarget } = useCampaignDetailQuery(
     projectId,
@@ -273,6 +274,12 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
         toast("필수 항목을 확인해주세요", "warning");
         return;
       }
+    }
+
+    if (startAfter && state.draft.estimatedAudienceCount === 0) {
+      toast("발송 대상이 0명입니다. 세그먼트를 변경하거나 빌드 후 다시 시도해주세요.", "error");
+      dispatch({ type: "set/step", step: 3 });
+      return;
     }
 
     if (startAfter) {
@@ -507,15 +514,27 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
                   >
                     {submitting ? "저장 중..." : "DRAFT로 저장"}
                   </Button>
-                  <Button
-                    variant="primaryStrong"
-                    size="md"
-                    onClick={() => finalizeCreate(true)}
-                    disabled={submitting || isInsufficientBalance}
-                    style={{}}
-                  >
-                    {submitting ? "처리 중..." : startAfterLabel}
-                  </Button>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <Button
+                      variant="primaryStrong"
+                      size="md"
+                      onClick={() => finalizeCreate(true)}
+                      disabled={submitting || isInsufficientBalance || isZeroAudience}
+                      style={{}}
+                    >
+                      {submitting ? "처리 중..." : startAfterLabel}
+                    </Button>
+                    {isInsufficientBalance && (
+                      <span style={{ fontSize: 11, color: "#c2410c" }}>
+                        잔액 부족 — 충전 후 시작 가능합니다
+                      </span>
+                    )}
+                    {isZeroAudience && !isInsufficientBalance && (
+                      <span style={{ fontSize: 11, color: "#c2410c" }}>
+                        발송 대상이 0명입니다
+                      </span>
+                    )}
+                  </div>
                 </>
               )}
             </div>
