@@ -1,4 +1,5 @@
 import { api } from "./client";
+import type { PageResponse } from "./types";
 
 /**
  * 5/22 시연용 — 사용자 프로필 조회.
@@ -32,11 +33,44 @@ export interface UserRecentEvent {
 export interface UserProfile {
   userId: number;
   externalId: string;
+  email: string | null;
+  phone: string | null;
   pushOptIn: boolean;
   signedUpAt: string | null;
   device: UserDeviceSummary | null;
   summary: UserActivitySummary;
   recentEvents: UserRecentEvent[];
+}
+
+export interface UserListItem {
+  userId: number;
+  externalId: string;
+  email: string | null;
+  phone: string | null;
+  pushOptIn: boolean;
+  signedUpAt: string | null;
+  createdAt: string | null;
+  totalEvents: number;
+  lastSeenAt: string | null;
+  purchaseCount: number;
+}
+
+export interface ListUsersParams {
+  page?: number;
+  size?: number;
+  search?: string;
+  sort?: string;
+}
+
+export async function listUsers(
+  projectId: number,
+  params: ListUsersParams = {},
+): Promise<PageResponse<UserListItem>> {
+  const res = await api.get<PageResponse<UserListItem>>(
+    `/api/v1/projects/${projectId}/users`,
+    { params },
+  );
+  return res.data;
 }
 
 export async function getUserProfile(

@@ -19,6 +19,8 @@ import CampaignWizard from "@/features/campaigns/CampaignWizard";
 import CampaignDetail from "@/features/campaigns/CampaignDetail";
 import Events from "@/features/events/Events";
 import EventDetail from "@/features/events/EventDetail";
+import Customers from "@/features/customers/Customers";
+import CustomerProfile from "@/features/customers/CustomerProfile";
 import AdminAuditLogs from "@/features/audit/AdminAuditLogs";
 import AnalyticsHome from "@/features/analytics/AnalyticsHome";
 import SegmentChannelMatrix from "@/features/analytics/SegmentChannelMatrix";
@@ -121,7 +123,11 @@ export const router = createBrowserRouter([
       },
       {
         path: "customers",
-        element: <Placeholder title="고객" domain="customer" sprint="Sprint 7" />,
+        element: <Customers />,
+      },
+      {
+        path: "customers/:customerId",
+        element: <CustomerProfile />,
       },
       {
         path: "users/:userId",

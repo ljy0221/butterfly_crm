@@ -8,6 +8,8 @@ import java.util.List;
 public record UserProfileResponse(
         Long userId,
         String externalId,
+        String email,
+        String phone,
         Boolean pushOptIn,
         LocalDateTime signedUpAt,
         DeviceSummary device,

@@ -1,5 +1,6 @@
 package com.b101.butterfly.event.controller;
 
+import com.b101.butterfly.event.dto.response.UserListItemResponse;
 import com.b101.butterfly.event.dto.response.UserProfileResponse;
 import com.b101.butterfly.event.dto.response.UserProfileResponse.DeviceSummary;
 import com.b101.butterfly.event.dto.response.UserProfileResponse.RecentEvent;
@@ -7,6 +8,7 @@ import com.b101.butterfly.event.dto.response.UserProfileResponse.Summary;
 import com.b101.butterfly.event.exception.EventValidationExceptionHandler;
 import com.b101.butterfly.event.service.UserProfileService;
 import com.b101.butterfly.global.error.GlobalExceptionHandler;
+import com.b101.butterfly.global.response.PageResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,11 +41,53 @@ class UserProfileControllerWebMvcTest {
     private static final String URL = "/api/v1/projects/" + PROJECT_ID + "/users/" + USER_ID;
 
     @Test
+    @DisplayName("GET /users — DB 사용자 목록을 페이지 응답으로 반환")
+    void listUsersReturnsOk() throws Exception {
+        PageResponse<UserListItemResponse> response = PageResponse.of(
+                List.of(new UserListItemResponse(
+                        73L,
+                        "user-73",
+                        "user-73@example.com",
+                        "010-1234-5678",
+                        true,
+                        LocalDateTime.of(2026, 4, 22, 10, 30),
+                        LocalDateTime.of(2026, 4, 22, 10, 31),
+                        47L,
+                        LocalDateTime.of(2026, 5, 14, 15, 30),
+                        2L
+                )),
+                0,
+                20,
+                1
+        );
+        when(userProfileService.listUsers(
+                org.mockito.ArgumentMatchers.eq(PROJECT_ID),
+                org.mockito.ArgumentMatchers.eq("user"),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(response);
+
+        mockMvc.perform(get("/api/v1/projects/" + PROJECT_ID + "/users")
+                        .param("search", "user")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.content[0].userId").value(73))
+                .andExpect(jsonPath("$.data.content[0].externalId").value("user-73"))
+                .andExpect(jsonPath("$.data.content[0].email").value("user-73@example.com"))
+                .andExpect(jsonPath("$.data.content[0].totalEvents").value(47))
+                .andExpect(jsonPath("$.data.content[0].purchaseCount").value(2))
+                .andExpect(jsonPath("$.data.totalElements").value(1));
+    }
+
+    @Test
     @DisplayName("GET /users/{userId} — 200 + 응답 필드 매핑 확인")
     void getProfileReturnsOk() throws Exception {
         UserProfileResponse response = new UserProfileResponse(
                 73L,
                 "user-73",
+                "user-73@example.com",
+                "010-1234-5678",
                 true,
                 LocalDateTime.of(2026, 4, 22, 10, 30),
                 new DeviceSummary("IOS", "2.1.0", "17.0", true, LocalDateTime.now()),
@@ -57,6 +101,7 @@ class UserProfileControllerWebMvcTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.userId").value(73))
                 .andExpect(jsonPath("$.data.externalId").value("user-73"))
+                .andExpect(jsonPath("$.data.email").value("user-73@example.com"))
                 .andExpect(jsonPath("$.data.device.platform").value("IOS"))
                 .andExpect(jsonPath("$.data.device.appVersion").value("2.1.0"))
                 .andExpect(jsonPath("$.data.summary.totalEvents").value(47))
@@ -67,7 +112,7 @@ class UserProfileControllerWebMvcTest {
     @DisplayName("GET /users/{userId} — recent events 배열 매핑 확인")
     void getProfileReturnsRecentEventsArray() throws Exception {
         UserProfileResponse response = new UserProfileResponse(
-                73L, "user-73", true,
+                73L, "user-73", "user-73@example.com", null, true,
                 LocalDateTime.of(2026, 4, 22, 10, 30),
                 null,
                 new Summary(2L, LocalDateTime.of(2026, 5, 14, 15, 30), 0L),
