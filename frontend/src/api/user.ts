@@ -19,7 +19,6 @@ export interface UserDeviceSummary {
 export interface UserActivitySummary {
   totalEvents: number;
   lastSeenAt: string | null;
-  purchaseCount: number;
 }
 
 export interface UserRecentEvent {
@@ -52,7 +51,6 @@ export interface UserListItem {
   createdAt: string | null;
   totalEvents: number;
   lastSeenAt: string | null;
-  purchaseCount: number;
 }
 
 export interface ListUsersParams {

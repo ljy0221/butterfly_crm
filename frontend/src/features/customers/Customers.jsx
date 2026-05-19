@@ -37,7 +37,6 @@ function Customers() {
   const selectedOnPage = customers.filter((customer) => selected.has(customer.userId));
   const allSelected = customers.length > 0 && customers.every((customer) => selected.has(customer.userId));
   const pageEventCount = customers.reduce((sum, customer) => sum + customer.totalEvents, 0);
-  const pagePurchaseCount = customers.reduce((sum, customer) => sum + customer.purchaseCount, 0);
   const pagePushOptInCount = customers.filter((customer) => customer.pushOptIn).length;
 
   const changeQuery = (value) => {
@@ -87,7 +86,7 @@ function Customers() {
         <StatCard label="전체 고객" value={formatCount(data?.totalElements ?? 0)} sub="users 테이블 기준" />
         <StatCard label="현재 페이지" value={`${formatCount(customers.length)}명`} sub={`${page + 1}/${Math.max(data?.totalPages ?? 1, 1)} 페이지`} />
         <StatCard label="푸시 동의" value={`${formatCount(pagePushOptInCount)}명`} sub="현재 페이지 기준" />
-        <StatCard label="행동 이벤트" value={`${formatCount(pageEventCount)}건`} sub={`구매 ${formatCount(pagePurchaseCount)}건`} />
+        <StatCard label="행동 이벤트" value={`${formatCount(pageEventCount)}건`} sub="현재 페이지 기준" />
       </div>
 
       <Card>
@@ -116,13 +115,12 @@ function Customers() {
         )}
 
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "40px 1.6fr 1.6fr .8fr .9fr .9fr .9fr 40px", padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, color: "#64748b", fontWeight: 600 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1.8fr 1.8fr .8fr 1fr 1fr 40px", padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, color: "#64748b", fontWeight: 600 }}>
             <div><Checkbox checked={allSelected} onChange={toggleAll} /></div>
             <div>고객</div>
             <div>이메일</div>
             <div>푸시</div>
             <div>이벤트</div>
-            <div>구매</div>
             <div>최근 활동</div>
             <div></div>
           </div>
@@ -145,7 +143,7 @@ function Customers() {
               onClick={() => navigate(String(customer.userId))}
               style={{
                 display: "grid",
-                gridTemplateColumns: "40px 1.6fr 1.6fr .8fr .9fr .9fr .9fr 40px",
+                gridTemplateColumns: "40px 1.8fr 1.8fr .8fr 1fr 1fr 40px",
                 padding: "14px 16px",
                 alignItems: "center",
                 fontSize: 13,
@@ -172,7 +170,6 @@ function Customers() {
                 <Tag tone={customer.pushOptIn ? "success" : "default"} dot>{customer.pushOptIn ? "동의" : "미동의"}</Tag>
               </div>
               <div style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>{formatCount(customer.totalEvents)}</div>
-              <div style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>{formatCount(customer.purchaseCount)}</div>
               <div style={{ color: "#64748b", fontSize: 12 }}>{formatDateTime(customer.lastSeenAt ?? customer.signedUpAt ?? customer.createdAt)}</div>
               <div onClick={(event) => event.stopPropagation()}>
                 <Menu

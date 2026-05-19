@@ -53,8 +53,7 @@ class UserProfileControllerWebMvcTest {
                         LocalDateTime.of(2026, 4, 22, 10, 30),
                         LocalDateTime.of(2026, 4, 22, 10, 31),
                         47L,
-                        LocalDateTime.of(2026, 5, 14, 15, 30),
-                        2L
+                        LocalDateTime.of(2026, 5, 14, 15, 30)
                 )),
                 0,
                 20,
@@ -76,7 +75,6 @@ class UserProfileControllerWebMvcTest {
                 .andExpect(jsonPath("$.data.content[0].externalId").value("user-73"))
                 .andExpect(jsonPath("$.data.content[0].email").value("user-73@example.com"))
                 .andExpect(jsonPath("$.data.content[0].totalEvents").value(47))
-                .andExpect(jsonPath("$.data.content[0].purchaseCount").value(2))
                 .andExpect(jsonPath("$.data.totalElements").value(1));
     }
 
@@ -91,7 +89,7 @@ class UserProfileControllerWebMvcTest {
                 true,
                 LocalDateTime.of(2026, 4, 22, 10, 30),
                 new DeviceSummary("IOS", "2.1.0", "17.0", true, LocalDateTime.now()),
-                new Summary(47L, LocalDateTime.now(), 0L),
+                new Summary(47L, LocalDateTime.now()),
                 List.of()
         );
         when(userProfileService.getProfile(PROJECT_ID, USER_ID)).thenReturn(response);
@@ -104,8 +102,7 @@ class UserProfileControllerWebMvcTest {
                 .andExpect(jsonPath("$.data.email").value("user-73@example.com"))
                 .andExpect(jsonPath("$.data.device.platform").value("IOS"))
                 .andExpect(jsonPath("$.data.device.appVersion").value("2.1.0"))
-                .andExpect(jsonPath("$.data.summary.totalEvents").value(47))
-                .andExpect(jsonPath("$.data.summary.purchaseCount").value(0));
+                .andExpect(jsonPath("$.data.summary.totalEvents").value(47));
     }
 
     @Test
@@ -115,7 +112,7 @@ class UserProfileControllerWebMvcTest {
                 73L, "user-73", "user-73@example.com", null, true,
                 LocalDateTime.of(2026, 4, 22, 10, 30),
                 null,
-                new Summary(2L, LocalDateTime.of(2026, 5, 14, 15, 30), 0L),
+                new Summary(2L, LocalDateTime.of(2026, 5, 14, 15, 30)),
                 List.of(
                         new RecentEvent(1001L, "product_view",
                                 LocalDateTime.of(2026, 5, 14, 15, 30), "{\"category\":\"운동화\"}"),

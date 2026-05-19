@@ -11,7 +11,6 @@ public record UserListItemResponse(
         LocalDateTime signedUpAt,
         LocalDateTime createdAt,
         long totalEvents,
-        LocalDateTime lastSeenAt,
-        long purchaseCount
+        LocalDateTime lastSeenAt
 ) {
 }

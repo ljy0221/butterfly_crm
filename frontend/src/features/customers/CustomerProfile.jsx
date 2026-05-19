@@ -5,13 +5,6 @@ import { useUserProfileQuery } from "../../hooks/queries/user";
 
 const METRIC_COLORS = ["#5564f2", "#7c5cff", "#45a557", "#e79c1f"];
 
-const TABS = [
-  { key: "all", label: "전체" },
-  { key: "purchase", label: "구매" },
-  { key: "view", label: "조회" },
-  { key: "campaign", label: "캠페인" },
-];
-
 function formatDateTime(iso) {
   if (!iso) return "-";
   const date = new Date(iso);
@@ -22,13 +15,6 @@ function formatDateTime(iso) {
 
 function formatCount(value) {
   return Number(value ?? 0).toLocaleString();
-}
-
-function categoryKind(category) {
-  const normalized = String(category ?? "").toLowerCase();
-  if (normalized.includes("purchase") || normalized.includes("cart") || normalized.includes("wish")) return "purchase";
-  if (normalized.includes("push") || normalized.includes("coupon") || normalized.includes("campaign")) return "campaign";
-  return "view";
 }
 
 function stringifyEventData(eventData) {
@@ -50,9 +36,16 @@ function CustomerProfile() {
   );
 
   const recentEvents = data?.recentEvents ?? [];
+  const tabs = React.useMemo(() => {
+    const categories = Array.from(new Set(recentEvents.map((event) => event.eventCategory).filter(Boolean)));
+    return [
+      { key: "all", label: "전체" },
+      ...categories.slice(0, 5).map((category) => ({ key: category, label: category })),
+    ];
+  }, [recentEvents]);
   const filteredEvents = activeTab === "all"
     ? recentEvents
-    : recentEvents.filter((event) => categoryKind(event.eventCategory) === activeTab);
+    : recentEvents.filter((event) => event.eventCategory === activeTab);
 
   const displayName = data?.externalId ?? `user_id=${customerId}`;
   const initial = displayName.slice(0, 1).toUpperCase();
@@ -72,8 +65,8 @@ function CustomerProfile() {
 
   const metrics = data ? [
     ["총 이벤트", `${formatCount(data.summary.totalEvents)}건`],
-    ["구매 이벤트", `${formatCount(data.summary.purchaseCount)}건`],
     ["최근 활동", formatDateTime(data.summary.lastSeenAt)],
+    ["등록 디바이스", data.device ? data.device.platform : "없음"],
     ["가입일", formatDateTime(data.signedUpAt)],
   ] : [];
 
@@ -465,7 +458,7 @@ function CustomerProfile() {
             <article className="customer-profile-card">
               <h3>행동 이력</h3>
               <div className="customer-profile-tabs" role="tablist" aria-label="행동 이력 필터">
-                {TABS.map((tab) => (
+                {tabs.map((tab) => (
                   <button
                     key={tab.key}
                     type="button"

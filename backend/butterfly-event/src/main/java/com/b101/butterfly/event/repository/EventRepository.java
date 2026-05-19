@@ -46,11 +46,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
   @Query("""
       SELECT e.userId AS userId,
              COUNT(e.id) AS totalEvents,
-             MAX(e.occurredAt) AS lastSeenAt,
-             SUM(CASE WHEN e.categoryId IN (
-                 SELECT c.id FROM EventCategory c
-                 WHERE c.projectId = :projectId AND c.name = :purchaseCategory
-             ) THEN 1 ELSE 0 END) AS purchaseCount
+             MAX(e.occurredAt) AS lastSeenAt
       FROM Event e
       WHERE e.projectId = :projectId
         AND e.userId IN :userIds
@@ -58,8 +54,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
       """)
   List<UserActivitySummaryRow> summarizeByProjectIdAndUserIds(
       @Param("projectId") Long projectId,
-      @Param("userIds") List<Long> userIds,
-      @Param("purchaseCategory") String purchaseCategory
+      @Param("userIds") List<Long> userIds
   );
 
   /**

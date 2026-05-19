@@ -58,13 +58,12 @@ class UserProfileServiceTest {
             @Override public LocalDateTime getLastSeenAt() {
                 return LocalDateTime.of(2026, 5, 14, 15, 30);
             }
-            @Override public Long getPurchaseCount() { return 2L; }
         };
 
         PageRequest pageable = PageRequest.of(0, 20);
         when(userRepository.searchCustomers(projectId, "user", pageable))
                 .thenReturn(new PageImpl<>(List.of(user), pageable, 1));
-        when(eventRepository.summarizeByProjectIdAndUserIds(projectId, List.of(73L), "purchase"))
+        when(eventRepository.summarizeByProjectIdAndUserIds(projectId, List.of(73L)))
                 .thenReturn(List.of(row));
 
         PageResponse<UserListItemResponse> response = service.listUsers(projectId, " user ", pageable);
@@ -77,7 +76,6 @@ class UserProfileServiceTest {
         assertThat(item.email()).isEqualTo("user-73@example.com");
         assertThat(item.phone()).isEqualTo("010-1234-5678");
         assertThat(item.totalEvents()).isEqualTo(47L);
-        assertThat(item.purchaseCount()).isEqualTo(2L);
     }
 
     @Test
@@ -105,8 +103,6 @@ class UserProfileServiceTest {
         when(deviceRepository.findFirstByProjectIdAndUserIdOrderByLastActiveAtDesc(projectId, 73L))
                 .thenReturn(Optional.of(device));
         when(eventRepository.countByProjectIdAndUserId(projectId, 73L)).thenReturn(47L);
-        when(eventRepository.countByProjectIdAndUserIdAndCategoryName(projectId, 73L, "purchase"))
-                .thenReturn(0L);
         when(eventRepository.findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, 73L))
                 .thenReturn(List.of());
 
@@ -120,7 +116,6 @@ class UserProfileServiceTest {
         assertThat(response.device().osVersion()).isEqualTo("17.0");
         assertThat(response.device().tokenValid()).isTrue();
         assertThat(response.summary().totalEvents()).isEqualTo(47L);
-        assertThat(response.summary().purchaseCount()).isEqualTo(0L);
         assertThat(response.recentEvents()).isEmpty();
     }
 
@@ -157,8 +152,6 @@ class UserProfileServiceTest {
         when(deviceRepository.findFirstByProjectIdAndUserIdOrderByLastActiveAtDesc(projectId, 200L))
                 .thenReturn(Optional.empty());
         when(eventRepository.countByProjectIdAndUserId(projectId, 200L)).thenReturn(0L);
-        when(eventRepository.countByProjectIdAndUserIdAndCategoryName(projectId, 200L, "purchase"))
-                .thenReturn(0L);
         when(eventRepository.findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, 200L))
                 .thenReturn(List.of());
 

@@ -33,8 +33,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class UserProfileService {
 
-    private static final String PURCHASE_CATEGORY = "purchase";
-
     private final UserRepository userRepository;
     private final DeviceRepository deviceRepository;
     private final EventRepository eventRepository;
@@ -45,7 +43,7 @@ public class UserProfileService {
         List<Long> userIds = users.stream().map(User::getId).toList();
         Map<Long, UserActivitySummaryRow> summaryByUserId = userIds.isEmpty()
                 ? Map.of()
-                : eventRepository.summarizeByProjectIdAndUserIds(projectId, userIds, PURCHASE_CATEGORY).stream()
+                : eventRepository.summarizeByProjectIdAndUserIds(projectId, userIds).stream()
                 .collect(Collectors.toMap(UserActivitySummaryRow::getUserId, row -> row));
 
         List<UserListItemResponse> content = users.stream()
@@ -68,8 +66,6 @@ public class UserProfileService {
                 .orElse(null);
 
         long total = eventRepository.countByProjectIdAndUserId(projectId, userId);
-        long purchases = eventRepository
-                .countByProjectIdAndUserIdAndCategoryName(projectId, userId, PURCHASE_CATEGORY);
 
         List<Event> recent = eventRepository
                 .findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, userId);
@@ -78,8 +74,7 @@ public class UserProfileService {
 
         Summary summary = new Summary(
                 total,
-                recent.isEmpty() ? null : recent.get(0).getOccurredAt(),
-                purchases
+                recent.isEmpty() ? null : recent.get(0).getOccurredAt()
         );
 
         List<RecentEvent> recentEvents = recent.stream()
@@ -141,8 +136,7 @@ public class UserProfileService {
                 user.getSignedUpAt(),
                 user.getCreatedAt(),
                 summary == null || summary.getTotalEvents() == null ? 0L : summary.getTotalEvents(),
-                summary == null ? null : summary.getLastSeenAt(),
-                summary == null || summary.getPurchaseCount() == null ? 0L : summary.getPurchaseCount()
+                summary == null ? null : summary.getLastSeenAt()
         );
     }
 }

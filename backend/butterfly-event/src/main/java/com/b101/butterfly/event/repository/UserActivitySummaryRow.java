@@ -6,5 +6,4 @@ public interface UserActivitySummaryRow {
     Long getUserId();
     Long getTotalEvents();
     LocalDateTime getLastSeenAt();
-    Long getPurchaseCount();
 }
