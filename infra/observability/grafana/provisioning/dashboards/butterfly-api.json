@@ -1,0 +1,150 @@
+{
+  "uid": "butterfly-api-perf",
+  "title": "Butterfly API 성능",
+  "tags": ["butterfly", "api"],
+  "timezone": "Asia/Seoul",
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP 요청 처리량 (RPS)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\"}[1m]))",
+          "legendFormat": "RPS"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 2,
+      "title": "HTTP 응답시간 p95 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{service=\"butterfly-api\"}[1m]))) * 1000",
+          "legendFormat": "p95 {{uri}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "HTTP 에러율 (%)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\",outcome=~\"SERVER_ERROR|CLIENT_ERROR\"}[1m])) / sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\"}[1m])) * 100",
+          "legendFormat": "에러율"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "JVM 메모리 사용량",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (area) (jvm_memory_used_bytes{service=\"butterfly-api\"})",
+          "legendFormat": "{{area}}"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "id": 5,
+      "title": "HikariCP DB 커넥션",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "hikaricp_connections_active{service=\"butterfly-api\"}",
+          "legendFormat": "active"
+        },
+        {
+          "expr": "hikaricp_connections_idle{service=\"butterfly-api\"}",
+          "legendFormat": "idle"
+        },
+        {
+          "expr": "hikaricp_connections_pending{service=\"butterfly-api\"}",
+          "legendFormat": "pending"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 6,
+      "title": "JVM 스레드",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "jvm_threads_live_threads{service=\"butterfly-api\"}",
+          "legendFormat": "live"
+        },
+        {
+          "expr": "jvm_threads_daemon_threads{service=\"butterfly-api\"}",
+          "legendFormat": "daemon"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 7,
+      "title": "핵심 지표 (현재)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\"}[1m]))",
+          "legendFormat": "RPS"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{service=\"butterfly-api\"}[1m]))) * 1000",
+          "legendFormat": "p95 (ms)"
+        },
+        {
+          "expr": "hikaricp_connections_active{service=\"butterfly-api\"}",
+          "legendFormat": "DB 커넥션"
+        }
+      ],
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" }
+    }
+  ]
+}
