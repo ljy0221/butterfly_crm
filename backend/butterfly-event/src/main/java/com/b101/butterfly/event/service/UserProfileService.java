@@ -1,5 +1,6 @@
 package com.b101.butterfly.event.service;
 
+import com.b101.butterfly.event.dto.response.UserListItemResponse;
 import com.b101.butterfly.event.dto.response.UserProfileResponse;
 import com.b101.butterfly.event.dto.response.UserProfileResponse.DeviceSummary;
 import com.b101.butterfly.event.dto.response.UserProfileResponse.RecentEvent;
@@ -12,9 +13,13 @@ import com.b101.butterfly.event.exception.UserProfileErrorCode;
 import com.b101.butterfly.event.repository.DeviceRepository;
 import com.b101.butterfly.event.repository.EventCategoryRepository;
 import com.b101.butterfly.event.repository.EventRepository;
+import com.b101.butterfly.event.repository.UserActivitySummaryRow;
 import com.b101.butterfly.event.repository.UserRepository;
 import com.b101.butterfly.global.error.BusinessException;
+import com.b101.butterfly.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +33,25 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class UserProfileService {
 
-    private static final String PURCHASE_CATEGORY = "purchase";
-
     private final UserRepository userRepository;
     private final DeviceRepository deviceRepository;
     private final EventRepository eventRepository;
     private final EventCategoryRepository eventCategoryRepository;
+
+    public PageResponse<UserListItemResponse> listUsers(Long projectId, String search, Pageable pageable) {
+        Page<User> users = userRepository.searchCustomers(projectId, search == null ? "" : search.trim(), pageable);
+        List<Long> userIds = users.stream().map(User::getId).toList();
+        Map<Long, UserActivitySummaryRow> summaryByUserId = userIds.isEmpty()
+                ? Map.of()
+                : eventRepository.summarizeByProjectIdAndUserIds(projectId, userIds).stream()
+                .collect(Collectors.toMap(UserActivitySummaryRow::getUserId, row -> row));
+
+        List<UserListItemResponse> content = users.stream()
+                .map(user -> toListItem(user, summaryByUserId.get(user.getId())))
+                .toList();
+
+        return PageResponse.of(content, users.getNumber(), users.getSize(), users.getTotalElements());
+    }
 
     public UserProfileResponse getProfile(Long projectId, Long userId) {
         User user = userRepository.findById(userId)
@@ -48,8 +66,6 @@ public class UserProfileService {
                 .orElse(null);
 
         long total = eventRepository.countByProjectIdAndUserId(projectId, userId);
-        long purchases = eventRepository
-                .countByProjectIdAndUserIdAndCategoryName(projectId, userId, PURCHASE_CATEGORY);
 
         List<Event> recent = eventRepository
                 .findTop20ByProjectIdAndUserIdOrderByOccurredAtDesc(projectId, userId);
@@ -58,8 +74,7 @@ public class UserProfileService {
 
         Summary summary = new Summary(
                 total,
-                recent.isEmpty() ? null : recent.get(0).getOccurredAt(),
-                purchases
+                recent.isEmpty() ? null : recent.get(0).getOccurredAt()
         );
 
         List<RecentEvent> recentEvents = recent.stream()
@@ -69,6 +84,8 @@ public class UserProfileService {
         return new UserProfileResponse(
                 user.getId(),
                 user.getExternalId(),
+                user.getEmail(),
+                user.getPhone(),
                 user.getPushOptIn(),
                 user.getSignedUpAt(),
                 deviceSummary,
@@ -106,6 +123,20 @@ public class UserProfileService {
                 name,
                 e.getOccurredAt(),
                 e.getEventData()
+        );
+    }
+
+    private UserListItemResponse toListItem(User user, UserActivitySummaryRow summary) {
+        return new UserListItemResponse(
+                user.getId(),
+                user.getExternalId(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getPushOptIn(),
+                user.getSignedUpAt(),
+                user.getCreatedAt(),
+                summary == null || summary.getTotalEvents() == null ? 0L : summary.getTotalEvents(),
+                summary == null ? null : summary.getLastSeenAt()
         );
     }
 }

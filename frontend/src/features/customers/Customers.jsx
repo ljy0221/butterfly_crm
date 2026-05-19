@@ -1,127 +1,209 @@
 import React from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-  Icon, Button, Tag, ChannelBadge, CampaignStatus, Card, StatCard,
-  Input, Select, Avatar, Checkbox, Menu, SearchInput, PageHeader,
+  Avatar, Button, Card, Checkbox, Icon, Menu, PageHeader, SearchInput, StatCard, Tag,
 } from "../../components/common";
-import { toast, openModal, confirmDialog } from "../../lib/ui-bus";
-import { fmtNum } from "../../utils/fmt.js";
-import { CRM_DATA } from "../../data/mock.js";
-import CustomerDetailDrawer from "./CustomerDetailDrawer.jsx";
+import { toast, openModal } from "../../lib/ui-bus";
+import { useUsersQuery } from "../../hooks/queries/user";
 import AddToSegmentModal from "./AddToSegmentModal.jsx";
 
-function Customers() {
-  const { CUSTOMERS } = CRM_DATA;
-  const tierTone = t => t === "VIP" ? "warning" : t === "Regular" ? "info" : t === "New" ? "success" : "default";
-  const [query, setQuery] = React.useState("");
-  const [tierFilter, setTierFilter] = React.useState("all");
-  const [selected, setSelected] = React.useState(new Set());
-  const filtered = CUSTOMERS.filter(c =>
-    (!query || c.name.includes(query) || c.email.toLowerCase().includes(query.toLowerCase()) || c.id.includes(query))
-    && (tierFilter === "all" || c.tier === tierFilter)
-  );
-  const toggle = (id) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const allSelected = filtered.length > 0 && filtered.every(c => selected.has(c.id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(filtered.map(c => c.id)));
+function formatDateTime(iso) {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  const pad = (value) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
 
-  const bulkDelete = async () => {
-    const ok = await confirmDialog({ title: `${selected.size}명 삭제`, desc: "선택한 고객은 소프트 삭제됩니다. 이력은 유지됩니다.", ok: "삭제", danger: true });
-    if (ok) { toast(`${selected.size}명을 삭제 처리했습니다`, "success"); setSelected(new Set()); }
+function formatCount(value) {
+  return Number(value ?? 0).toLocaleString();
+}
+
+function Customers() {
+  const navigate = useNavigate();
+  const { projectId: projectIdParam } = useParams();
+  const projectId = Number(projectIdParam);
+  const [query, setQuery] = React.useState("");
+  const [page, setPage] = React.useState(0);
+  const [selected, setSelected] = React.useState(new Set());
+  const pageSize = 20;
+
+  const { data, isLoading, error } = useUsersQuery(
+    Number.isFinite(projectId) ? projectId : null,
+    { page, size: pageSize, search: query },
+  );
+
+  const customers = data?.content ?? [];
+  const selectedOnPage = customers.filter((customer) => selected.has(customer.userId));
+  const allSelected = customers.length > 0 && customers.every((customer) => selected.has(customer.userId));
+  const pageEventCount = customers.reduce((sum, customer) => sum + customer.totalEvents, 0);
+  const pagePushOptInCount = customers.filter((customer) => customer.pushOptIn).length;
+
+  const changeQuery = (value) => {
+    setQuery(value);
+    setPage(0);
+    setSelected(new Set());
   };
-  const bulkAddSegment = () => openModal(({ close }) => <AddToSegmentModal close={close} count={selected.size} onDone={() => { setSelected(new Set()); }} />);
+
+  const toggle = (userId) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(userId) ? next.delete(userId) : next.add(userId);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allSelected) {
+        customers.forEach((customer) => next.delete(customer.userId));
+      } else {
+        customers.forEach((customer) => next.add(customer.userId));
+      }
+      return next;
+    });
+  };
+
+  const openSegmentModal = () => {
+    openModal(({ close }) => (
+      <AddToSegmentModal
+        close={close}
+        count={selectedOnPage.length}
+        onDone={() => setSelected(new Set())}
+      />
+    ));
+  };
 
   return (
     <div>
       <PageHeader
         title="고객"
-        subtitle="프로젝트에 유입된 전체 사용자를 조회합니다."
-        actions={<>
-          <Button variant="secondary" size="md" icon={Icon.copy(12)} onClick={() => toast("CSV 내보내기를 시작했습니다. 다운로드 링크를 이메일로 전송합니다.", "success")}>CSV 내보내기</Button>
-        </>}
+        subtitle="DB에 저장된 프로젝트 고객을 조회합니다."
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
-        <StatCard label="전체 고객" value="284,911" delta="1,284 증가" trend="up" sub="지난 7일" />
-        <StatCard label="활성 고객" value="248,392" sub="30일 내 이벤트" />
-        <StatCard label="VIP 고객" value="8,291" delta="2.4%" trend="up" />
-        <StatCard label="휴면 고객" value="48,210" delta="0.8%" trend="down" sub="90일+ 비활성" />
+        <StatCard label="전체 고객" value={formatCount(data?.totalElements ?? 0)} sub="users 테이블 기준" />
+        <StatCard label="현재 페이지" value={`${formatCount(customers.length)}명`} sub={`${page + 1}/${Math.max(data?.totalPages ?? 1, 1)} 페이지`} />
+        <StatCard label="푸시 동의" value={`${formatCount(pagePushOptInCount)}명`} sub="현재 페이지 기준" />
+        <StatCard label="행동 이벤트" value={`${formatCount(pageEventCount)}건`} sub="현재 페이지 기준" />
       </div>
 
       <Card>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-          <SearchInput placeholder="이메일, 유저 ID, 이름으로 검색" value={query} onChange={setQuery} width={320} />
-          <div style={{ display: "flex", gap: 4, padding: 3, background: "#f1f5f9", borderRadius: 8 }}>
-            {[["all","전체"],["VIP","VIP"],["Regular","Regular"],["New","신규"],["Dormant","휴면"]].map(([k, l]) => (
-              <button key={k} onClick={() => setTierFilter(k)} style={{
-                padding: "5px 12px", fontSize: 11, fontWeight: 500, border: 0, borderRadius: 6,
-                background: tierFilter === k ? "#fff" : "transparent", color: tierFilter === k ? "#1f2937" : "#64748b",
-                cursor: "pointer", fontFamily: "inherit",
-                boxShadow: tierFilter === k ? "0 1px 2px rgba(0,0,0,.06)" : "none",
-              }}>{l}</button>
-            ))}
-          </div>
+          <SearchInput
+            placeholder="외부 ID, 이메일, 전화번호로 검색"
+            value={query}
+            onChange={changeQuery}
+            width={360}
+          />
           <div style={{ flex: 1 }} />
-          <span style={{ fontSize: 12, color: "#64748b" }}>총 <b style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>{filtered.length}</b>명 {selected.size > 0 && <span style={{ color: "#3b5bdb" }}>· {selected.size} 선택</span>}</span>
+          <span style={{ fontSize: 12, color: "#64748b" }}>
+            총 <b style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>{formatCount(data?.totalElements ?? 0)}</b>명
+            {selected.size > 0 && <span style={{ color: "#3b5bdb" }}> · {selected.size} 선택</span>}
+          </span>
         </div>
 
         {selected.size > 0 && (
           <div style={{ padding: "10px 14px", background: "#eff3fe", border: "1px solid #bfd1fe", borderRadius: 8, marginBottom: 12, display: "flex", alignItems: "center", gap: 10 }}>
             <span style={{ fontSize: 12, color: "#1e40af", fontWeight: 600 }}>{selected.size}명 선택됨</span>
-            <Button variant="secondary" size="sm" icon={Icon.plus(12)} onClick={bulkAddSegment}>세그먼트에 추가</Button>
-            <Button variant="ghost" size="sm" icon={Icon.send(12)} onClick={() => toast("캠페인 생성 화면으로 이동합니다", "info")}>캠페인 만들기</Button>
+            <Button variant="secondary" size="sm" icon={Icon.plus(12)} onClick={openSegmentModal}>세그먼트에 추가</Button>
+            <Button variant="ghost" size="sm" icon={Icon.send(12)} onClick={() => toast("선택 고객 기반 캠페인 생성은 세그먼트 연결 후 진행합니다.", "info")}>캠페인 만들기</Button>
             <div style={{ flex: 1 }} />
-            <Button variant="danger" size="sm" icon={Icon.trash(12)} onClick={bulkDelete}>삭제</Button>
             <span onClick={() => setSelected(new Set())} style={{ fontSize: 11, color: "#64748b", cursor: "pointer" }}>선택 해제</span>
           </div>
         )}
 
         <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "40px 2fr 2fr 0.8fr 0.8fr 1.2fr 0.8fr 40px", padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, color: "#64748b", fontWeight: 600 }}>
-            <div><Checkbox checked={allSelected} onChange={toggleAll} /></div><div>고객</div><div>이메일</div><div>이벤트</div><div>최근 활동</div><div>누적 결제</div><div>등급</div><div></div>
+          <div style={{ display: "grid", gridTemplateColumns: "40px 1.8fr 1.8fr .8fr 1fr 1fr 40px", padding: "12px 16px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: 11, color: "#64748b", fontWeight: 600 }}>
+            <div><Checkbox checked={allSelected} onChange={toggleAll} /></div>
+            <div>고객</div>
+            <div>이메일</div>
+            <div>푸시</div>
+            <div>이벤트</div>
+            <div>최근 활동</div>
+            <div></div>
           </div>
-          {filtered.length === 0 && (
-            <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>검색 결과가 없습니다</div>
+
+          {isLoading && (
+            <div style={{ padding: 60, textAlign: "center", color: "#64748b", fontSize: 13 }}>고객을 불러오는 중입니다.</div>
           )}
-          {filtered.map((c, i) => (
-            <div key={c.id} onClick={() => openModal(({close}) => <CustomerDetailDrawer close={close} customer={c} />)} style={{
-              display: "grid", gridTemplateColumns: "40px 2fr 2fr 0.8fr 0.8fr 1.2fr 0.8fr 40px",
-              padding: "14px 16px", alignItems: "center", fontSize: 13, cursor: "pointer",
-              borderBottom: i < filtered.length - 1 ? "1px solid #f1f5f9" : "none",
-              background: selected.has(c.id) ? "#fafbfe" : "#fff",
-              transition: "background 120ms",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = selected.has(c.id) ? "#eff3fe" : "#f8fafc"}
-              onMouseLeave={e => e.currentTarget.style.background = selected.has(c.id) ? "#fafbfe" : "#fff"}
+          {error && (
+            <div style={{ padding: 60, textAlign: "center", color: "#b91c1c", fontSize: 13 }}>
+              고객 목록을 불러오지 못했습니다.
+            </div>
+          )}
+          {!isLoading && !error && customers.length === 0 && (
+            <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>검색 결과가 없습니다.</div>
+          )}
+
+          {!isLoading && !error && customers.map((customer, index) => (
+            <div
+              key={customer.userId}
+              onClick={() => navigate(String(customer.userId))}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "40px 1.8fr 1.8fr .8fr 1fr 1fr 40px",
+                padding: "14px 16px",
+                alignItems: "center",
+                fontSize: 13,
+                cursor: "pointer",
+                borderBottom: index < customers.length - 1 ? "1px solid #f1f5f9" : "none",
+                background: selected.has(customer.userId) ? "#fafbfe" : "#fff",
+                transition: "background 120ms",
+              }}
+              onMouseEnter={(event) => { event.currentTarget.style.background = selected.has(customer.userId) ? "#eff3fe" : "#f8fafc"; }}
+              onMouseLeave={(event) => { event.currentTarget.style.background = selected.has(customer.userId) ? "#fafbfe" : "#fff"; }}
             >
-              <div onClick={e => { e.stopPropagation(); toggle(c.id); }}><Checkbox checked={selected.has(c.id)} onChange={() => toggle(c.id)} /></div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Avatar name={c.name} size={28} />
-                <div>
-                  <div style={{ color: "#1f2937", fontWeight: 500 }}>{c.name}</div>
-                  <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "var(--font-mono)" }}>{c.id}</div>
+              <div onClick={(event) => { event.stopPropagation(); toggle(customer.userId); }}>
+                <Checkbox checked={selected.has(customer.userId)} onChange={() => toggle(customer.userId)} />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <Avatar name={customer.externalId} size={28} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ color: "#1f2937", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{customer.externalId}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", fontFamily: "var(--font-mono)" }}>user_id={customer.userId}</div>
                 </div>
               </div>
-              <div style={{ color: "#64748b", fontSize: 12 }}>{c.email}</div>
-              <div style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>{c.events}</div>
-              <div style={{ color: "#64748b", fontSize: 12 }}>{c.last}</div>
-              <div style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums", fontWeight: 500 }}>₩{c.ltv}</div>
-              <div><Tag tone={tierTone(c.tier)} dot>{c.tier}</Tag></div>
-              <div onClick={e => e.stopPropagation()}>
+              <div style={{ color: "#64748b", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{customer.email ?? "-"}</div>
+              <div>
+                <Tag tone={customer.pushOptIn ? "success" : "default"} dot>{customer.pushOptIn ? "동의" : "미동의"}</Tag>
+              </div>
+              <div style={{ color: "#1f2937", fontVariantNumeric: "tabular-nums" }}>{formatCount(customer.totalEvents)}</div>
+              <div style={{ color: "#64748b", fontSize: 12 }}>{formatDateTime(customer.lastSeenAt ?? customer.signedUpAt ?? customer.createdAt)}</div>
+              <div onClick={(event) => event.stopPropagation()}>
                 <Menu
                   trigger={<button style={{ width: 26, height: 26, border: 0, borderRadius: 6, background: "transparent", color: "#94a3b8", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{Icon.dots(14)}</button>}
                   items={[
-                    { label: "상세 보기", icon: Icon.edit(12), onClick: () => openModal(({close}) => <CustomerDetailDrawer close={close} customer={c} />) },
-                    { label: "캠페인 보내기", icon: Icon.send(12), onClick: () => toast(`${c.name}에게 단건 캠페인 화면을 엽니다`, "info") },
-                    { label: "세그먼트에 추가", icon: Icon.plus(12), onClick: () => openModal(({close}) => <AddToSegmentModal close={close} count={1} onDone={()=>{}} />) },
-                    { divider: true },
-                    { label: "고객 삭제", icon: Icon.trash(12), danger: true, onClick: async () => {
-                      const ok = await confirmDialog({ title: "고객 삭제", desc: `${c.name}님을 소프트 삭제합니다.`, ok: "삭제", danger: true });
-                      if (ok) toast(`${c.name}님을 삭제 처리했습니다`, "success");
-                    }},
+                    { label: "상세 보기", icon: Icon.edit(12), onClick: () => navigate(String(customer.userId)) },
+                    { label: "세그먼트에 추가", icon: Icon.plus(12), onClick: () => openModal(({ close }) => <AddToSegmentModal close={close} count={1} onDone={() => {}} />) },
                   ]}
                 />
               </div>
             </div>
           ))}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={page <= 0}
+            onClick={() => setPage((value) => Math.max(value - 1, 0))}
+          >
+            이전
+          </Button>
+          <span style={{ fontSize: 12, color: "#64748b" }}>
+            {page + 1} / {Math.max(data?.totalPages ?? 1, 1)}
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={!data || page + 1 >= data.totalPages}
+            onClick={() => setPage((value) => value + 1)}
+          >
+            다음
+          </Button>
         </div>
       </Card>
     </div>
