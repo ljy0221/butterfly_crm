@@ -13,6 +13,7 @@ import com.b101.butterfly.global.error.BusinessException;
 import java.time.Clock;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>publish 실패 시 트랜잭션 롤백 → Campaign DRAFT 복원 + Execution row 미생성.
  */
+@Slf4j
 @Service
 @Profile("api")
 @RequiredArgsConstructor
@@ -47,6 +49,7 @@ public class CampaignActivator {
 
     @Transactional
     public Long activate(Long campaignId, Long projectId) {
+        log.info("캠페인 활성화 시작: campaignId={}, projectId={}", campaignId, projectId);
         Campaign campaign = campaignRepository.getByCampaignId(campaignId);
         assertOwnedBy(campaign, projectId);
         assertActivatable(campaign);
@@ -74,6 +77,8 @@ public class CampaignActivator {
         ));
         saved.markAsSent();
 
+        log.info("캠페인 활성화 완료: campaignId={}, executionId={}, channel={}",
+                campaignId, saved.getCampaignExecutionId(), campaign.getChannel());
         return saved.getCampaignExecutionId();
     }
 

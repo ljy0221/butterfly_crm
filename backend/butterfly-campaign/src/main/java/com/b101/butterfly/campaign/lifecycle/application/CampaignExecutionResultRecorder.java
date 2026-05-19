@@ -9,6 +9,7 @@ import com.b101.butterfly.campaign.lifecycle.domain.enums.CampaignType;
 import com.b101.butterfly.campaign.lifecycle.exception.code.CampaignErrorCode;
 import com.b101.butterfly.global.error.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>RECURRING/AUTOMATION: 회차/이벤트 정책 정의 후 별 트랙에서 처리 — 현재는 ACTIVE 유지</li>
  * </ul>
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CampaignExecutionResultRecorder {
@@ -44,9 +46,11 @@ public class CampaignExecutionResultRecorder {
      */
     @Transactional
     public void recordCompletion(Long executionId) {
+        log.info("캠페인 실행 성공 기록: executionId={}", executionId);
         CampaignExecution execution = findExecution(executionId);
         execution.markAsSuccess();
         maybeEndCampaign(execution.getCampaignId());
+        log.info("캠페인 실행 성공 기록 완료: executionId={}, campaignId={}", executionId, execution.getCampaignId());
     }
 
     /**
@@ -60,9 +64,11 @@ public class CampaignExecutionResultRecorder {
      */
     @Transactional
     public void recordFailure(Long executionId) {
+        log.warn("캠페인 실행 실패 기록: executionId={}", executionId);
         CampaignExecution execution = findExecution(executionId);
         execution.markAsFailed();
         maybeEndCampaign(execution.getCampaignId());
+        log.warn("캠페인 실행 실패 기록 완료: executionId={}, campaignId={}", executionId, execution.getCampaignId());
     }
 
     /**
