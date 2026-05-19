@@ -285,7 +285,7 @@ export default function Segments() {
               <div></div>
               <div>세그먼트</div>
               <div>생성자</div>
-              <div>예상 모수</div>
+              <div>대상자</div>
               <div>캠페인</div>
               <div>빌드 상태</div>
               <div></div>
@@ -384,6 +384,7 @@ function Row({
           : segment.estimatedCount != null
             ? fmtNum(segment.estimatedCount)
             : "—";
+  const pushStats = segment.audienceStats;
 
   return (
     <div
@@ -500,25 +501,43 @@ function Row({
           color: buildStatus === "FAILED" ? "#b91c1c" : "#1f2937",
           fontVariantNumeric: "tabular-nums",
           fontWeight: 500,
+          minWidth: 0,
         }}
       >
-        {buildStatus === "BUILDING" && (
-          <span
-            aria-hidden
+        <div>
+          {buildStatus === "BUILDING" && (
+            <span
+              aria-hidden
+              style={{
+                display: "inline-block",
+                width: 10,
+                height: 10,
+                border: "2px solid #e2e8f0",
+                borderTopColor: "#3b5bdb",
+                borderRadius: 999,
+                animation: "spin 0.8s linear infinite",
+                marginRight: 6,
+                verticalAlign: "middle",
+              }}
+            />
+          )}
+          {reachDisplay}
+        </div>
+        {buildStatus === "READY" && pushStats && (
+          <div
             style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              border: "2px solid #e2e8f0",
-              borderTopColor: "#3b5bdb",
-              borderRadius: 999,
-              animation: "spin 0.8s linear infinite",
-              marginRight: 6,
-              verticalAlign: "middle",
+              marginTop: 2,
+              fontSize: 10.5,
+              color: "#64748b",
+              fontWeight: 500,
+              whiteSpace: "nowrap",
             }}
-          />
+          >
+            푸시 {fmtNum(pushStats.pushSendableCount)}
+            <span style={{ color: "#cbd5e1" }}> / </span>
+            동의 {fmtNum(pushStats.pushOptInCount)}
+          </div>
         )}
-        {reachDisplay}
       </div>
       <div>
         <Tag

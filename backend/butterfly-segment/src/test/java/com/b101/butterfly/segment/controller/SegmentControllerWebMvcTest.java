@@ -18,6 +18,7 @@ import com.b101.butterfly.segment.dto.response.FavoritesResponse;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignSummary;
 import com.b101.butterfly.segment.dto.response.LinkedCampaignsResponse;
 import com.b101.butterfly.segment.dto.response.RebuildResponse;
+import com.b101.butterfly.segment.dto.response.SegmentAudienceStatsResponse;
 import com.b101.butterfly.segment.dto.response.SegmentConditionMetadataResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
@@ -369,6 +370,7 @@ class SegmentControllerWebMvcTest {
                 null,
                 3,
                 null,
+                SegmentAudienceStatsResponse.zero(),
                 null,
                 null,
                 BuildStatus.PENDING,

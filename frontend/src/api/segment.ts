@@ -72,11 +72,18 @@ export interface LinkedCampaignSummary {
   campaignStatus: string;
 }
 
+export interface SegmentAudienceStats {
+  totalCount: number;
+  pushOptInCount: number;
+  pushSendableCount: number;
+}
+
 export interface SegmentSummary {
   segmentId: number;
   name: string;
   description: string;
   estimatedCount: number | null;
+  audienceStats: SegmentAudienceStats | null;
   buildStatus: BuildStatus;
   createdBy: CreatorSummary;
   createdAt: string;
@@ -104,6 +111,7 @@ export interface SegmentDetail {
   conditionTree: GroupNode;
   schemaVersion: number;
   estimatedCount: number | null;
+  audienceStats: SegmentAudienceStats | null;
   estimatedAt: string | null;
   lastBuiltAt: string | null;
   buildStatus: BuildStatus;

@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useFavoritesQuery,
   useSegmentListQuery,
 } from "@/hooks/queries/segment";
 import type { SegmentSummary } from "@/api/segment";
+import type { Channel } from "@/schemas/campaign";
 import type { FieldErrorMap, WizardDraft } from "./wizardReducer";
 
 /**
@@ -44,6 +45,25 @@ export default function Step3Segment({
   }, [listData?.content, q]);
 
   const favorites = favoritesData?.favorites ?? [];
+  const segmentsById = useMemo(() => {
+    return new Map((listData?.content ?? []).map((s) => [s.segmentId, s]));
+  }, [listData?.content]);
+
+  useEffect(() => {
+    if (draft.segmentId == null) return;
+    const selected = segmentsById.get(draft.segmentId);
+    if (!selected) return;
+    const nextCount = audienceCountForChannel(selected, draft.channel);
+    if (nextCount !== draft.estimatedAudienceCount) {
+      onSelect(selected.segmentId, selected.name, nextCount);
+    }
+  }, [
+    draft.channel,
+    draft.estimatedAudienceCount,
+    draft.segmentId,
+    onSelect,
+    segmentsById,
+  ]);
 
   return (
     <div>
@@ -94,11 +114,15 @@ export default function Step3Segment({
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {favorites.map((f) => {
               const active = draft.segmentId === f.segmentId;
+              const listSegment = segmentsById.get(f.segmentId);
+              const count = listSegment
+                ? audienceCountForChannel(listSegment, draft.channel)
+                : f.estimatedCount ?? null;
               return (
                 <button
                   key={f.segmentId}
                   type="button"
-                  onClick={() => onSelect(f.segmentId, f.name, f.estimatedCount ?? null)}
+                  onClick={() => onSelect(f.segmentId, f.name, count)}
                   style={{
                     fontSize: 12,
                     padding: "5px 10px",
@@ -113,9 +137,9 @@ export default function Step3Segment({
                   }}
                 >
                   {f.name}
-                  {f.estimatedCount != null && (
+                  {count != null && (
                     <span style={{ marginLeft: 6, color: active ? "#3b5bdb" : "#94a3b8" }}>
-                      · {f.estimatedCount.toLocaleString()}
+                      · {count.toLocaleString()}
                     </span>
                   )}
                 </button>
@@ -187,8 +211,13 @@ export default function Step3Segment({
             <SegmentCard
               key={s.segmentId}
               segment={s}
+              channel={draft.channel}
               active={draft.segmentId === s.segmentId}
-              onSelect={() => onSelect(s.segmentId, s.name, s.estimatedCount ?? null)}
+              onSelect={() => onSelect(
+                s.segmentId,
+                s.name,
+                audienceCountForChannel(s, draft.channel),
+              )}
             />
           ))}
         </div>
@@ -199,14 +228,17 @@ export default function Step3Segment({
 
 function SegmentCard({
   segment,
+  channel,
   active,
   onSelect,
 }: {
   segment: SegmentSummary;
+  channel: Channel;
   active: boolean;
   onSelect: () => void;
 }) {
   const ready = segment.buildStatus === "READY";
+  const countLabel = audienceLabelForChannel(segment, channel);
   return (
     <button
       type="button"
@@ -241,14 +273,38 @@ function SegmentCard({
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#94a3b8" }}>
         <span>
-          {ready && segment.estimatedCount != null
-            ? `예상 ${segment.estimatedCount.toLocaleString()}명`
-            : "예상 수치 없음"}
+          {ready ? countLabel : "예상 수치 없음"}
         </span>
         <span>연결 {segment.linkedCampaignCount}</span>
       </div>
     </button>
   );
+}
+
+function audienceCountForChannel(
+  segment: SegmentSummary,
+  channel: Channel,
+): number | null {
+  if (channel === "PUSH") {
+    return segment.audienceStats?.pushSendableCount ?? segment.estimatedCount ?? null;
+  }
+  return segment.estimatedCount ?? null;
+}
+
+function audienceLabelForChannel(
+  segment: SegmentSummary,
+  channel: Channel,
+): string {
+  const count = audienceCountForChannel(segment, channel);
+  if (count == null) return "예상 수치 없음";
+  if (channel !== "PUSH") {
+    return `예상 ${count.toLocaleString()}명`;
+  }
+  const total = segment.audienceStats?.totalCount ?? segment.estimatedCount;
+  if (total == null) {
+    return `푸시 가능 ${count.toLocaleString()}명`;
+  }
+  return `푸시 가능 ${count.toLocaleString()}명 / 전체 ${total.toLocaleString()}명`;
 }
 
 function optionCardStyle(active: boolean): React.CSSProperties {
