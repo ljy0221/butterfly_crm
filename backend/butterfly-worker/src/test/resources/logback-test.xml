@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <root level="WARN">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+
+    <!-- 우리 코드 DEBUG 확인용 -->
+    <logger name="com.b101.butterfly.worker.campaign.CampaignSendInstructionProcessor" level="DEBUG"/>
+    <logger name="com.b101.butterfly.notification.port.UserContactAdapter" level="DEBUG"/>
+</configuration>

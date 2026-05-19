@@ -60,8 +60,13 @@ public class CampaignSendInstructionProcessor {
                 instruction.segmentId(), userIds.size());
 
         if (userIds.isEmpty()) {
-            log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
-                    instruction.executionId(), instruction.segmentId());
+            if (instruction.segmentId() == null) {
+                log.warn("segmentId가 null — 세그먼트 없는 발송은 현재 미지원: executionId={}",
+                        instruction.executionId());
+            } else {
+                log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
+                        instruction.executionId(), instruction.segmentId());
+            }
             campaignExecutionResultRecorder.recordFailure(instruction.executionId());
             return;
         }
@@ -163,6 +168,14 @@ public class CampaignSendInstructionProcessor {
                     vars.putIfAbsent("today", today);
                     if (contact.birthDate() != null) vars.putIfAbsent("birth_date", contact.birthDate());
                     if (contact.signedUpAt() != null) vars.putIfAbsent("signed_up_at", contact.signedUpAt());
+                    log.debug("SYSTEM 변수 해석: userId={}, email={}, phone={}, birth_date={}, signed_up_at={}, today={}, resolvedKeys={}",
+                            contact.userId(),
+                            contact.email() != null ? "있음" : "null",
+                            contact.phoneNumber() != null ? "있음" : "null",
+                            contact.birthDate() != null ? contact.birthDate() : "null",
+                            contact.signedUpAt() != null ? contact.signedUpAt() : "null",
+                            today,
+                            vars.keySet());
                     return new DeliveryCommand.DeliveryTarget(
                             contact.userId(),
                             contact.deviceId(),
