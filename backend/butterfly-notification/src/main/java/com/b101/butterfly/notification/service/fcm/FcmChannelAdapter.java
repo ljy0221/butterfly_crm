@@ -27,10 +27,19 @@ public class FcmChannelAdapter implements ChannelAdapter {
     @Override
     public List<TargetOutcome> sendBatch(DeliveryCommand command, List<DeliveryCommand.DeliveryTarget> targets) {
         if (!(command.credential() instanceof DeliveryCommand.FcmCredential fcm)) {
+            log.error("FCM credential 타입 불일치: executionId={}, credentialType={}",
+                    command.executionId(),
+                    command.credential() != null ? command.credential().getClass().getSimpleName() : "null");
             throw new BusinessException(DeliveryErrorCode.FCM_CREDENTIALS_NOT_FOUND);
         }
+        log.info("FCM 배치 발송 시작: executionId={}, campaignId={}, targetCount={}",
+                command.executionId(), command.campaignId(), targets.size());
         try {
-            return fcmService.sendBatch(command.projectId(), fcm.credentialJson(), command.message(), targets);
+            List<TargetOutcome> outcomes = fcmService.sendBatch(command.projectId(), fcm.credentialJson(), command.message(), targets);
+            long sent = outcomes.stream().filter(o -> o.result().successful()).count();
+            log.info("FCM 배치 발송 완료: executionId={}, sent={}, failed={}",
+                    command.executionId(), sent, outcomes.size() - sent);
+            return outcomes;
         } catch (BusinessException e) {
             log.warn("FCM credential 오류 — 로컬 stub SENT 처리: projectId={}, error={}",
                     command.projectId(), e.getMessage());
