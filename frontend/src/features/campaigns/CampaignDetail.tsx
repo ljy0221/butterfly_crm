@@ -17,6 +17,7 @@ import {
   useCampaignDetailQuery,
   useDeleteCampaignMutation,
   usePauseCampaignMutation,
+  useResumeCampaignMutation,
   useStartCampaignMutation,
 } from "@/hooks/queries/campaign";
 import { useCreditBalanceQuery } from "@/hooks/queries/payment";
@@ -106,6 +107,7 @@ export default function CampaignDetail() {
 
   const startMut = useStartCampaignMutation(projectId);
   const pauseMut = usePauseCampaignMutation(projectId);
+  const resumeMut = useResumeCampaignMutation(projectId);
   const deleteMut = useDeleteCampaignMutation(projectId);
 
   const isOwner = role === "OWNER";
@@ -173,11 +175,31 @@ export default function CampaignDetail() {
     }
   };
 
+  const onResume = async (): Promise<void> => {
+    if (!campaign) return;
+    const ok = await confirmDialog({
+      title: "캠페인을 재개하시겠습니까?",
+      message: "일시정지된 캠페인이 다시 ACTIVE 상태로 전환됩니다.",
+      confirmText: "재개",
+      cancelText: "취소",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await resumeMut.mutateAsync(campaignId);
+      toast("캠페인이 재개되었습니다", "success");
+    } catch (err) {
+      const m = mapCampaignError(err);
+      const fallback = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "재개 중 오류가 발생했습니다";
+      toast(m.message ?? fallback, "error");
+    }
+  };
+
   const onDelete = async (): Promise<void> => {
     if (!campaign) return;
     const ok = await confirmDialog({
       title: "캠페인을 삭제하시겠습니까?",
-      message: `"${campaign.campaignName}" 캠페인이 삭제됩니다. (DRAFT 상태에서만 삭제 가능)`,
+      message: `"${campaign.campaignName}" 캠페인이 삭제됩니다. (DRAFT 또는 ENDED 상태에서만 삭제 가능)`,
       confirmText: "삭제",
       cancelText: "취소",
       tone: "danger",
@@ -228,6 +250,7 @@ export default function CampaignDetail() {
       campaignId={campaignId}
       onStart={onStart}
       onPause={onPause}
+      onResume={onResume}
       onDelete={onDelete}
       onBack={() => navigate(`/p/${projectId}/campaigns`)}
       onEdit={() => navigate(`/p/${projectId}/campaigns/${campaignId}/edit`)}
@@ -244,6 +267,7 @@ interface CampaignDetailBodyProps {
   campaignId: number;
   onStart: () => void;
   onPause: () => void;
+  onResume: () => void;
   onDelete: () => void;
   onBack: () => void;
   onEdit: () => void;
@@ -258,6 +282,7 @@ function CampaignDetailBody({
   campaignId,
   onStart,
   onPause,
+  onResume,
   onDelete,
   onBack,
   onEdit,
@@ -289,6 +314,9 @@ function CampaignDetailBody({
   const status = campaign.campaignStatus;
   const isDraft = status === "DRAFT";
   const isActive = status === "ACTIVE";
+  const isPaused = status === "PAUSED";
+  const isEnded = status === "ENDED";
+  const isDeletable = isDraft || isEnded;
 
   const sent = stats?.sentCount ?? 0;
   const delivered = stats?.deliveredCount ?? 0;
@@ -313,11 +341,13 @@ function CampaignDetailBody({
         }
         actions={
           <>
+            {canEdit && isDeletable && (
+              <Button variant="ghost" size="md" icon={Icon.trash(12)} onClick={onDelete} style={{}}>
+                삭제
+              </Button>
+            )}
             {canEdit && isDraft && (
               <>
-                <Button variant="ghost" size="md" icon={Icon.trash(12)} onClick={onDelete} style={{}}>
-                  삭제
-                </Button>
                 <Button variant="secondary" size="md" icon={Icon.edit(12)} onClick={onEdit} style={{}}>
                   수정
                 </Button>
@@ -346,6 +376,11 @@ function CampaignDetailBody({
             {canEdit && isActive && (
               <Button variant="secondary" size="md" onClick={onPause} style={{}}>
                 일시정지
+              </Button>
+            )}
+            {canEdit && isPaused && (
+              <Button variant="primaryStrong" size="md" onClick={onResume} style={{}}>
+                재개
               </Button>
             )}
             {!canEdit && (

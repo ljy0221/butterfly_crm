@@ -51,6 +51,7 @@ export function useCampaignLogsQuery(
   campaignId: number | null,
   params: CampaignLogsParams,
   enabled: boolean = true,
+  refetchInterval?: number | false,
 ) {
   return useQuery<PageResponse<NotificationLogResponse>>({
     queryKey: notificationKeys.campaignLogs(
@@ -65,6 +66,7 @@ export function useCampaignLogsQuery(
         params,
       ),
     enabled: enabled && projectId != null && campaignId != null,
+    refetchInterval,
   });
 }
 

@@ -154,6 +154,12 @@ public enum CampaignErrorCode implements ErrorCode {
             "CAMPAIGN_026",
             "세그먼트를 찾을 수 없습니다.",
             HttpStatus.NOT_FOUND),
+
+    /** ACTIVE/PAUSED 상태의 캠페인 삭제 시도 — DRAFT 또는 ENDED 상태만 삭제 가능. */
+    NOT_DELETABLE(
+            "CAMPAIGN_027",
+            "DRAFT 또는 ENDED 상태의 캠페인만 삭제할 수 있습니다.",
+            HttpStatus.CONFLICT),
     ;
 
     private final String code;

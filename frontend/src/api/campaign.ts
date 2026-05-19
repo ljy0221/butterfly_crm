@@ -209,6 +209,14 @@ export function pauseCampaign(
   return transitionCampaignStatus(projectId, campaignId, "PAUSED");
 }
 
+/** `ACTIVE`로 재개 전이 (PAUSED → ACTIVE). */
+export function resumeCampaign(
+  projectId: number,
+  campaignId: number,
+): Promise<StatusTransitionResponse> {
+  return transitionCampaignStatus(projectId, campaignId, "ACTIVE");
+}
+
 // ---------- 도메인 enum re-export (편의) ----------
 export type {
   CampaignStatus,

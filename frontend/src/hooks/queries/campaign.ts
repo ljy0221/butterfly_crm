@@ -136,3 +136,17 @@ export function usePauseCampaignMutation(projectId: number) {
     },
   });
 }
+
+export function useResumeCampaignMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<StatusTransitionResponse, unknown, number>({
+    mutationFn: (campaignId) =>
+      campaignApi.resumeCampaign(projectId, campaignId),
+    onSuccess: (_data, campaignId) => {
+      qc.invalidateQueries({ queryKey: campaignKeys.lists(projectId) });
+      qc.invalidateQueries({
+        queryKey: campaignKeys.detail(projectId, campaignId),
+      });
+    },
+  });
+}
