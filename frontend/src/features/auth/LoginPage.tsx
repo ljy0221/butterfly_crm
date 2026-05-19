@@ -121,10 +121,10 @@ export default function LoginPage() {
         <div
           aria-hidden
           style={{
-            width: 36,
-            height: 36,
+            width: 418,
+            height: 128,
             borderRadius: 10,
-            background: "var(--color-primary-strong)",
+            // background: "var(--color-primary-strong)",
             color: "#fff",
             display: "inline-flex",
             alignItems: "center",
@@ -134,9 +134,14 @@ export default function LoginPage() {
             fontSize: 18,
           }}
         >
-          B
+          <img src="/assets/logo.png" alt="Butterfly Logo" style={{ 
+            width: "100%", 
+            height: "100%", 
+            objectFit: "contain", 
+            // padding: 0
+          }}/>
         </div>
-        <span
+        {/* <span
           style={{
             fontFamily: "var(--font-display)",
             fontSize: 22,
@@ -145,7 +150,7 @@ export default function LoginPage() {
           }}
         >
           Butterfly
-        </span>
+        </span> */}
       </div>
       <div
         style={{

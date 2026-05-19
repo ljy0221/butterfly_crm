@@ -60,7 +60,7 @@ export default function Sidebar({ active, onNavigate, collapsed }) {
             fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 15,
           }}
         >
-          B
+          <img src="/assets/logo-white.png" alt="Butterfly Logo" />
         </div>
         {!collapsed && (
           <div>
