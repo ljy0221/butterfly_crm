@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button, Icon, PageHeader } from "@/components/common";
+import InfoTooltip from "@/components/common/InfoTooltip";
 import { ApiError } from "@/api/types";
 import { confirmDialog, openModal, toast } from "@/lib/ui-bus";
 import { mapCampaignError } from "@/lib/campaign-errors";
@@ -100,6 +101,7 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
     const cost = state.draft.estimatedAudienceCount;
     return available != null && cost != null && available < cost;
   })();
+  const isZeroAudience = state.draft.estimatedAudienceCount === 0;
 
   const { data: editTarget } = useCampaignDetailQuery(
     projectId,
@@ -273,6 +275,12 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
         toast("필수 항목을 확인해주세요", "warning");
         return;
       }
+    }
+
+    if (startAfter && state.draft.estimatedAudienceCount === 0) {
+      toast("발송 대상이 0명입니다. 세그먼트를 변경하거나 빌드 후 다시 시도해주세요.", "error");
+      dispatch({ type: "set/step", step: 3 });
+      return;
     }
 
     if (startAfter) {
@@ -507,15 +515,26 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
                   >
                     {submitting ? "저장 중..." : "DRAFT로 저장"}
                   </Button>
-                  <Button
-                    variant="primaryStrong"
-                    size="md"
-                    onClick={() => finalizeCreate(true)}
-                    disabled={submitting || isInsufficientBalance}
-                    style={{}}
-                  >
-                    {submitting ? "처리 중..." : startAfterLabel}
-                  </Button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Button
+                      variant="primaryStrong"
+                      size="md"
+                      onClick={() => finalizeCreate(true)}
+                      disabled={submitting || isInsufficientBalance || isZeroAudience}
+                      style={{}}
+                    >
+                      {submitting ? "처리 중..." : startAfterLabel}
+                    </Button>
+                    <InfoTooltip
+                      message={
+                        isZeroAudience
+                          ? "발송 대상이 0명입니다. 세그먼트를 변경해주세요."
+                          : isInsufficientBalance
+                          ? "잔액 부족 — 충전 후 시작 가능합니다."
+                          : undefined
+                      }
+                    />
+                  </div>
                 </>
               )}
             </div>
