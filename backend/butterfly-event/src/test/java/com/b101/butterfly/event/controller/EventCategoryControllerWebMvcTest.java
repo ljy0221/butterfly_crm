@@ -120,6 +120,7 @@ class EventCategoryControllerWebMvcTest {
                 }
                 """;
         mockMvc.perform(post(BASE_URL)
+                        .param("createdBy", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -154,6 +155,7 @@ class EventCategoryControllerWebMvcTest {
                 }
                 """;
         mockMvc.perform(post(BASE_URL)
+                        .param("createdBy", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isConflict())
@@ -174,6 +176,7 @@ class EventCategoryControllerWebMvcTest {
                 }
                 """;
         mockMvc.perform(put(BASE_URL + "/" + CATEGORY_NAME + "/schema")
+                        .param("createdBy", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
