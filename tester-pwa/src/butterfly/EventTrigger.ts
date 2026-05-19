@@ -2,7 +2,6 @@ import apiClient from '../api/client'
 import { getOrCreateDeviceId } from '../device/DeviceManager'
 
 const USER_ID = import.meta.env.VITE_USER_ID || 'user-142'
-const PROJECT_ID = import.meta.env.VITE_PROJECT_ID || ''
 
 const DEMO_PRODUCT_ID = 'sku-9847'
 const DEMO_PRODUCT_NAME = '데일리 러닝화'
@@ -16,7 +15,7 @@ function nowIsoLocal(): string {
 async function sendEvent(eventCategory: string, eventData: Record<string, unknown>): Promise<void> {
   const deviceId = getOrCreateDeviceId()
   try {
-    await apiClient.post(`/api/v1/projects/${PROJECT_ID}/events`, {
+    await apiClient.post('/api/v1/events', {
       deviceId,
       userId: USER_ID,
       eventCategory,
@@ -32,7 +31,7 @@ async function sendEvent(eventCategory: string, eventData: Record<string, unknow
 async function sendEventSilently(eventCategory: string, eventData: Record<string, unknown>): Promise<void> {
   const deviceId = getOrCreateDeviceId()
   try {
-    await apiClient.post(`/api/v1/projects/${PROJECT_ID}/events`, {
+    await apiClient.post('/api/v1/events', {
       deviceId,
       userId: USER_ID,
       eventCategory,
