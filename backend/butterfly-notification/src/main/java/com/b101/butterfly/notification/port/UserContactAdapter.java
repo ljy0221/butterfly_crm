@@ -90,12 +90,13 @@ public class UserContactAdapter implements UserContactPort {
                 rs.getString("birth_date"),
                 rs.getString("signed_up_at")
         ));
-        log.debug("UserContactAdapter 조회 결과: projectId={}, channel={}, 요청={}, 응답={}건, nullEmail={}건, nullPhone={}건, nullBirthDate={}건, nullSignedUpAt={}건",
-                projectId, channel, userIds.size(), result.size(),
-                result.stream().filter(c -> c.email() == null).count(),
-                result.stream().filter(c -> c.phoneNumber() == null).count(),
-                result.stream().filter(c -> c.birthDate() == null).count(),
-                result.stream().filter(c -> c.signedUpAt() == null).count());
+        if (result.isEmpty()) {
+            log.warn("연락처 조회 결과 0건: projectId={}, channel={}, 요청userCount={}",
+                    projectId, channel, userIds.size());
+        } else {
+            log.info("연락처 조회 완료: projectId={}, channel={}, 요청={}, 응답={}건",
+                    projectId, channel, userIds.size(), result.size());
+        }
         return result;
     }
 }

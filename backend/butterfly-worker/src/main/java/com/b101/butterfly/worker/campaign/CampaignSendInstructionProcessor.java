@@ -44,8 +44,12 @@ public class CampaignSendInstructionProcessor {
     private final CreditAccountService creditAccountService;
 
     public void process(CampaignSendInstruction instruction) {
+        log.info("발송 지시 처리 시작: executionId={}, campaignId={}, channel={}, segmentId={}",
+                instruction.executionId(), instruction.campaignId(),
+                instruction.channel(), instruction.segmentId());
+
         MessageTemplateSnapshot template = messageTemplateLookupPort.lookup(instruction.templateId());
-        log.debug("템플릿 조회 완료: templateId={}, title={}",
+        log.info("템플릿 조회 완료: templateId={}, title={}",
                 instruction.templateId(), template.title());
 
         List<SegmentAudienceTarget> audienceTargets =
@@ -56,7 +60,7 @@ public class CampaignSendInstructionProcessor {
         List<Long> userIds = audienceTargets.stream()
                 .map(SegmentAudienceTarget::userId)
                 .toList();
-        log.debug("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
+        log.info("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
                 instruction.segmentId(), userIds.size());
 
         if (userIds.isEmpty()) {
@@ -77,6 +81,8 @@ public class CampaignSendInstructionProcessor {
                 userIds,
                 deliveryChannel
         );
+        log.info("연락처 조회 완료: executionId={}, channel={}, contactCount={}",
+                instruction.executionId(), deliveryChannel, contacts.size());
         if (contacts.isEmpty()) {
             log.warn("발송 가능한 연락처가 없습니다: executionId={}, segmentId={}",
                     instruction.executionId(), instruction.segmentId());
@@ -132,6 +138,9 @@ public class CampaignSendInstructionProcessor {
                     deliveryCommand.targets().size(),
                     CampaignCreditPricePolicy.unitPriceOf(deliveryChannel)
             );
+            log.info("크레딧 예약 완료: executionId={}, targetCount={}, unitPrice={}",
+                    instruction.executionId(), deliveryCommand.targets().size(),
+                    CampaignCreditPricePolicy.unitPriceOf(deliveryChannel));
             return true;
         } catch (BusinessException e) {
             if (e.getErrorCode() == PaymentErrorCode.PAY_INSUFFICIENT_BALANCE) {
