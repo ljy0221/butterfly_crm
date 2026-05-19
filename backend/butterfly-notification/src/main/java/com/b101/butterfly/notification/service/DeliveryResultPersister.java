@@ -88,6 +88,8 @@ class DeliveryResultPersister {
         }
 
         notificationLogRepository.saveAll(logEntries);
+        log.info("발송 결과 저장 완료: campaignId={}, sent={}, failed={}",
+                command.campaignId(), stats.getSentCount(), stats.getFailedCount());
     }
 
     private String resolveRecipient(DeliveryCommand.Channel channel, DeliveryCommand.DeliveryTarget target) {

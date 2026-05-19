@@ -103,6 +103,8 @@ public class FcmService {
         }
 
         if (validTargets.isEmpty()) {
+            log.warn("FCM 발송 가능한 토큰이 없음: projectId={}, 전체={}, 토큰없음={}",
+                    projectId, targets.size(), outcomes.size());
             return outcomes;
         }
 

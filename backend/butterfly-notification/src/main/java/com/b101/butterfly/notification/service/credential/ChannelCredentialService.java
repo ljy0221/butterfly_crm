@@ -26,8 +26,12 @@ public class ChannelCredentialService {
     public ChannelCredential getCredential(Long projectId, Channel channel) {
         ChannelCredentialEntity entity = channelCredentialRepository
                 .findByProjectIdAndChannelAndActiveTrue(projectId, channel)
-                .orElseThrow(() -> new BusinessException(DeliveryErrorCode.CREDENTIAL_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.warn("채널 인증정보 없음: projectId={}, channel={}", projectId, channel);
+                    return new BusinessException(DeliveryErrorCode.CREDENTIAL_NOT_FOUND);
+                });
 
+        log.info("채널 인증정보 조회 완료: projectId={}, channel={}", projectId, channel);
         return parseCredential(channel, entity.getCredentialData());
     }
 
