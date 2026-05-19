@@ -75,8 +75,8 @@ class DeliveryServiceImplTest {
         when(channelCredentialService.getCredential(PROJECT_ID, Channel.PUSH)).thenReturn(credential);
         when(userContactPort.getContactsByUserIds(PROJECT_ID, List.of(1L, 2L), Channel.PUSH))
                 .thenReturn(List.of(
-                        new UserContactInfo(1L, 10L, "token-1", null, null),
-                        new UserContactInfo(2L, 20L, "token-2", null, null)));
+                        new UserContactInfo(1L, 10L, "token-1", null, null, null, null),
+                        new UserContactInfo(2L, 20L, "token-2", null, null, null, null)));
         when(userTagLookupPort.getTagsByUserIds(PROJECT_ID, List.of(1L, 2L)))
                 .thenReturn(Map.of(
                         1L, Map.of("name", "Alice"),
@@ -108,7 +108,7 @@ class DeliveryServiceImplTest {
         FcmCredential credential = new FcmCredential("{\"type\":\"service_account\"}");
         when(channelCredentialService.getCredential(PROJECT_ID, Channel.PUSH)).thenReturn(credential);
         when(userContactPort.getContactsByUserIds(PROJECT_ID, List.of(7L), Channel.PUSH))
-                .thenReturn(List.of(new UserContactInfo(7L, 70L, "token-7", null, null)));
+                .thenReturn(List.of(new UserContactInfo(7L, 70L, "token-7", null, null, null, null)));
         when(userTagLookupPort.getTagsByUserIds(PROJECT_ID, List.of(7L))).thenReturn(Map.of());
 
         when(channelAdapterRegistry.getAdapter(Channel.PUSH)).thenReturn(stubAdapter());
