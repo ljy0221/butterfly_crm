@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,7 +34,6 @@ import java.util.List;
  * 기존 {@code EventSchemaController} (categoryId 기반 /event-categories/.../schemas) 는 그대로 유지되며
  * 본 컨트롤러는 categoryName 기반 / 프론트 경로에 맞춰 새로 신설된다.
  *
- * <p>{@code @PreAuthorize} 는 auth 통합 후 활성화 (다른 event 컨트롤러와 동일한 TODO 패턴).
  */
 @RestController
 @Profile("api")
@@ -43,7 +43,7 @@ public class EventCategoryController {
 
     private final EventCategoryService eventCategoryService;
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<EventCategorySummaryResponse>>> list(
             @PathVariable Long projectId) {
@@ -51,7 +51,7 @@ public class EventCategoryController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/{categoryName}")
     public ResponseEntity<ApiResponse<EventCategoryDetailResponse>> get(
             @PathVariable Long projectId,
@@ -60,7 +60,7 @@ public class EventCategoryController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/{categoryName}/schema")
     public ResponseEntity<ApiResponse<List<PropertyResponse>>> getSchema(
             @PathVariable Long projectId,
@@ -69,30 +69,30 @@ public class EventCategoryController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'ADMIN')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PostMapping
     public ResponseEntity<ApiResponse<EventCategoryDetailResponse>> create(
             @PathVariable Long projectId,
-            @RequestParam(defaultValue = "0") Long createdBy,
+            @RequestParam Long createdBy,
             @RequestBody @Valid CreateCategoryRequest request) {
         EventCategoryDetailResponse response =
                 eventCategoryService.create(projectId, createdBy, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'ADMIN')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PutMapping("/{categoryName}/schema")
     public ResponseEntity<ApiResponse<List<PropertyResponse>>> updateSchema(
             @PathVariable Long projectId,
             @PathVariable String categoryName,
-            @RequestParam(defaultValue = "0") Long createdBy,
+            @RequestParam Long createdBy,
             @RequestBody @Valid UpdateSchemaRequest request) {
         List<PropertyResponse> response =
                 eventCategoryService.updateSchema(projectId, categoryName, createdBy, request);
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'ADMIN')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @DeleteMapping("/{categoryId}")
     public ResponseEntity<ApiResponse<DeleteCategoryResponse>> delete(
             @PathVariable Long projectId,
@@ -101,7 +101,7 @@ public class EventCategoryController {
         return ResponseEntity.ok(ApiResponse.ok(response));
     }
 
-    // TODO: @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')") — auth 통합 후 활성화
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'VIEWER')")
     @GetMapping("/{categoryName}/sample")
     public ResponseEntity<ApiResponse<RecentSampleResponse>> getRecentSample(
             @PathVariable Long projectId,
