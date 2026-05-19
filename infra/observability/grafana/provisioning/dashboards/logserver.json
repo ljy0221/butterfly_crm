@@ -11,7 +11,7 @@
       "title": "CPU 사용률 (%)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 0, "w": 8, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",node=\"logserver\"}[2m])) * 100)",
@@ -38,7 +38,7 @@
       "title": "메모리 사용률 (%)",
       "type": "timeseries",
       "gridPos": { "x": 8, "y": 0, "w": 8, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "100 - (node_memory_MemAvailable_bytes{node=\"logserver\"} / node_memory_MemTotal_bytes{node=\"logserver\"} * 100)",
@@ -65,7 +65,7 @@
       "title": "디스크 사용률 (%)",
       "type": "timeseries",
       "gridPos": { "x": 16, "y": 0, "w": 8, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "100 - (node_filesystem_avail_bytes{node=\"logserver\",mountpoint=\"/\",fstype!=\"tmpfs\"} / node_filesystem_size_bytes{node=\"logserver\",mountpoint=\"/\",fstype!=\"tmpfs\"} * 100)",
@@ -92,7 +92,7 @@
       "title": "Loki 수신 로그 라인 수 (lines/s)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "sum(rate(loki_distributor_lines_received_total[1m]))",
@@ -106,7 +106,7 @@
       "title": "Prometheus 스크랩 성공률",
       "type": "timeseries",
       "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "sum(up) / count(up) * 100",
@@ -133,7 +133,7 @@
       "title": "현재 상태",
       "type": "stat",
       "gridPos": { "x": 0, "y": 16, "w": 24, "h": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\",node=\"logserver\"}[2m])) * 100)",
