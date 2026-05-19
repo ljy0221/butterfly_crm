@@ -129,10 +129,58 @@
       }
     },
     {
+      "id": 7,
+      "title": "butterfly-api 실시간 로그",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 10 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "expr": "{namespace=\"butterfly\", app=\"butterfly-api\"} | json | line_format \"{{.message}}\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    },
+    {
+      "id": 8,
+      "title": "ERROR 로그 (전체 네임스페이스)",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 26, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "P8E80F9AEF21F6940" },
+      "targets": [
+        {
+          "expr": "{namespace=~\"butterfly|monitoring\"} |= \"ERROR\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      }
+    },
+    {
       "id": 6,
       "title": "현재 상태",
       "type": "stat",
-      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 4 },
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 4 },
       "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
