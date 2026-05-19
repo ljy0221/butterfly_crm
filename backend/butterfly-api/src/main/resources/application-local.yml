@@ -15,6 +15,13 @@ spring:
       - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
       - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiModerationAutoConfiguration
+
+# 로컬에서는 MailHog가 꺼져 있어도 API 부팅/기능 확인이 가능해야 하므로 mail health를 제외한다.
+management:
+  health:
+    mail:
+      enabled: false
 
 mail:
   from: noreply@localhost
