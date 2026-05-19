@@ -24,6 +24,7 @@ export default function Button({
   const s = SIZES[size];
   const v = VARIANTS[variant];
   const [hover, setHover] = React.useState(false);
+  const isDisabled = rest.disabled;
 
   return (
     <button
@@ -34,11 +35,13 @@ export default function Button({
       style={{
         height: s.height, padding: s.padding, fontSize: s.fontSize,
         borderRadius: s.radius,
-        background: hover ? v.hover : v.bg, color: v.color,
+        background: (hover && !isDisabled) ? v.hover : v.bg, color: v.color,
         border: `1px solid ${v.border === "transparent" ? "transparent" : v.border}`,
         fontWeight: 600, fontFamily: "inherit",
-        cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6,
-        transition: "background 120ms",
+        cursor: isDisabled ? "not-allowed" : "pointer",
+        opacity: isDisabled ? 0.45 : 1,
+        display: "inline-flex", alignItems: "center", gap: 6,
+        transition: "background 120ms, opacity 120ms",
         whiteSpace: "nowrap",
         ...style,
       }}

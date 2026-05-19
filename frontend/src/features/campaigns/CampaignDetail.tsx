@@ -7,6 +7,7 @@ import {
   StatCard,
   Tag,
 } from "@/components/common";
+import InfoTooltip from "@/components/common/InfoTooltip";
 import { ApiError } from "@/api/types";
 import { confirmDialog, toast } from "@/lib/ui-bus";
 import { mapCampaignError } from "@/lib/campaign-errors";
@@ -320,7 +321,7 @@ function CampaignDetailBody({
                 <Button variant="secondary" size="md" icon={Icon.edit(12)} onClick={onEdit} style={{}}>
                   수정
                 </Button>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <Button
                     variant="primaryStrong"
                     size="md"
@@ -330,12 +331,15 @@ function CampaignDetailBody({
                   >
                     발송 시작
                   </Button>
-                  {isZeroAudience && (
-                    <span style={{ fontSize: 11, color: "#c2410c" }}>발송 대상이 0명입니다</span>
-                  )}
-                  {!isZeroAudience && isInsufficientBalance && (
-                    <span style={{ fontSize: 11, color: "#c2410c" }}>잔액이 부족합니다</span>
-                  )}
+                  <InfoTooltip
+                    message={
+                      isZeroAudience
+                        ? "발송 대상이 0명입니다. 세그먼트를 변경해주세요."
+                        : isInsufficientBalance
+                        ? "잔액 부족 — 충전 후 시작 가능합니다."
+                        : undefined
+                    }
+                  />
                 </div>
               </>
             )}

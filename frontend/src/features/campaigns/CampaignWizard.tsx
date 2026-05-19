@@ -1,6 +1,7 @@
 import { useEffect, useReducer, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button, Icon, PageHeader } from "@/components/common";
+import InfoTooltip from "@/components/common/InfoTooltip";
 import { ApiError } from "@/api/types";
 import { confirmDialog, openModal, toast } from "@/lib/ui-bus";
 import { mapCampaignError } from "@/lib/campaign-errors";
@@ -514,7 +515,7 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
                   >
                     {submitting ? "저장 중..." : "DRAFT로 저장"}
                   </Button>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Button
                       variant="primaryStrong"
                       size="md"
@@ -524,16 +525,15 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
                     >
                       {submitting ? "처리 중..." : startAfterLabel}
                     </Button>
-                    {isInsufficientBalance && (
-                      <span style={{ fontSize: 11, color: "#c2410c" }}>
-                        잔액 부족 — 충전 후 시작 가능합니다
-                      </span>
-                    )}
-                    {isZeroAudience && !isInsufficientBalance && (
-                      <span style={{ fontSize: 11, color: "#c2410c" }}>
-                        발송 대상이 0명입니다
-                      </span>
-                    )}
+                    <InfoTooltip
+                      message={
+                        isZeroAudience
+                          ? "발송 대상이 0명입니다. 세그먼트를 변경해주세요."
+                          : isInsufficientBalance
+                          ? "잔액 부족 — 충전 후 시작 가능합니다."
+                          : undefined
+                      }
+                    />
                   </div>
                 </>
               )}
