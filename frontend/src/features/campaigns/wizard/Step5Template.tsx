@@ -115,6 +115,7 @@ export default function Step5Template({
         mode="edit"
         projectId={projectId}
         templateId={viewId}
+        segmentId={draft.segmentId}
         initialValues={{
           messageTemplateName: d.messageTemplateName,
           messageTemplateDescription: d.messageTemplateDescription,
@@ -130,7 +131,12 @@ export default function Step5Template({
 
   const onCreateNew = (): void => {
     openModal(({ close }) => (
-      <TemplateFormModal mode="create" projectId={projectId} onClose={close} />
+      <TemplateFormModal
+        mode="create"
+        projectId={projectId}
+        segmentId={draft.segmentId}
+        onClose={close}
+      />
     ));
   };
 
