@@ -94,10 +94,6 @@ export default function UserProfile() {
               <dt className="inline text-gray-500">최근 활동: </dt>
               <dd className="inline">{formatDateTime(data.summary.lastSeenAt)}</dd>
             </div>
-            <div>
-              <dt className="inline text-gray-500">구매 횟수: </dt>
-              <dd className="inline">{data.summary.purchaseCount}</dd>
-            </div>
           </dl>
         </section>
       </div>

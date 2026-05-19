@@ -43,6 +43,20 @@ public interface EventRepository extends JpaRepository<Event, Long> {
       @Param("categoryName") String categoryName
   );
 
+  @Query("""
+      SELECT e.userId AS userId,
+             COUNT(e.id) AS totalEvents,
+             MAX(e.occurredAt) AS lastSeenAt
+      FROM Event e
+      WHERE e.projectId = :projectId
+        AND e.userId IN :userIds
+      GROUP BY e.userId
+      """)
+  List<UserActivitySummaryRow> summarizeByProjectIdAndUserIds(
+      @Param("projectId") Long projectId,
+      @Param("userIds") List<Long> userIds
+  );
+
   /**
    * event_uuid 기준 멱등 insert. 중복이면 0, 신규면 1 반환. (events insert 결과로 event_daily_agg 증분 여부를 결정하는 용도)
    */
