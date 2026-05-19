@@ -59,11 +59,11 @@ scrape_configs:
         labels:
           node: worker-2
           tier: app
-      - targets: [AWS_WORKER3_EIP:30090]   # ip-10-0-2-199 (mysql node) — EIP 미확인
+      - targets: [15.164.8.93:30090]
         labels:
           node: worker-3
           tier: db
-      - targets: [AWS_WORKER4_EIP:30090]   # ip-10-0-2-191 (clickhouse node) — EIP 미확인
+      - targets: [3.37.112.207:30090]
         labels:
           node: worker-4
           tier: db
