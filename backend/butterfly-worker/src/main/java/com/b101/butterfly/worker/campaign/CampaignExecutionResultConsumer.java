@@ -3,6 +3,7 @@ package com.b101.butterfly.worker.campaign;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignExecutionResult;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
+@Lazy(false)
 @Profile("worker")
 @RequiredArgsConstructor
 public class CampaignExecutionResultConsumer {

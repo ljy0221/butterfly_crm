@@ -8,6 +8,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.boot.autoconfigure.kafka.KafkaProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
@@ -24,6 +25,7 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
  * <p>Producer: {@code delivery-requests} 토픽 (DeliveryCommand)
  */
 @Configuration
+@Lazy(false)
 @Profile("worker")
 public class WorkerKafkaConfig {
 
