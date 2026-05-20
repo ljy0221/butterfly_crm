@@ -145,6 +145,7 @@ public class Segment extends BaseEntity {
     public void markPending() {
         this.buildStatus = BuildStatus.PENDING;
         this.buildToken = null;
+        this.buildStartedAt = null;
         this.buildHeartbeatAt = null;
     }
 
