@@ -15,7 +15,7 @@ import java.util.List;
  * 발송 결과를 {@code notification-send-result} 토픽으로 발행.
  * reporting 모듈의 NotificationSendResultConsumer가 소비해 분석용 notification_logs에 적재한다.
  *
- * <p>messageKey = "executionId:userId:channel" — consumer 측 UNIQUE 제약 기반 멱등성 보장.
+ * <p>messageKey = "executionId:userId:deviceId:channel" — consumer 측 UNIQUE 제약 기반 멱등성 보장.
  * executionId가 null인 경우(레거시/테스트 경로)는 발행을 건너뛴다.
  */
 @Slf4j
@@ -38,7 +38,12 @@ public class NotificationSendResultPublisher {
             DeliveryCommand.DeliveryTarget target = outcome.target();
             boolean success = outcome.result().successful();
 
-            String messageKey = command.executionId() + ":" + target.userId() + ":" + command.channel();
+            String messageKey = NotificationMessageKey.of(command, target);
+            if (messageKey == null) {
+                log.warn("notification-send-result 발행 건너뜀: executionId={}, userId={}, deviceId={}, channel={}",
+                        command.executionId(), target.userId(), target.deviceId(), command.channel());
+                continue;
+            }
 
             NotificationSendResultPayload payload = new NotificationSendResultPayload(
                     messageKey,
