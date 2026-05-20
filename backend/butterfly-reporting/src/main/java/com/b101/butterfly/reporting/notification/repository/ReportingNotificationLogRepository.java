@@ -112,12 +112,12 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
      * open/click/convert 는 user_action_logs(123) 미머지 시점이라 0 로 고정 — Stub/Impl 정책과 동일.
      *
      * <p>HourlyAggregator/CampaignStatsHourly 와 동일한 status 매핑:
-     * sent = SENT + DELIVERED (발송 성공 row), delivered = DELIVERED only,
-     * failed = FAILED only.
+     * sent = DELIVERED + FAILED (최종 처리 완료 row), delivered = DELIVERED only,
+     * failed = FAILED only. Tier-1(campaign_stats_daily) 의 failed = sent - delivered 공식과 일관성 유지.
      */
     @Query(value = """
             SELECT
-                SUM(CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN 1 ELSE 0 END) AS sent_count,
+                SUM(CASE WHEN n.status IN ('DELIVERED', 'FAILED') THEN 1 ELSE 0 END) AS sent_count,
                 SUM(CASE WHEN n.status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered_count,
                 SUM(CASE WHEN n.status = 'FAILED' THEN 1 ELSE 0 END) AS failed_count
             FROM notification_logs n
