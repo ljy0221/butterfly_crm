@@ -137,6 +137,82 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
     );
 
     /**
+     * 대시보드 당일 기간 보강용 raw 카운트.
+     *
+     * <p>hourly 집계는 action-only row가 먼저 생기면 sent_count=0인 버킷을 만들 수 있다.
+     * 운영 화면은 당일 수치를 즉시 보여줘야 하므로 오늘 구간은 원장 테이블을 직접 합산한다.
+     */
+    @Query(value = """
+            SELECT
+                COUNT(DISTINCT n.log_id) AS sent_count,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count,
+                COUNT(DISTINCT n.campaign_id) AS campaign_count
+            FROM notification_logs n
+            LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
+            WHERE n.project_id = :projectId
+              AND n.created_at >= :fromInclusive
+              AND n.created_at < :toExclusive
+            """, nativeQuery = true)
+    ProjectFunnelRawRow countProjectFunnelBetween(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive
+    );
+
+    @Query(value = """
+            SELECT
+                n.campaign_id AS campaign_id,
+                n.channel AS channel,
+                COUNT(DISTINCT n.log_id) AS sent_count,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count
+            FROM notification_logs n
+            LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
+            WHERE n.project_id = :projectId
+              AND n.created_at >= :fromInclusive
+              AND n.created_at < :toExclusive
+              AND (:channelFilter IS NULL OR n.channel = :channelFilter)
+            GROUP BY n.campaign_id, n.channel
+            ORDER BY MAX(n.created_at) DESC
+            """, nativeQuery = true)
+    List<CampaignFunnelRawMetricRow> aggregateCampaignFunnelBetween(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive,
+            @Param("channelFilter") String channelFilter
+    );
+
+    @Query(value = """
+            SELECT
+                n.channel AS channel,
+                COUNT(DISTINCT n.log_id) AS sent_count,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count
+            FROM notification_logs n
+            LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
+            WHERE n.project_id = :projectId
+              AND n.created_at >= :fromInclusive
+              AND n.created_at < :toExclusive
+            GROUP BY n.channel
+            ORDER BY COUNT(DISTINCT n.log_id) DESC
+            """, nativeQuery = true)
+    List<ChannelFunnelRawMetricRow> aggregateChannelFunnelBetween(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive
+    );
+
+    /**
      * {@link #countCampaignFunnel} projection. SUM(CASE..) 가 row 없을 때 null 을 반환할 수
      * 있으므로 Long 래퍼로 받는다. Service 가 null → 0 으로 정규화.
      */
@@ -147,6 +223,19 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
         Long getOpenCount();
         Long getClickCount();
         Long getConvertCount();
+    }
+
+    interface ProjectFunnelRawRow extends CampaignFunnelRawRow {
+        Long getCampaignCount();
+    }
+
+    interface CampaignFunnelRawMetricRow extends CampaignFunnelRawRow {
+        Long getCampaignId();
+        String getChannel();
+    }
+
+    interface ChannelFunnelRawMetricRow extends CampaignFunnelRawRow {
+        String getChannel();
     }
 
     /**

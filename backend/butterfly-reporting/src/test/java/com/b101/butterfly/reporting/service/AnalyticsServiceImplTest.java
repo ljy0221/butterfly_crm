@@ -2,7 +2,6 @@ package com.b101.butterfly.reporting.service;
 
 import com.b101.butterfly.global.response.PageResponse;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
-import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsHourlyRepository;
 import com.b101.butterfly.reporting.aggregation.repository.ProjectStatsDailyRepository;
 import com.b101.butterfly.reporting.dto.AnalyticsQuery;
 import com.b101.butterfly.reporting.dto.CampaignMetricItem;
@@ -16,7 +15,9 @@ import com.b101.butterfly.reporting.dto.PeriodSummaryRow;
 import com.b101.butterfly.reporting.dto.SegmentMetricsResponse;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawMetricRow;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawRow;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.ProjectFunnelRawRow;
 import com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow;
 import com.b101.butterfly.reporting.report.dto.FunnelCountRow;
 import com.b101.butterfly.reporting.report.port.CampaignSegmentInfo;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 
@@ -42,7 +44,6 @@ import static org.mockito.Mockito.mock;
 class AnalyticsServiceImplTest {
 
     private CampaignStatsDailyRepository campaignRepo;
-    private CampaignStatsHourlyRepository hourlyRepo;
     private ProjectStatsDailyRepository projectRepo;
     private CampaignSegmentPort segmentPort;
     private ReportingNotificationLogRepository notificationLogRepo;
@@ -52,12 +53,11 @@ class AnalyticsServiceImplTest {
     @BeforeEach
     void setUp() {
         campaignRepo = mock(CampaignStatsDailyRepository.class);
-        hourlyRepo = mock(CampaignStatsHourlyRepository.class);
         projectRepo = mock(ProjectStatsDailyRepository.class);
         segmentPort = mock(CampaignSegmentPort.class);
         notificationLogRepo = mock(ReportingNotificationLogRepository.class);
         stub = mock(AnalyticsServiceStub.class);
-        service = new AnalyticsServiceImpl(campaignRepo, hourlyRepo, projectRepo, segmentPort, notificationLogRepo, stub);
+        service = new AnalyticsServiceImpl(campaignRepo, projectRepo, segmentPort, notificationLogRepo, stub);
     }
 
     /** {@link CampaignFunnelRawRow} 는 interface projection — anonymous impl 로 테스트값 주입. */
@@ -68,6 +68,35 @@ class AnalyticsServiceImplTest {
     private static CampaignFunnelRawRow rawRow(Long sent, Long delivered, Long failed,
                                                Long open, Long click, Long convert) {
         return new CampaignFunnelRawRow() {
+            @Override public Long getSentCount() { return sent; }
+            @Override public Long getDeliveredCount() { return delivered; }
+            @Override public Long getFailedCount() { return failed; }
+            @Override public Long getOpenCount() { return open; }
+            @Override public Long getClickCount() { return click; }
+            @Override public Long getConvertCount() { return convert; }
+        };
+    }
+
+    private static ProjectFunnelRawRow projectRawRow(Long sent, Long delivered, Long failed,
+                                                     Long open, Long click, Long convert,
+                                                     Long campaignCount) {
+        return new ProjectFunnelRawRow() {
+            @Override public Long getSentCount() { return sent; }
+            @Override public Long getDeliveredCount() { return delivered; }
+            @Override public Long getFailedCount() { return failed; }
+            @Override public Long getOpenCount() { return open; }
+            @Override public Long getClickCount() { return click; }
+            @Override public Long getConvertCount() { return convert; }
+            @Override public Long getCampaignCount() { return campaignCount; }
+        };
+    }
+
+    private static CampaignFunnelRawMetricRow campaignRawRow(Long campaignId, String channel,
+                                                             Long sent, Long delivered, Long failed,
+                                                             Long open, Long click, Long convert) {
+        return new CampaignFunnelRawMetricRow() {
+            @Override public Long getCampaignId() { return campaignId; }
+            @Override public String getChannel() { return channel; }
             @Override public Long getSentCount() { return sent; }
             @Override public Long getDeliveredCount() { return delivered; }
             @Override public Long getFailedCount() { return failed; }
@@ -211,6 +240,24 @@ class AnalyticsServiceImplTest {
             assertThat(res.summary().avgDeliveryRate()).isNull();
             assertThat(res.dailyTrend()).isEmpty();
         }
+
+        @Test
+        @DisplayName("오늘 포함 — daily 롤업 대신 notification_logs 원장 집계로 즉시 보강")
+        void todayUsesRawNotificationLogs() {
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+            AnalyticsQuery q = new AnalyticsQuery(today, today, null, null);
+            given(notificationLogRepo.countProjectFunnelBetween(eq(1L), any(), any()))
+                    .willReturn(projectRawRow(389L, 7L, 382L, 0L, 2L, 0L, 1L));
+
+            DashboardResponse res = service.getDashboard(1L, q);
+
+            assertThat(res.summary().campaignsSentInPeriod()).isEqualTo(1L);
+            assertThat(res.summary().totalSent()).isEqualTo(389L);
+            assertThat(res.summary().totalDelivered()).isEqualTo(7L);
+            assertThat(res.summary().totalClicked()).isEqualTo(2L);
+            assertThat(res.dailyTrend()).hasSize(1);
+            assertThat(res.dailyTrend().get(0).sent()).isEqualTo(389L);
+        }
     }
 
     // ========== API 60 — getChannelMetrics ==========
@@ -312,6 +359,22 @@ class AnalyticsServiceImplTest {
 
             assertThat(res.content()).hasSize(1);
             assertThat(res.content().get(0).campaignId()).isEqualTo(100L);
+        }
+
+        @Test
+        @DisplayName("오늘 포함 — 최근 캠페인은 hourly가 아닌 raw 발송 로그 카운트를 사용")
+        void todayCampaignMetricsUseRawNotificationLogs() {
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+            AnalyticsQuery q = new AnalyticsQuery(today, today, null, null);
+            given(notificationLogRepo.aggregateCampaignFunnelBetween(eq(1L), any(), any(), eq(null)))
+                    .willReturn(List.of(campaignRawRow(566L, "PUSH", 389L, 7L, 382L, 0L, 2L, 0L)));
+
+            PageResponse<CampaignMetricItem> res = service.getCampaignMetrics(1L, q, 0, 10);
+
+            assertThat(res.content()).hasSize(1);
+            assertThat(res.content().get(0).campaignId()).isEqualTo(566L);
+            assertThat(res.content().get(0).sentCount()).isEqualTo(389L);
+            assertThat(res.content().get(0).clickedCount()).isEqualTo(2L);
         }
     }
 
