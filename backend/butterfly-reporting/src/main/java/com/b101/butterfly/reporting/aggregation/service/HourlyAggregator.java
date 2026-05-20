@@ -6,6 +6,8 @@ import com.b101.butterfly.reporting.notification.repository.ReportingNotificatio
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,11 @@ public class HourlyAggregator {
 
     private final ReportingNotificationLogRepository notificationLogRepository;
     private final CampaignStatsHourlyRepository hourlyRepository;
+
+    // scheduledAggregate → aggregate 자기 호출 시 CGLIB 프록시 우회 방지용 self-bean
+    @Autowired
+    @Lazy
+    private HourlyAggregator self;
 
     /**
      * 단일 bucket 집계 트리거.
@@ -90,7 +97,7 @@ public class HourlyAggregator {
     @org.springframework.scheduling.annotation.Scheduled(fixedRate = 5 * 60 * 1000L)
     public void scheduledAggregate() {
         try {
-            aggregate(currentBucket(), false);
+            self.aggregate(currentBucket(), false);
         } catch (Exception e) {
             // 실패해도 다음 5분 후 재시도. 운영 알림은 system_health_snapshots(124-B)에서.
             log.error("hourly aggregate scheduled run failed", e);
