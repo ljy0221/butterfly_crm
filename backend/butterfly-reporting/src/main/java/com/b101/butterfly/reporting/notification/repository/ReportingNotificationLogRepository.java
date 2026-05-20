@@ -109,18 +109,20 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
      * sent/delivered/failed 를 반환한다.
      *
      * <p>kpi-and-attribution.md §3 분모 0 ⇒ null 정책은 호출자(Service) 책임. 본 쿼리는 카운트만.
-     * open/click/convert 는 user_action_logs(123) 미머지 시점이라 0 로 고정 — Stub/Impl 정책과 동일.
-     *
      * <p>HourlyAggregator/CampaignStatsHourly 와 동일한 status 매핑:
      * sent = SENT + DELIVERED (발송 성공 row), delivered = DELIVERED only,
      * failed = FAILED only.
      */
     @Query(value = """
             SELECT
-                SUM(CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN 1 ELSE 0 END) AS sent_count,
-                SUM(CASE WHEN n.status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered_count,
-                SUM(CASE WHEN n.status = 'FAILED' THEN 1 ELSE 0 END) AS failed_count
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS sent_count,
+                COUNT(DISTINCT CASE WHEN n.status = 'DELIVERED' THEN n.log_id END) AS delivered_count,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count
             FROM notification_logs n
+            LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
               AND n.campaign_id = :campaignId
             """, nativeQuery = true)
@@ -137,6 +139,9 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
         Long getSentCount();
         Long getDeliveredCount();
         Long getFailedCount();
+        Long getOpenCount();
+        Long getClickCount();
+        Long getConvertCount();
     }
 
     /**

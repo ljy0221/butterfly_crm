@@ -126,8 +126,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
      * 부하 테스트 직후처럼 daily 가 아직 안 채워진 시점에도 KPI 카드가 0 으로 나오지 않게
      * 하기 위한 안전장치 (ADR-0007, S14P31B101-34).
      *
-     * <p>open/click/convert 는 user_action_logs(123) 머지 전이라 daily/fallback 모두 0. ADR-0007
-     * 의 "분모 0 ⇒ null" 정책은 {@link #rate} 에서 처리.
+     * <p>open/click/convert 도 fallback에서 user_action_logs를 함께 집계한다. ADR-0007 의
+     * "분모 0 ⇒ null" 정책은 {@link #rate} 에서 처리.
      */
     @Override
     public CampaignStatsResponse getCampaignStats(Long projectId, Long campaignId) {
@@ -152,9 +152,9 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             sent = nullSafe(rawRow == null ? null : rawRow.getSentCount());
             delivered = nullSafe(rawRow == null ? null : rawRow.getDeliveredCount());
             failed = nullSafe(rawRow == null ? null : rawRow.getFailedCount());
-            open = 0L;
-            click = 0L;
-            convert = 0L;
+            open = nullSafe(rawRow == null ? null : rawRow.getOpenCount());
+            click = nullSafe(rawRow == null ? null : rawRow.getClickCount());
+            convert = nullSafe(rawRow == null ? null : rawRow.getConvertCount());
         } else {
             sent = row.sentCount();
             delivered = row.deliveredCount();

@@ -1,7 +1,10 @@
 package com.b101.butterfly.reporting.aggregation.service;
 
+import com.b101.butterfly.reporting.aggregation.dto.HourlyActionCountRow;
 import com.b101.butterfly.reporting.aggregation.dto.HourlyCountRow;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsHourlyRepository;
+import com.b101.butterfly.reporting.event.repository.UserActionLogRepository;
+import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -15,7 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * 5분 주기로 직전 5분 윈도우의 notification_logs를 캠페인×채널 단위로 합산해
@@ -39,6 +46,7 @@ public class HourlyAggregator {
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final ReportingNotificationLogRepository notificationLogRepository;
+    private final UserActionLogRepository userActionLogRepository;
     private final CampaignStatsHourlyRepository hourlyRepository;
 
     // scheduledAggregate → aggregate 자기 호출 시 CGLIB 프록시 우회 방지용 self-bean
@@ -70,19 +78,39 @@ public class HourlyAggregator {
         LocalDateTime now = LocalDateTime.now(KST);
         LocalDateTime windowEnd = now.isBefore(bucketEnd) ? now : bucketEnd;
 
-        List<HourlyCountRow> rows = notificationLogRepository.aggregateHourly(bucketStart, windowEnd);
+        List<HourlyCountRow> deliveryRows = notificationLogRepository.aggregateHourly(bucketStart, windowEnd);
+        List<HourlyActionCountRow> actionRows = userActionLogRepository.aggregateHourly(bucketStart, windowEnd);
+        Map<StatsKey, HourlyCountRow> deliveryByKey = new HashMap<>();
+        Map<StatsKey, HourlyActionCountRow> actionByKey = new HashMap<>();
+        Set<StatsKey> keys = new LinkedHashSet<>();
+
+        for (HourlyCountRow row : deliveryRows) {
+            StatsKey key = StatsKey.from(row.projectId(), row.campaignId(), row.channel());
+            deliveryByKey.put(key, row);
+            keys.add(key);
+        }
+        for (HourlyActionCountRow row : actionRows) {
+            StatsKey key = StatsKey.from(row.projectId(), row.campaignId(), row.channel());
+            actionByKey.put(key, row);
+            keys.add(key);
+        }
 
         int upserted = 0;
-        for (HourlyCountRow row : rows) {
+        for (StatsKey key : keys) {
+            HourlyCountRow delivery = deliveryByKey.get(key);
+            HourlyActionCountRow action = actionByKey.get(key);
             upserted += hourlyRepository.upsert(
-                    row.projectId(),
-                    row.campaignId(),
-                    row.channel().name(),
+                    key.projectId(),
+                    key.campaignId(),
+                    key.channel().name(),
                     bucketStart,
-                    safe(row.pendingCount()),
-                    safe(row.sentCount()),
-                    safe(row.deliveredCount()),
-                    safe(row.failedCount())
+                    delivery != null ? safe(delivery.pendingCount()) : 0,
+                    delivery != null ? safe(delivery.sentCount()) : 0,
+                    delivery != null ? safe(delivery.deliveredCount()) : 0,
+                    delivery != null ? safe(delivery.failedCount()) : 0,
+                    action != null ? safe(action.openCount()) : 0,
+                    action != null ? safe(action.clickCount()) : 0,
+                    action != null ? safe(action.convertCount()) : 0
             );
         }
         long elapsed = System.currentTimeMillis() - startMs;
@@ -116,5 +144,11 @@ public class HourlyAggregator {
     /** 외부에서 윈도우 길이 참조용. 124-A는 5분 고정. */
     public static Duration windowSize() {
         return Duration.ofMinutes(5);
+    }
+
+    private record StatsKey(Long projectId, Long campaignId, Channel channel) {
+        static StatsKey from(Long projectId, Long campaignId, Channel channel) {
+            return new StatsKey(projectId, campaignId, channel);
+        }
     }
 }

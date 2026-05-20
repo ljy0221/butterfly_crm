@@ -2,6 +2,9 @@ package com.b101.butterfly.reporting.aggregation.service;
 
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsHourly;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsHourlyRepository;
+import com.b101.butterfly.reporting.event.entity.ActionType;
+import com.b101.butterfly.reporting.event.entity.UserActionLog;
+import com.b101.butterfly.reporting.event.repository.UserActionLogRepository;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
@@ -32,10 +35,12 @@ class HourlyAggregatorIntegrationTest extends AbstractReportingMySqlTest {
 
     @Autowired private HourlyAggregator aggregator;
     @Autowired private CampaignStatsHourlyRepository hourlyRepository;
+    @Autowired private UserActionLogRepository userActionLogRepository;
     @Autowired private ReportingNotificationLogRepository notificationLogRepository;
 
     @AfterEach
     void cleanup() {
+        userActionLogRepository.deleteAll();
         hourlyRepository.deleteAll();
         notificationLogRepository.deleteAll();
     }
@@ -76,6 +81,28 @@ class HourlyAggregatorIntegrationTest extends AbstractReportingMySqlTest {
         assertThat(stats.getOpenCount()).isZero();
         assertThat(stats.getClickCount()).isZero();
         assertThat(stats.getConvertCount()).isZero();
+    }
+
+    @Test
+    @DisplayName("user_action_logs CLICK → hourly click_count에 반영")
+    void aggregatesActionCountsToHourlyTable() {
+        NotificationLog sent = seed(NotificationStatus.SENT, "k-click");
+        userActionLogRepository.save(UserActionLog.create()
+                .logId(sent.getId())
+                .projectId(123L)
+                .campaignId(4521L)
+                .actionType(ActionType.CLICK)
+                .actionTarget("https://shop.example.com/promo")
+                .actionAt(LocalDateTime.now())
+                .build());
+
+        LocalDateTime bucket = currentBucket();
+        aggregator.aggregate(bucket, false);
+
+        CampaignStatsHourly stats = hourlyRepository.findByCampaignIdAndChannelAndBucketHour(
+                4521L, Channel.PUSH, bucket).orElseThrow();
+        assertThat(stats.getSentCount()).isEqualTo(1);
+        assertThat(stats.getClickCount()).isEqualTo(1);
     }
 
     @Test
