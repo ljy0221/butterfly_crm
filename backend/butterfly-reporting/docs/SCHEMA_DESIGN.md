@@ -250,7 +250,7 @@ INSERT INTO campaign_stats_hourly
     (project_id, campaign_id, channel, bucket_hour, sent_count, ...)
 VALUES (?, ?, ?, ?, ?, ...)
 ON DUPLICATE KEY UPDATE
-    sent_count = sent_count + VALUES(sent_count),
+    sent_count = VALUES(sent_count),
     updated_at = CURRENT_TIMESTAMP;
 ```
 

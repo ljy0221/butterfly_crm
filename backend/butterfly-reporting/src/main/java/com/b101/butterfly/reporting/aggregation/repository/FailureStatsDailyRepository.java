@@ -42,7 +42,7 @@ public interface FailureStatsDailyRepository extends JpaRepository<FailureStatsD
             Pageable pageable
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM failure_stats_daily WHERE bucket_date = :bucketDate",
             nativeQuery = true)
     int deleteByBucketDate(@Param("bucketDate") LocalDate bucketDate);

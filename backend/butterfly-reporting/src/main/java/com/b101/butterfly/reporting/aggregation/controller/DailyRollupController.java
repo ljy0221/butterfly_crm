@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 /**
  * Daily 롤업 수동 트리거 엔드포인트 (API #29 — butterfly_api_spec_v2.md).
@@ -40,7 +41,7 @@ public class DailyRollupController {
 
         LocalDate targetDate = request.targetDate() != null
                 ? request.targetDate()
-                : LocalDate.now().minusDays(1);
+                : LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(1);
 
         long start = System.currentTimeMillis();
         int[] rows = dailyRollupService.rollup(targetDate, request.force());

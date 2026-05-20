@@ -66,7 +66,7 @@ public interface CampaignStatsHourlyRepository extends JpaRepository<CampaignSta
     /**
      * force 재집계용 — 특정 bucket의 모든 row 삭제. 재집계 전에 호출한다.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM campaign_stats_hourly WHERE bucket_hour = :bucketHour",
             nativeQuery = true)
     int deleteByBucketHour(@Param("bucketHour") LocalDateTime bucketHour);

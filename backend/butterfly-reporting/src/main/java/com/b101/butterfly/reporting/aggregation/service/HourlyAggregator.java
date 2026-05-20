@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -33,6 +34,7 @@ import java.util.List;
 public class HourlyAggregator {
 
     private static final Logger log = LoggerFactory.getLogger(HourlyAggregator.class);
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 
     private final ReportingNotificationLogRepository notificationLogRepository;
     private final CampaignStatsHourlyRepository hourlyRepository;
@@ -58,7 +60,7 @@ public class HourlyAggregator {
 
         // 윈도우=[bucketStart, now()) — bucket 시작부터 현재까지의 누적 카운트로 UPSERT.
         // bucket이 끝난 후 호출되면 [bucketStart, bucketEnd)로 범위가 잡힌다.
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KST);
         LocalDateTime windowEnd = now.isBefore(bucketEnd) ? now : bucketEnd;
 
         List<HourlyCountRow> rows = notificationLogRepository.aggregateHourly(bucketStart, windowEnd);
@@ -96,7 +98,7 @@ public class HourlyAggregator {
     }
 
     private LocalDateTime currentBucket() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(KST);
         return now.withMinute(0).withSecond(0).withNano(0);
     }
 

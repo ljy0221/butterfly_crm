@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { Button, Icon, PageHeader } from "@/components/common";
 import InfoTooltip from "@/components/common/InfoTooltip";
@@ -91,6 +91,12 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
     makeInitialState(mode, editingCampaignId),
   );
   const [furthest, setFurthest] = useState<WizardStep>(1);
+
+  const onSelectSegment = useCallback(
+    (id: number | null, name: string | null, estimatedCount: number | null) =>
+      dispatch({ type: "set/segment", segmentId: id, segmentName: name, estimatedCount }),
+    [],
+  );
   const [submitting, setSubmitting] = useState(false);
 
   const isOwner = role === "OWNER";
@@ -376,9 +382,7 @@ export default function CampaignWizard({ mode }: CampaignWizardProps) {
             projectId={projectId}
             draft={state.draft}
             errors={state.errors}
-            onSelect={(id, name, estimatedCount) =>
-              dispatch({ type: "set/segment", segmentId: id, segmentName: name, estimatedCount })
-            }
+            onSelect={onSelectSegment}
           />
         );
       case 4:

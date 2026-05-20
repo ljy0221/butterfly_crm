@@ -18,7 +18,7 @@ public interface ProjectStatsDailyRepository extends JpaRepository<ProjectStatsD
 
     List<ProjectStatsDaily> findByBucketDate(LocalDate bucketDate);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM project_stats_daily WHERE bucket_date = :bucketDate",
             nativeQuery = true)
     int deleteByBucketDate(@Param("bucketDate") LocalDate bucketDate);

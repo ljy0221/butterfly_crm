@@ -82,7 +82,7 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
     /**
      * force 재집계용 — 특정 날짜의 모든 row 삭제.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = "DELETE FROM campaign_stats_daily WHERE bucket_date = :bucketDate",
             nativeQuery = true)
     int deleteByBucketDate(@Param("bucketDate") LocalDate bucketDate);

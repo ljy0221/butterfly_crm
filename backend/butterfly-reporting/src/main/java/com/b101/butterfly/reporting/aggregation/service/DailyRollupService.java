@@ -13,12 +13,15 @@ import com.b101.butterfly.reporting.notification.repository.ReportingNotificatio
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -44,12 +47,19 @@ import java.util.stream.Collectors;
 public class DailyRollupService {
 
     private static final Logger log = LoggerFactory.getLogger(DailyRollupService.class);
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
     private final CampaignStatsHourlyRepository hourlyRepository;
     private final CampaignStatsDailyRepository campaignDailyRepository;
     private final TemplateStatsDailyRepository templateDailyRepository;
     private final FailureStatsDailyRepository failureDailyRepository;
     private final ProjectStatsDailyRepository projectDailyRepository;
     private final ReportingNotificationLogRepository notificationLogRepository;
+
+    // rollupRange → rollup 자기 호출 시 프록시 우회 방지용 self-bean 주입
+    @Autowired
+    @Lazy
+    private DailyRollupService self;
 
     /**
      * 단일 날짜 롤업.
@@ -86,13 +96,16 @@ public class DailyRollupService {
 
     /**
      * 직전 N일 범위 재집계. force=true인 경우 KPI 정의서 §5.2 기준 7일 윈도우.
+     *
+     * <p>@Transactional 미적용 — 날짜별로 self.rollup()을 호출해 각 날짜가 독립 트랜잭션으로
+     * 처리되도록 한다. 직접 this.rollup() 호출 시 Spring AOP 프록시가 우회되어 7일치가
+     * 단일 트랜잭션으로 묶이고 중간 실패 시 전체 롤백되는 문제를 방지한다.
      */
-    @Transactional
     public int[] rollupRange(LocalDate from, LocalDate to, boolean force) {
         int[] totals = new int[4];
         LocalDate cursor = from;
         while (!cursor.isAfter(to)) {
-            int[] rows = rollup(cursor, force);
+            int[] rows = self.rollup(cursor, force);
             for (int i = 0; i < totals.length; i++) {
                 totals[i] += rows[i];
             }
@@ -102,16 +115,17 @@ public class DailyRollupService {
     }
 
     /**
-     * 매일 새벽 1시 KST 자동 실행 — 전날 데이터를 롤업한다.
+     * 매일 새벽 1시 KST 자동 실행 — 직전 7일(D-7 ~ D-1) 롤업 (KPI 정의서 §5.2).
      *
-     * <p>zone = "Asia/Seoul" 명시 — JVM 기본 타임존이 UTC인 컨테이너에서도 KST 01:00에 발사되도록 잠금.
-     * {@code ReconciliationScheduler} L69 동일 패턴.
+     * <p>zone = "Asia/Seoul" 명시 — JVM 기본 타임존이 UTC인 컨테이너에서도 KST 01:00에 발사.
+     * LocalDate.now(KST) 명시로 JVM 기본 타임존에 무관하게 KST 날짜를 사용한다.
+     * D-1 신규 집계 + D-2~D-7 재집계를 rollupRange 한 번으로 처리한다.
      */
     @Scheduled(cron = "0 0 1 * * *", zone = "Asia/Seoul")
     public void scheduledRollup() {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate yesterday = LocalDate.now(KST).minusDays(1);
         try {
-            rollup(yesterday, false);
+            rollupRange(yesterday.minusDays(6), yesterday, false);
         } catch (Exception e) {
             log.error("daily rollup scheduled run failed for date={}", yesterday, e);
         }
