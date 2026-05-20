@@ -19,7 +19,6 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -52,35 +51,44 @@ public class CampaignSendInstructionProcessor {
         log.info("템플릿 조회 완료: templateId={}, title={}",
                 instruction.templateId(), template.title());
 
-        List<SegmentAudienceTarget> audienceTargets =
-                segmentMemberLookupPort.getActiveTargets(
-                        instruction.segmentId(),
-                        null,
-                        Integer.MAX_VALUE);
-        List<Long> userIds = audienceTargets.stream()
-                .map(SegmentAudienceTarget::userId)
-                .toList();
-        log.info("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
-                instruction.segmentId(), userIds.size());
+        DeliveryCommand.Channel deliveryChannel = mapChannel(instruction.channel());
+        List<SegmentAudienceTarget> audienceTargets;
+        List<UserContactInfo> contacts;
+        List<Long> userIds;
 
-        if (userIds.isEmpty()) {
-            if (instruction.segmentId() == null) {
-                log.warn("segmentId가 null — 세그먼트 없는 발송은 현재 미지원: executionId={}",
-                        instruction.executionId());
-            } else {
+        if (instruction.segmentId() == null) {
+            audienceTargets = List.of();
+            contacts = userContactPort.getAllContacts(instruction.projectId(), deliveryChannel);
+            userIds = contacts.stream()
+                    .map(UserContactInfo::userId)
+                    .distinct()
+                    .toList();
+            log.info("전체 사용자 연락처 조회 완료: executionId={}, channel={}, userCount={}, contactCount={}",
+                    instruction.executionId(), deliveryChannel, userIds.size(), contacts.size());
+        } else {
+            audienceTargets = segmentMemberLookupPort.getActiveTargets(
+                    instruction.segmentId(),
+                    null,
+                    Integer.MAX_VALUE);
+            userIds = audienceTargets.stream()
+                    .map(SegmentAudienceTarget::userId)
+                    .toList();
+            log.info("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
+                    instruction.segmentId(), userIds.size());
+
+            if (userIds.isEmpty()) {
                 log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
                         instruction.executionId(), instruction.segmentId());
+                campaignExecutionResultRecorder.recordFailure(instruction.executionId());
+                return;
             }
-            campaignExecutionResultRecorder.recordFailure(instruction.executionId());
-            return;
-        }
 
-        DeliveryCommand.Channel deliveryChannel = mapChannel(instruction.channel());
-        List<UserContactInfo> contacts = userContactPort.getContactsByUserIds(
-                instruction.projectId(),
-                userIds,
-                deliveryChannel
-        );
+            contacts = userContactPort.getContactsByUserIds(
+                    instruction.projectId(),
+                    userIds,
+                    deliveryChannel
+            );
+        }
         log.info("연락처 조회 완료: executionId={}, channel={}, contactCount={}",
                 instruction.executionId(), deliveryChannel, contacts.size());
         if (contacts.isEmpty()) {
@@ -202,14 +210,20 @@ public class CampaignSendInstructionProcessor {
             List<Long> userIds,
             List<SegmentAudienceTarget> audienceTargets
     ) {
-        boolean hasSnapshotVariables =
-                audienceTargets.stream().anyMatch(target -> !target.variables().isEmpty());
-        if (!hasSnapshotVariables) {
-            return userTagLookupPort.getTagsByUserIds(projectId, userIds);
+        Map<Long, Map<String, String>> variablesByUser = new HashMap<>();
+        Map<Long, Map<String, String>> userTags = userTagLookupPort.getTagsByUserIds(projectId, userIds);
+        if (userTags != null) {
+            userTags.forEach((userId, variables) -> variablesByUser.put(userId, new HashMap<>(variables)));
         }
-        return audienceTargets.stream()
-                .collect(Collectors.toMap(
-                        SegmentAudienceTarget::userId,
-                        SegmentAudienceTarget::variables));
+
+        for (SegmentAudienceTarget target : audienceTargets) {
+            if (target.variables().isEmpty()) {
+                continue;
+            }
+            variablesByUser
+                    .computeIfAbsent(target.userId(), ignored -> new HashMap<>())
+                    .putAll(target.variables());
+        }
+        return variablesByUser;
     }
 }

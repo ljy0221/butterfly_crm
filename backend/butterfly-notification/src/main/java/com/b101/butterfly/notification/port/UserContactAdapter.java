@@ -34,12 +34,30 @@ public class UserContactAdapter implements UserContactPort {
                     + "  AND u.push_opt_in = true "
                     + "  AND d.token_valid = true";
 
+    private static final String PUSH_ALL_SQL =
+            "SELECT u.user_id, d.device_id, d.push_token, u.email, u.phone,"
+                    + " u.birth_date, u.signed_up_at "
+                    + "FROM users u "
+                    + "JOIN devices d ON d.user_id = u.user_id AND d.project_id = u.project_id "
+                    + "WHERE u.project_id = :projectId "
+                    + "  AND u.external_id <> :placeholder "
+                    + "  AND u.push_opt_in = true "
+                    + "  AND d.token_valid = true";
+
     private static final String EMAIL_SQL =
             "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
                     + " birth_date, signed_up_at "
                     + "FROM users "
                     + "WHERE project_id = :projectId "
                     + "  AND user_id IN (:userIds) "
+                    + "  AND external_id <> :placeholder "
+                    + "  AND email IS NOT NULL";
+
+    private static final String EMAIL_ALL_SQL =
+            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
+                    + " birth_date, signed_up_at "
+                    + "FROM users "
+                    + "WHERE project_id = :projectId "
                     + "  AND external_id <> :placeholder "
                     + "  AND email IS NOT NULL";
 
@@ -52,12 +70,27 @@ public class UserContactAdapter implements UserContactPort {
                     + "  AND external_id <> :placeholder "
                     + "  AND phone IS NOT NULL";
 
+    private static final String SMS_ALL_SQL =
+            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
+                    + " birth_date, signed_up_at "
+                    + "FROM users "
+                    + "WHERE project_id = :projectId "
+                    + "  AND external_id <> :placeholder "
+                    + "  AND phone IS NOT NULL";
+
     private static final String DEFAULT_SQL =
             "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
                     + " birth_date, signed_up_at "
                     + "FROM users "
                     + "WHERE project_id = :projectId "
                     + "  AND user_id IN (:userIds) "
+                    + "  AND external_id <> :placeholder";
+
+    private static final String DEFAULT_ALL_SQL =
+            "SELECT user_id, NULL AS device_id, NULL AS push_token, email, phone,"
+                    + " birth_date, signed_up_at "
+                    + "FROM users "
+                    + "WHERE project_id = :projectId "
                     + "  AND external_id <> :placeholder";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -69,27 +102,12 @@ public class UserContactAdapter implements UserContactPort {
             return Collections.emptyList();
         }
 
-        String sql = switch (channel) {
-            case PUSH -> PUSH_SQL;
-            case EMAIL -> EMAIL_SQL;
-            case SMS -> SMS_SQL;
-            case WEBHOOK, KAKAO -> DEFAULT_SQL;
-        };
-
         Map<String, Object> params = new HashMap<>();
         params.put("projectId", projectId);
         params.put("userIds", userIds);
         params.put("placeholder", PLACEHOLDER_EXTERNAL_ID);
 
-        List<UserContactInfo> result = jdbcTemplate.query(sql, params, (rs, rowNum) -> new UserContactInfo(
-                rs.getLong("user_id"),
-                rs.getObject("device_id") != null ? rs.getLong("device_id") : null,
-                rs.getString("push_token"),
-                rs.getString("email"),
-                rs.getString("phone"),
-                rs.getString("birth_date"),
-                rs.getString("signed_up_at")
-        ));
+        List<UserContactInfo> result = jdbcTemplate.query(sqlForUserIds(channel), params, this::mapRow);
         if (result.isEmpty()) {
             log.warn("연락처 조회 결과 0건: projectId={}, channel={}, 요청userCount={}",
                     projectId, channel, userIds.size());
@@ -98,5 +116,51 @@ public class UserContactAdapter implements UserContactPort {
                     projectId, channel, userIds.size(), result.size());
         }
         return result;
+    }
+
+    @Override
+    public List<UserContactInfo> getAllContacts(Long projectId, DeliveryCommand.Channel channel) {
+        Map<String, Object> params = new HashMap<>();
+        params.put("projectId", projectId);
+        params.put("placeholder", PLACEHOLDER_EXTERNAL_ID);
+
+        List<UserContactInfo> result = jdbcTemplate.query(sqlForAllContacts(channel), params, this::mapRow);
+        if (result.isEmpty()) {
+            log.warn("전체 연락처 조회 결과 0건: projectId={}, channel={}", projectId, channel);
+        } else {
+            log.info("전체 연락처 조회 완료: projectId={}, channel={}, 응답={}건",
+                    projectId, channel, result.size());
+        }
+        return result;
+    }
+
+    private String sqlForUserIds(DeliveryCommand.Channel channel) {
+        return switch (channel) {
+            case PUSH -> PUSH_SQL;
+            case EMAIL -> EMAIL_SQL;
+            case SMS -> SMS_SQL;
+            case WEBHOOK, KAKAO -> DEFAULT_SQL;
+        };
+    }
+
+    private String sqlForAllContacts(DeliveryCommand.Channel channel) {
+        return switch (channel) {
+            case PUSH -> PUSH_ALL_SQL;
+            case EMAIL -> EMAIL_ALL_SQL;
+            case SMS -> SMS_ALL_SQL;
+            case WEBHOOK, KAKAO -> DEFAULT_ALL_SQL;
+        };
+    }
+
+    private UserContactInfo mapRow(java.sql.ResultSet rs, int rowNum) throws java.sql.SQLException {
+        return new UserContactInfo(
+                rs.getLong("user_id"),
+                rs.getObject("device_id") != null ? rs.getLong("device_id") : null,
+                rs.getString("push_token"),
+                rs.getString("email"),
+                rs.getString("phone"),
+                rs.getString("birth_date"),
+                rs.getString("signed_up_at")
+        );
     }
 }

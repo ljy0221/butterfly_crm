@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.b101.butterfly.campaign.lifecycle.application.CampaignExecutionResultRecorder;
 import com.b101.butterfly.campaign.lifecycle.port.CampaignSendInstruction;
@@ -195,6 +196,44 @@ class CampaignSendInstructionProcessorTest {
     }
 
     @Test
+    @DisplayName("segmentId가 null이면 프로젝트 전체 연락처를 대상으로 발송")
+    void processAllUsersWhenSegmentIsNull() {
+        CampaignSendInstruction instruction = createAllUserInstruction();
+        MessageTemplateSnapshot template = new MessageTemplateSnapshot(
+                1L, 100L, Channel.PUSH,
+                "전체 제목", "안녕하세요 {{name}}님", null
+        );
+        given(messageTemplateLookupPort.lookup(1L)).willReturn(template);
+
+        List<UserContactInfo> contacts = List.of(
+                new UserContactInfo(1L, 101L, "token1", "user1@test.com", "010-1111-1111", null, null),
+                new UserContactInfo(2L, 102L, "token2", "user2@test.com", "010-2222-2222", null, null)
+        );
+        given(userContactPort.getAllContacts(100L, DeliveryCommand.Channel.PUSH))
+                .willReturn(contacts);
+        given(userTagLookupPort.getTagsByUserIds(100L, List.of(1L, 2L)))
+                .willReturn(Map.of(
+                        1L, Map.of("name", "Alice"),
+                        2L, Map.of("name", "Bob")
+                ));
+
+        processor.process(instruction);
+
+        ArgumentCaptor<DeliveryCommand> commandCaptor =
+                ArgumentCaptor.forClass(DeliveryCommand.class);
+        verify(deliveryCommandKafkaTemplate).send(
+                eq("delivery-requests"),
+                eq("100"),
+                commandCaptor.capture());
+        DeliveryCommand command = commandCaptor.getValue();
+        assertThat(command.userIds()).containsExactly(1L, 2L);
+        assertThat(command.targets()).hasSize(2);
+        assertThat(command.targets().get(0).variables()).containsEntry("name", "Alice");
+        verify(creditAccountService).reserveForCampaignExecution(100L, 123L, 999L, 2, 1L);
+        verifyNoInteractions(segmentMemberLookupPort);
+    }
+
+    @Test
     @DisplayName("세그먼트 멤버가 없으면 DeliveryCommand 발행하지 않음")
     void skipWhenNoSegmentMembers() {
         // given
@@ -222,6 +261,18 @@ class CampaignSendInstructionProcessorTest {
                 100L,   // projectId
                 1L,     // templateId
                 10L,    // segmentId
+                Channel.PUSH,
+                Instant.now()
+        );
+    }
+
+    private CampaignSendInstruction createAllUserInstruction() {
+        return CampaignSendInstruction.of(
+                999L,
+                123L,
+                100L,
+                1L,
+                null,
                 Channel.PUSH,
                 Instant.now()
         );

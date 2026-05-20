@@ -17,4 +17,9 @@ public class StubUserContactAdapter implements UserContactPort {
                 .map(userId -> new UserContactInfo(userId, null, null, null, null, null, null))
                 .toList();
     }
+
+    @Override
+    public List<UserContactInfo> getAllContacts(Long projectId, DeliveryCommand.Channel channel) {
+        return List.of();
+    }
 }
