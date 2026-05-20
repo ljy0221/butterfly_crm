@@ -5,6 +5,8 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import com.example.notificationtest.butterfly.device.DeviceManager
+import com.example.notificationtest.butterfly.dto.ActionIngestRequest
+import com.example.notificationtest.butterfly.dto.ActionIngestResponse
 import com.example.notificationtest.butterfly.dto.ApiResponse
 import com.example.notificationtest.butterfly.dto.DeviceRegisterRequest
 import com.example.notificationtest.butterfly.dto.DeviceRegisterResponse
@@ -196,6 +198,28 @@ object EventTrigger {
     @JvmStatic
     fun fireLoginSilently(context: Context, userId: String) {
         sendEventSilently(context, "login", mapOf("user_id" to userId))
+    }
+
+    @JvmStatic
+    fun recordNotificationClickSilently(
+        context: Context,
+        messageKey: String?,
+        actionTarget: String?
+    ) {
+        if (messageKey.isNullOrBlank()) {
+            Log.w(TAG, "[notification_click] skip: messageKey is blank")
+            return
+        }
+
+        val request = ActionIngestRequest(
+            messageKey = messageKey,
+            actionType = "CLICK",
+            actionTarget = actionTarget?.takeIf { it.isNotBlank() }
+                ?: "https://k14b101.p.ssafy.io/notifications/$messageKey",
+            userAgent = "android/${Build.VERSION.RELEASE ?: "unknown"}",
+            actionAt = nowIsoLocal()
+        )
+        ApiClient.api.recordAction(request).enqueue(silentCallback<ActionIngestResponse>("notification_click"))
     }
 
     private fun productViewPayload(): Map<String, Any> = mapOf(
