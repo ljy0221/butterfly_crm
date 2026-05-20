@@ -10,7 +10,7 @@ import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.reporting.AbstractReportingMySqlTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class UserActionIngestServiceIntegrationTest extends AbstractMySqlContainerTest {
+class UserActionIngestServiceIntegrationTest extends AbstractReportingMySqlTest {
 
     private static final LocalDateTime ACTION_AT = LocalDateTime.of(2026, 4, 28, 10, 2, 32);
 

@@ -2,7 +2,7 @@ package com.b101.butterfly.reporting.reconciliation.repository;
 
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.reconciliation.entity.SendReconciliation;
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.reporting.AbstractReportingMySqlTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class SendReconciliationRepositoryIntegrationTest extends AbstractMySqlContainerTest {
+class SendReconciliationRepositoryIntegrationTest extends AbstractReportingMySqlTest {
 
     @Autowired private SendReconciliationRepository repository;
 

@@ -3,7 +3,7 @@ package com.b101.butterfly.reporting.notification.repository;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.reporting.AbstractReportingMySqlTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class NotificationCountSummaryIntegrationTest extends AbstractMySqlContainerTest {
+class NotificationCountSummaryIntegrationTest extends AbstractReportingMySqlTest {
 
     @Autowired private ReportingNotificationLogRepository repository;
 

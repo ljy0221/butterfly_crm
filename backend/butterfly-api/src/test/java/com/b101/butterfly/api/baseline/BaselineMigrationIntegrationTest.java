@@ -1,6 +1,6 @@
 package com.b101.butterfly.api.baseline;
 
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.testsupport.IntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.flyway.FlywayAutoConfiguration;
@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MySQLContainer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -32,17 +33,29 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해 다른 도메인 모듈의 @EnableJpaRepositories
  * 자동 스캔을 격리한다. DataSource + Flyway + JdbcTemplate만 구성하며 JPA 자동설정은 로드하지 않는다.
  *
- * MySQL 컨테이너는 testsupport의 {@link AbstractMySqlContainerTest}를 상속하여 JVM 수명 동안 단일 인스턴스를 다른 통합 테스트와
- * 공유한다 (메모리 압박 완화 + 부팅 1회). databaseName이 필요한 information_schema 쿼리는
- * {@link #CONTAINER}.getDatabaseName()으로 접근.
+ * Flyway는 클린 DB에서 V1부터 순서대로 적용해야 하므로 공유 컨테이너를 쓰면 안 된다.
+ * 전용 컨테이너를 선언해 다른 통합 테스트의 ddl-auto 생성 테이블과 격리한다.
+ * databaseName이 필요한 information_schema 쿼리는 {@link #FLYWAY_CONTAINER}.getDatabaseName()으로 접근.
  */
+@IntegrationTest
 @SpringBootTest(classes = {DataSourceAutoConfiguration.class, FlywayAutoConfiguration.class,
                 JdbcTemplateAutoConfiguration.class},
                 webEnvironment = org.springframework.boot.test.context.SpringBootTest.WebEnvironment.NONE)
-class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
+class BaselineMigrationIntegrationTest {
+
+        static final MySQLContainer<?> FLYWAY_CONTAINER =
+                        new MySQLContainer<>("mysql:8.0")
+                                        .withCommand("--log_bin_trust_function_creators=1");
+
+        static {
+                FLYWAY_CONTAINER.start();
+        }
 
         @DynamicPropertySource
         static void overrideProperties(DynamicPropertyRegistry registry) {
+                registry.add("spring.datasource.url", FLYWAY_CONTAINER::getJdbcUrl);
+                registry.add("spring.datasource.username", FLYWAY_CONTAINER::getUsername);
+                registry.add("spring.datasource.password", FLYWAY_CONTAINER::getPassword);
                 registry.add("spring.flyway.enabled", () -> "true");
                 registry.add("spring.flyway.locations", () -> "classpath:db/migration");
                 registry.add("spring.jpa.hibernate.ddl-auto", () -> "none");
@@ -59,7 +72,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.tables "
                                                 + "WHERE table_schema = ? AND table_type = 'BASE TABLE' "
                                                 + "AND table_name <> 'flyway_schema_history'",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(37);
         }
 
@@ -79,7 +92,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT column_type FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'event_schema_fields' "
                                                 + "AND column_name = 'field_type'",
-                                String.class, CONTAINER.getDatabaseName());
+                                String.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(columnType).contains("'OBJECT'");
         }
 
@@ -88,7 +101,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 Integer count = jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM information_schema.triggers "
                                                 + "WHERE trigger_schema = ? AND event_object_table = 'audit_logs'",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(2);
         }
 
@@ -108,7 +121,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'segments' "
                                                 + "AND column_name IN ('build_token', 'build_started_at', 'build_heartbeat_at')",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(3);
         }
 
@@ -118,7 +131,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'members' "
                                                 + "AND column_name = 'member_status'",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(1);
         }
 
@@ -130,7 +143,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                                 + "WHERE table_schema = ? AND table_name = 'message_templates' "
                                                 + "AND column_name IN ('message_templates_name', 'message_templates_description', "
                                                 + "'message_templates_title', 'message_templates_body', 'message_templates_image_url')",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(0);
         }
 
@@ -142,7 +155,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'campaign_executions' "
                                                 + "AND column_name IN ('sent_count', 'failed_count', 'fail_reason')",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(0);
         }
 
@@ -152,7 +165,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.tables "
                                                 + "WHERE table_schema = ? AND table_type = 'BASE TABLE' "
                                                 + "AND table_name IN ('payment_order', 'credit_account', 'credit_transaction')",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(3);
         }
 
@@ -162,21 +175,21 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.tables "
                                                 + "WHERE table_schema = ? AND table_type = 'BASE TABLE' "
                                                 + "AND table_name = 'credit_reservation'",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(reservationTableCount).isEqualTo(1);
 
                 Integer accountReservedColumnCount = jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'credit_account' "
                                                 + "AND column_name = 'reserved_balance'",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(accountReservedColumnCount).isEqualTo(1);
 
                 Integer transactionReferenceColumnCount = jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'credit_transaction' "
                                                 + "AND column_name IN ('reference_type', 'reference_id')",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(transactionReferenceColumnCount).isEqualTo(2);
         }
 
@@ -185,7 +198,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 String columnDefault = jdbc.queryForObject(
                                 "SELECT column_default FROM information_schema.columns "
                                                 + "WHERE table_schema = ? AND table_name = 'segments' AND column_name = 'schema_version'",
-                                String.class, CONTAINER.getDatabaseName());
+                                String.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(columnDefault).isEqualTo("4");
         }
 
@@ -196,7 +209,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                 "SELECT COUNT(*) FROM information_schema.referential_constraints "
                                                 + "WHERE constraint_schema = ? "
                                                 + "AND constraint_name IN ('fk_projects_owner', 'fk_refresh_tokens_member', 'fk_campaigns_project')",
-                                Integer.class, CONTAINER.getDatabaseName());
+                                Integer.class, FLYWAY_CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(3);
         }
 }

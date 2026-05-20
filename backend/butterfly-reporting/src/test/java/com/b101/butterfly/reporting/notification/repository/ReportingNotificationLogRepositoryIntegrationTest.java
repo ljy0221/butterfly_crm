@@ -3,7 +3,7 @@ package com.b101.butterfly.reporting.notification.repository;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.reporting.AbstractReportingMySqlTest;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class ReportingNotificationLogRepositoryIntegrationTest extends AbstractMySqlContainerTest {
+class ReportingNotificationLogRepositoryIntegrationTest extends AbstractReportingMySqlTest {
 
     private static final LocalDateTime SENT_AT = LocalDateTime.of(2026, 4, 28, 10, 0, 5);
 

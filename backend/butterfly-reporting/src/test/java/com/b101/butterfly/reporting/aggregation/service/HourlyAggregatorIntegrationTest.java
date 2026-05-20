@@ -6,7 +6,7 @@ import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.reporting.AbstractReportingMySqlTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @SpringBootTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class HourlyAggregatorIntegrationTest extends AbstractMySqlContainerTest {
+class HourlyAggregatorIntegrationTest extends AbstractReportingMySqlTest {
 
     @Autowired private HourlyAggregator aggregator;
     @Autowired private CampaignStatsHourlyRepository hourlyRepository;

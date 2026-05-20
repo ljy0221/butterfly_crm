@@ -2,7 +2,7 @@ package com.b101.butterfly.reporting.aggregation.repository;
 
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.report.dto.FailureCountRow;
-import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
+import com.b101.butterfly.reporting.AbstractReportingMySqlTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-class FailureStatsDailyTopQueryIntegrationTest extends AbstractMySqlContainerTest {
+class FailureStatsDailyTopQueryIntegrationTest extends AbstractReportingMySqlTest {
 
     @Autowired
     private FailureStatsDailyRepository repository;
