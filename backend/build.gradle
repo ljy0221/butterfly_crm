@@ -69,6 +69,9 @@ subprojects {
                 junitXml.outputLocation = layout.buildDirectory.dir("test-results/integrationTest")
             }
             binaryResultsDirectory = layout.buildDirectory.dir("test-results/integrationTest/binary")
+            testLogging {
+                showStandardStreams = true
+            }
         }
     }
 

@@ -11,7 +11,7 @@
       "title": "HTTP 요청 처리량 (RPS)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\"}[1m]))",
@@ -25,7 +25,7 @@
       "title": "HTTP 응답시간 p95 (ms)",
       "type": "timeseries",
       "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{service=\"butterfly-api\"}[1m]))) * 1000",
@@ -50,7 +50,7 @@
       "title": "HTTP 에러율 (%)",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\",outcome=~\"SERVER_ERROR|CLIENT_ERROR\"}[1m])) / sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\"}[1m])) * 100",
@@ -75,7 +75,7 @@
       "title": "JVM 메모리 사용량",
       "type": "timeseries",
       "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "sum by (area) (jvm_memory_used_bytes{service=\"butterfly-api\"})",
@@ -89,7 +89,7 @@
       "title": "HikariCP DB 커넥션",
       "type": "timeseries",
       "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "hikaricp_connections_active{service=\"butterfly-api\"}",
@@ -111,7 +111,7 @@
       "title": "JVM 스레드",
       "type": "timeseries",
       "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "jvm_threads_live_threads{service=\"butterfly-api\"}",
@@ -129,7 +129,7 @@
       "title": "핵심 지표 (현재)",
       "type": "stat",
       "gridPos": { "x": 0, "y": 24, "w": 24, "h": 4 },
-      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "datasource": { "type": "prometheus", "uid": "PBFA97CFB590B2093" },
       "targets": [
         {
           "expr": "sum(rate(http_server_requests_seconds_count{service=\"butterfly-api\"}[1m]))",

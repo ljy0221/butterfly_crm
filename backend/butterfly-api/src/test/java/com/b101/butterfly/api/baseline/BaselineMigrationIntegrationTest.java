@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 베이스라인 V1~V20 마이그레이션이 클린 MySQL 8 testcontainer에서 단독 적용되는지 검증한다.
+ * 베이스라인 V1~V21 마이그레이션이 클린 MySQL 8 testcontainer에서 단독 적용되는지 검증한다.
  *
  * - V1: 22개 테이블 (core_baseline) - V2: 10개 테이블 (reporting_baseline) - V3: audit_logs 트리거 2개 - V4:
  * segments 테이블에 build_token / build_started_at / build_heartbeat_at 추가 + schema_version DEFAULT 4
@@ -26,7 +26,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * campaign_executions.send_completed_at NULL 허용 - V12: campaign_executions.send_started_at NULL 허용
  * - V13: members.member_status 컬럼 추가 (PENDING/ACTIVE) - V14: message_templates 의 legacy plural 컬럼
  * 5개 drop (S14P31B101-254) — 도메인 매핑(singular) 정렬 - V15: campaign_executions 의 결과 통계 3개 컬럼
- * (sent_count/failed_count/fail_reason) drop (S14P31B101-282) - flyway_schema_history: 15 row
+ * (sent_count/failed_count/fail_reason) drop (S14P31B101-282) - V21: 전 도메인 FK 제약조건 일괄 추가 (ADR-0013 §5)
+ * - flyway_schema_history: 21 row
  *
  * butterfly-api의 메인 ButterflyApiApplication 대신 별도 TestConfig를 사용해 다른 도메인 모듈의 @EnableJpaRepositories
  * 자동 스캔을 격리한다. DataSource + Flyway + JdbcTemplate만 구성하며 JPA 자동설정은 로드하지 않는다.
@@ -63,12 +64,12 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
         }
 
         @Test
-        void schema_history_20개_row_성공_상태() {
-                // V1 ~ V20
+        void schema_history_21개_row_성공_상태() {
+                // V1 ~ V21
                 Integer count = jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1",
                                 Integer.class);
-                assertThat(count).isEqualTo(20);
+                assertThat(count).isEqualTo(21);
         }
 
         @Test
@@ -186,5 +187,16 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                                                 + "WHERE table_schema = ? AND table_name = 'segments' AND column_name = 'schema_version'",
                                 String.class, CONTAINER.getDatabaseName());
                 assertThat(columnDefault).isEqualTo("4");
+        }
+
+        @Test
+        void v21_fk_제약조건_핵심_3개_검증() {
+                // projects.owner_id → members, refresh_tokens.member_id → members, campaigns.project_id → projects
+                Integer count = jdbc.queryForObject(
+                                "SELECT COUNT(*) FROM information_schema.referential_constraints "
+                                                + "WHERE constraint_schema = ? "
+                                                + "AND constraint_name IN ('fk_projects_owner', 'fk_refresh_tokens_member', 'fk_campaigns_project')",
+                                Integer.class, CONTAINER.getDatabaseName());
+                assertThat(count).isEqualTo(3);
         }
 }

@@ -8,6 +8,8 @@ import java.util.List;
 public record UserProfileResponse(
         Long userId,
         String externalId,
+        String email,
+        String phone,
         Boolean pushOptIn,
         LocalDateTime signedUpAt,
         DeviceSummary device,
@@ -24,8 +26,7 @@ public record UserProfileResponse(
 
     public record Summary(
             long totalEvents,
-            LocalDateTime lastSeenAt,
-            long purchaseCount
+            LocalDateTime lastSeenAt
     ) {}
 
     public record RecentEvent(

@@ -68,6 +68,13 @@ scrape_configs:
           node: worker-4
           tier: db
 
+  # Loki — 로그 수집량 메트릭
+  - job_name: loki
+    static_configs:
+      - targets: [loki:3100]
+        labels:
+          service: loki
+
   # Spring Boot Actuator — butterfly-api (worker-1 NodePort 30080)
   - job_name: butterfly-api
     metrics_path: /actuator/prometheus

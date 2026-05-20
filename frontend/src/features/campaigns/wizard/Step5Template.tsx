@@ -17,7 +17,7 @@ export interface Step5TemplateProps {
   projectId: number;
   draft: WizardDraft;
   errors: FieldErrorMap;
-  onSelect: (id: number, name: string) => void;
+  onSelect: (id: number | null, name: string | null) => void;
 }
 
 function fmtDateTime(iso: string): string {
@@ -36,11 +36,10 @@ export default function Step5Template({
   const canEdit = role !== "VIEWER";
 
   const [q, setQ] = useState("");
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [viewId, setViewId] = useState<number | null>(
     draft.messageTemplateId ?? null,
   );
-  const [deleting, setDeleting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data, isLoading, isError, refetch } = useTemplateListQuery(
     projectId,
@@ -66,47 +65,6 @@ export default function Step5Template({
     onSelect(t.messageTemplateId, t.messageTemplateName);
   };
 
-  const handleCheckbox = (e: React.MouseEvent, id: number): void => {
-    e.stopPropagation();
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const handleBulkDelete = async (): Promise<void> => {
-    const count = selectedIds.size;
-    const ok = await confirmDialog({
-      title: `템플릿 ${count}개를 삭제하시겠습니까?`,
-      message: `선택한 ${count}개의 템플릿이 영구 삭제됩니다.`,
-      confirmText: "삭제",
-      cancelText: "취소",
-      tone: "danger",
-    });
-    if (!ok) return;
-    setDeleting(true);
-    try {
-      await Promise.all([...selectedIds].map((id) => deleteMut.mutateAsync(id)));
-      toast(`${count}개 템플릿이 삭제되었습니다`, "success");
-      if (viewId !== null && selectedIds.has(viewId)) {
-        setViewId(null);
-      }
-      setSelectedIds(new Set());
-    } catch (err) {
-      const msg =
-        err instanceof ApiError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : "삭제 중 오류가 발생했습니다";
-      toast(msg, "error");
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const handleEdit = (): void => {
     if (!detailQuery.data || viewId == null) return;
     const d = detailQuery.data;
@@ -115,6 +73,7 @@ export default function Step5Template({
         mode="edit"
         projectId={projectId}
         templateId={viewId}
+        segmentId={draft.segmentId}
         initialValues={{
           messageTemplateName: d.messageTemplateName,
           messageTemplateDescription: d.messageTemplateDescription,
@@ -128,9 +87,45 @@ export default function Step5Template({
     ));
   };
 
+  const handleDelete = async (): Promise<void> => {
+    if (viewId == null) return;
+    const ok = await confirmDialog({
+      title: "템플릿을 삭제하시겠습니까?",
+      message: "삭제된 템플릿은 복구할 수 없습니다.",
+      confirmText: "삭제",
+      cancelText: "취소",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setIsDeleting(true);
+    try {
+      await deleteMut.mutateAsync(viewId);
+      toast("템플릿이 삭제되었습니다", "success");
+      if (draft.messageTemplateId === viewId) {
+        onSelect(null, null);
+      }
+      setViewId(null);
+    } catch (err) {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : "삭제 중 오류가 발생했습니다";
+      toast(msg, "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const onCreateNew = (): void => {
     openModal(({ close }) => (
-      <TemplateFormModal mode="create" projectId={projectId} onClose={close} />
+      <TemplateFormModal
+        mode="create"
+        projectId={projectId}
+        segmentId={draft.segmentId}
+        onClose={close}
+      />
     ));
   };
 
@@ -158,16 +153,6 @@ export default function Step5Template({
           placeholder="템플릿 이름·본문 검색"
           style={searchInputStyle}
         />
-        {canEdit && selectedIds.size > 0 && (
-          <button
-            type="button"
-            onClick={handleBulkDelete}
-            disabled={deleting}
-            style={dangerBtnStyle}
-          >
-            {deleting ? "삭제 중..." : `삭제 (${selectedIds.size})`}
-          </button>
-        )}
         {canEdit && (
           <button type="button" onClick={onCreateNew} style={outlineBtnStyle}>
             + 새 템플릿
@@ -216,7 +201,6 @@ export default function Step5Template({
 
           {templates.map((t) => {
             const active = t.messageTemplateId === draft.messageTemplateId;
-            const checked = selectedIds.has(t.messageTemplateId);
             const isViewing = t.messageTemplateId === viewId;
 
             return (
@@ -252,16 +236,6 @@ export default function Step5Template({
                 }}
               >
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                  {canEdit && (
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onClick={(e) => handleCheckbox(e, t.messageTemplateId)}
-                      onChange={() => {}}
-                      style={{ marginTop: 2, cursor: "pointer", flexShrink: 0 }}
-                      aria-label={`${t.messageTemplateName} 선택`}
-                    />
-                  )}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div
                       style={{
@@ -399,7 +373,15 @@ export default function Step5Template({
                   </DetailSection>
 
                   {canEdit && (
-                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px solid #f1f5f9" }}>
+                      <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={isDeleting}
+                        style={dangerSmallBtnStyle}
+                      >
+                        {isDeleting ? "삭제 중..." : "삭제"}
+                      </button>
                       <button
                         type="button"
                         onClick={handleEdit}
@@ -515,20 +497,6 @@ const outlineBtnStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 
-const dangerBtnStyle: React.CSSProperties = {
-  height: 36,
-  padding: "0 14px",
-  fontSize: 12.5,
-  fontWeight: 600,
-  color: "#fff",
-  background: "#ef4444",
-  border: "1px solid #ef4444",
-  borderRadius: 8,
-  cursor: "pointer",
-  fontFamily: "inherit",
-  whiteSpace: "nowrap",
-};
-
 const primaryBtnStyle: React.CSSProperties = {
   height: 32,
   padding: "0 16px",
@@ -537,6 +505,19 @@ const primaryBtnStyle: React.CSSProperties = {
   color: "#fff",
   background: "#3b5bdb",
   border: "none",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const dangerSmallBtnStyle: React.CSSProperties = {
+  height: 32,
+  padding: "0 16px",
+  fontSize: 12.5,
+  fontWeight: 600,
+  color: "#fff",
+  background: "#ef4444",
+  border: "1px solid #ef4444",
   borderRadius: 8,
   cursor: "pointer",
   fontFamily: "inherit",

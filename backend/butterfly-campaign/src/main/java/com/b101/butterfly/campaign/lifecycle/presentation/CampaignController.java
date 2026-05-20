@@ -130,6 +130,18 @@ public class CampaignController {
     }
 
     @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
+    @PostMapping("/{campaignId}/duplicate")
+    public ResponseEntity<ApiResponse<CampaignCreateResponse>> duplicateCampaign(
+            @PathVariable @Positive Long projectId,
+            @PathVariable @Positive Long campaignId
+    ) {
+        Long newCampaignId = campaignService.duplicateCampaign(campaignId, projectId, currentMemberId());
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(new CampaignCreateResponse(newCampaignId)));
+    }
+
+    @PreAuthorize("@projectPermission.hasRole(#projectId, 'EDITOR')")
     @PatchMapping("/{campaignId}/status")
     public ResponseEntity<ApiResponse<StatusTransitionResponse>> transitionStatus(
             @PathVariable @Positive Long projectId,

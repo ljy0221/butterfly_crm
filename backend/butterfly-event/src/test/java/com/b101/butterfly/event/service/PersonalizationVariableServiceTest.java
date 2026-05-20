@@ -79,16 +79,14 @@ class PersonalizationVariableServiceTest {
     }
 
     @Test
-    @DisplayName("segmentId가 없으면 project-level user_tags 추천만 조회한다")
-    void projectLevelUsesUserTagsOnly() {
-        given(userTagRepository.findRecommendedTagKeys(PROJECT_ID, null, 10))
-                .willReturn(List.of(tag("grade", 50L)));
-
+    @DisplayName("segmentId가 없으면 정적 SYSTEM 변수 목록을 반환한다")
+    void projectLevelUsesSystemVariables() {
         RecommendedVariableResponse response = service.getRecommended(PROJECT_ID, null);
 
         assertThat(response.variables()).extracting(RecommendedVariableResponse.Item::key)
-                .containsExactly("grade");
-        verifyNoInteractions(segmentVariableStatsRepository);
+                .containsExactly("name", "email", "phone", "today", "birth_date", "signed_up_at");
+        assertThat(response.variables()).allMatch(v -> "SYSTEM".equals(v.source()));
+        verifyNoInteractions(userTagRepository, segmentVariableStatsRepository);
     }
 
     private static SegmentVariableStats stats(

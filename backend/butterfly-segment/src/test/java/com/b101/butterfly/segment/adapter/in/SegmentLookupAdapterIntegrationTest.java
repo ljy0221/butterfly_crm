@@ -11,12 +11,14 @@ import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +33,25 @@ class SegmentLookupAdapterIntegrationTest extends AbstractMySqlContainerTest {
     @Autowired private SegmentLookupPort segmentLookupPort;
     @Autowired private SegmentRepository segmentRepository;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // members must exist before projects (projects.owner_id → members)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (100, NULL, 'lookup-test@test.com', '룩업테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // projects.owner_id = 100
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (1, 'lookup-project-1', '123-45-67890', 'COMP001', 100, 'FREE')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (2, 'lookup-project-2', '123-45-67891', 'COMP002', 100, 'FREE')
+                """);
+    }
 
     @Test
     @DisplayName("findById — 존재하는 segment를 SegmentSnapshot으로 반환")

@@ -79,11 +79,14 @@ export default function NotificationLogTable({
     [channel, status, page],
   );
 
+  const isActive = campaignStatus === "ACTIVE";
+
   const { data, isLoading, isError, error, refetch } = useCampaignLogsQuery(
     projectId,
     campaignId,
     params,
     true,
+    isActive ? 10_000 : false,
   );
 
   const onRowOpen = (logId: number) => {

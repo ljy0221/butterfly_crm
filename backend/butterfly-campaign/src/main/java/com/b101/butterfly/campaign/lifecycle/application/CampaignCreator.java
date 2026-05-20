@@ -57,6 +57,38 @@ public class CampaignCreator {
         return campaignRepository.save(campaign).getCampaignId();
     }
 
+    /**
+     * ENDED 캠페인을 새 DRAFT로 복사 (재실행).
+     *
+     * <p>원본의 messageTemplateId·segmentId·이름·설명을 그대로 복사하되
+     * 상태는 DRAFT, 소유자는 요청자 memberId로 초기화한다.
+     * 이름에 "[재실행]" 접두어를 붙여 원본과 구분한다.
+     */
+    @Transactional
+    public Long duplicateCampaign(Long campaignId, Long projectId, Long memberId) {
+        Campaign origin = campaignRepository.getByCampaignId(campaignId);
+        if (!origin.isOwnedBy(projectId)) {
+            throw new BusinessException(CampaignErrorCode.CAMPAIGN_NOT_FOUND);
+        }
+
+        MessageTemplateSnapshot template =
+                messageTemplateLookupPort.lookup(origin.getMessageTemplateId());
+
+        Campaign.CampaignCommonInputs common = new Campaign.CampaignCommonInputs(
+                projectId,
+                template,
+                memberId,
+                "[재실행] " + origin.getCampaignName(),
+                origin.getCampaignDescription()
+        );
+        Targeting targeting = (origin.getSegmentId() == null)
+                ? new Targeting.All()
+                : new Targeting.Segment(origin.getSegmentId());
+        Campaign copy = Campaign.create(common, new ScheduleSpec.Immediate(), targeting);
+
+        return campaignRepository.save(copy).getCampaignId();
+    }
+
     private void assertProjectExists(Long projectId) {
         if (!projectExistencePort.existsProject(projectId)) {
             throw new BusinessException(CampaignErrorCode.CAMPAIGN_PROJECT_NOT_FOUND);

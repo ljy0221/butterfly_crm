@@ -56,4 +56,16 @@ class CampaignStatusTest {
     void endedIsTerminal() {
         assertThat(CampaignStatus.ENDED.nextAllowed()).isEmpty();
     }
+
+    @ParameterizedTest(name = "{0}.canDelete() == {1}")
+    @CsvSource({
+            "DRAFT,  true",
+            "ACTIVE, false",
+            "PAUSED, false",
+            "ENDED,  true",
+    })
+    @DisplayName("canDelete()는 DRAFT·ENDED만 true")
+    void canDelete(CampaignStatus status, boolean expected) {
+        assertThat(status.canDelete()).isEqualTo(expected);
+    }
 }

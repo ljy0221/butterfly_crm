@@ -35,6 +35,9 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     @Override
     public void deliver(DeliveryCommand command) {
+        log.info("발송 시작: executionId={}, campaignId={}, channel={}",
+                command.executionId(), command.campaignId(), command.channel());
+
         // 1. credential 결정: 있으면 그대로, 없으면 DB 조회
         ChannelCredential credential = command.credential() != null
                 ? command.credential()
@@ -62,8 +65,11 @@ public class DeliveryServiceImpl implements DeliveryService {
         }
 
         if (targets.isEmpty()) {
+            log.warn("발송 대상 없음: executionId={}, campaignId={}", command.executionId(), command.campaignId());
             throw new BusinessException(DeliveryErrorCode.EMPTY_TARGETS);
         }
+
+        log.info("발송 대상 확정: executionId={}, targetCount={}", command.executionId(), targets.size());
 
         // 3. 내부용 command 재조립 (credential + targets 확정)
         DeliveryCommand resolved = new DeliveryCommand(
@@ -73,14 +79,20 @@ public class DeliveryServiceImpl implements DeliveryService {
         ChannelAdapter adapter = channelAdapterRegistry.getAdapter(command.channel());
 
         // Phase 1: 발송 — 트랜잭션 밖에서 HTTP 호출
+        log.info("발송 Phase1 시작(채널 전송): executionId={}, targetCount={}", command.executionId(), targets.size());
         List<TargetOutcome> outcomes = adapter.sendBatch(resolved, targets);
+        long sentCount = outcomes.stream().filter(o -> o.result().successful()).count();
+        long failedCount = outcomes.size() - sentCount;
+        log.info("발송 Phase1 완료: executionId={}, sent={}, failed={}", command.executionId(), sentCount, failedCount);
 
         // Phase 2: 결과 저장 — 별도 빈의 @Transactional 메서드 호출
+        log.info("발송 Phase2 시작(결과 저장): executionId={}", command.executionId());
         deliveryResultPersister.persist(resolved, outcomes);
 
         // Phase 3: per-execution summary 발행 (campaign-execution-result 토픽)
         //   — worker 측 consumer 가 받아 CampaignExecution.status SEND → SUCCESS|FAIL 전이.
         //   외부 IO 라 트랜잭션 밖에서 수행 (Phase 1/2 분리와 같은 원칙).
+        log.info("발송 Phase3 시작(실행 결과 발행): executionId={}", command.executionId());
         campaignExecutionResultPublisher.publish(resolved, outcomes);
     }
 }

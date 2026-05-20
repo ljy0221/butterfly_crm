@@ -5,6 +5,8 @@ public record UserContactInfo(
         Long deviceId,
         String pushToken,
         String email,
-        String phoneNumber
+        String phoneNumber,
+        String birthDate,
+        String signedUpAt
 ) {
 }

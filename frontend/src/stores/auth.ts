@@ -100,12 +100,15 @@ async function doRefresh(): Promise<string | null> {
       // 5xx 등 일시적 서버 오류 → 로그아웃하지 않음
       return null;
     }
-    const data = (await res.json()) as { accessToken: string; refreshToken?: string };
-    setAccessToken(data.accessToken);
-    if (data.refreshToken) {
-      useAuthStore.setState({ refreshToken: data.refreshToken });
-    }
-    return data.accessToken;
+    // 백엔드 응답: { success: true, data: { accessToken, refreshToken, member } }
+    const envelope = (await res.json()) as {
+      success: boolean;
+      data: { accessToken: string; refreshToken: string; member: AuthMember };
+    };
+    const { accessToken: newAccess, refreshToken: newRefresh, member } = envelope.data;
+    setAccessToken(newAccess);
+    useAuthStore.setState({ refreshToken: newRefresh, member });
+    return newAccess;
   } catch {
     // 네트워크 오류 → 로그아웃하지 않음
     return null;

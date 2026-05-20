@@ -129,9 +129,9 @@ class CampaignSendPipelineIntegrationTest {
                 ));
 
         List<UserContactInfo> contacts = List.of(
-                new UserContactInfo(1L, 101L, "token1", "user1@test.com", "010-1111-1111"),
-                new UserContactInfo(2L, 102L, "token2", "user2@test.com", "010-2222-2222"),
-                new UserContactInfo(3L, 103L, "token3", "user3@test.com", "010-3333-3333")
+                new UserContactInfo(1L, 101L, "token1", "user1@test.com", "010-1111-1111", null, null),
+                new UserContactInfo(2L, 102L, "token2", "user2@test.com", "010-2222-2222", null, null),
+                new UserContactInfo(3L, 103L, "token3", "user3@test.com", "010-3333-3333", null, null)
         );
         given(userContactPort.getContactsByUserIds(projectId, userIds, DeliveryCommand.Channel.PUSH))
                 .willReturn(contacts);

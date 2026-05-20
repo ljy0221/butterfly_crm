@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 캠페인 삭제 책임 (DRAFT 상태에서만 soft delete).
+ * 캠페인 삭제 책임 (DRAFT, ENDED 상태에서 soft delete).
  *
  * <p>{@code @SQLDelete}가 자동 soft delete 처리.
  */
@@ -35,8 +35,8 @@ public class CampaignRemover {
     }
 
     private void assertDeletable(Campaign campaign) {
-        if (campaign.getCampaignStatus() != CampaignStatus.DRAFT) {
-            throw new BusinessException(CampaignErrorCode.NOT_MODIFIABLE);
+        if (!campaign.getCampaignStatus().canDelete()) {
+            throw new BusinessException(CampaignErrorCode.NOT_DELETABLE);
         }
     }
 }

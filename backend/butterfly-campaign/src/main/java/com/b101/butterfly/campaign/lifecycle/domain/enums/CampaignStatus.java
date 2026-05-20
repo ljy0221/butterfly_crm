@@ -16,6 +16,9 @@ import lombok.Getter;
  *   PAUSED → ACTIVE, ENDED
  *   ENDED  → (terminal)
  * </pre>
+ *
+ * <p>삭제 가능 상태: DRAFT, ENDED
+ * ACTIVE/PAUSED 는 실행 중 또는 재개 가능 상태이므로 삭제 불가.
  */
 @Getter
 public enum CampaignStatus {
@@ -49,5 +52,9 @@ public enum CampaignStatus {
 
     public boolean canTransitionTo(CampaignStatus target) {
         return target != null && nextAllowed().contains(target);
+    }
+
+    public boolean canDelete() {
+        return this == DRAFT || this == ENDED;
     }
 }

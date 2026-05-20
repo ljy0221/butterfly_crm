@@ -23,11 +23,14 @@ import {
   useRebuildSegmentMutation,
   useSegmentConditionMetadataQuery,
   useSegmentDetailQuery,
+  useSegmentUsersQuery,
   useUpdateSegmentMutation,
   useLinkedCampaignsQuery,
 } from "@/hooks/queries/segment";
 import type {
   BuildStatus,
+  LinkedCampaignsResponse,
+  SegmentUserListResponse,
   PreviewResponse,
   SegmentDetail,
 } from "@/api/segment";
@@ -156,7 +159,16 @@ function BuilderInner({
     segmentId,
     mode === "view",
   );
+  const [userPage, setUserPage] = useState(0);
+  const segmentUsersQuery = useSegmentUsersQuery(
+    projectId,
+    segmentId,
+    userPage,
+    5,
+    mode === "view",
+  );
   const conditionMetadataQuery = useSegmentConditionMetadataQuery(projectId);
+  const navigate = useNavigate();
 
   // ---------- mode + editMode ----------
   // create: 항상 edit 가능. view: 기본 readonly, [수정] 버튼으로 editMode 토글.
@@ -175,6 +187,10 @@ function BuilderInner({
   const [previewError, setPreviewError] = useState<unknown>(null);
   const [dirty, setDirty] = useState(false);
   const [dirtyAfterPreview, setDirtyAfterPreview] = useState(false);
+
+  useEffect(() => {
+    setUserPage(0);
+  }, [segmentId]);
 
   // ---------- Mutations ----------
   const createMut = useCreateSegmentMutation(projectId);
@@ -798,19 +814,16 @@ function BuilderInner({
               subtitle="조건에 매칭되는 실제 사용자 목록"
               style={{}}
             >
-              <div
-                style={{
-                  padding: "20px 0",
-                  textAlign: "center",
-                  color: "#94a3b8",
-                  fontSize: 12,
-                }}
-              >
-                <div style={{ marginBottom: 6 }}>Phase 8 출시 예정</div>
-                <Tag tone="default" style={{}}>
-                  segment_users (mock)
-                </Tag>
-              </div>
+              <SegmentUsersView
+                isLoading={segmentUsersQuery.isLoading}
+                isFetching={segmentUsersQuery.isFetching}
+                isError={segmentUsersQuery.isError}
+                data={segmentUsersQuery.data}
+                page={userPage}
+                onPageChange={setUserPage}
+                onRetry={() => segmentUsersQuery.refetch()}
+                onOpenUser={(userId) => navigate(`/p/${projectId}/users/${userId}`)}
+              />
             </Card>
           )}
 
@@ -818,7 +831,12 @@ function BuilderInner({
             <Card title="연결된 캠페인" style={{}}>
               <LinkedCampaignsView
                 isLoading={linkedCampaignsQuery.isLoading}
+                isError={linkedCampaignsQuery.isError}
                 data={linkedCampaignsQuery.data}
+                onRetry={() => linkedCampaignsQuery.refetch()}
+                onOpenCampaign={(campaignId) =>
+                  navigate(`/p/${projectId}/campaigns/${campaignId}`)
+                }
               />
             </Card>
           )}
@@ -1101,63 +1119,385 @@ function AudienceStatsBlock({
 
 function LinkedCampaignsView({
   isLoading,
+  isFetching,
+  isError,
   data,
+  page,
+  onPageChange,
+  onRetry,
+  onOpenUser,
 }: {
   isLoading: boolean;
-  data: ReturnType<typeof useLinkedCampaignsQuery>["data"];
+  isFetching: boolean;
+  isError: boolean;
+  data: SegmentUserListResponse | undefined;
+  page: number;
+  onPageChange: (page: number) => void;
+  onRetry: () => void;
+  onOpenUser: (userId: number) => void;
 }) {
   if (isLoading) {
+    return <PanelMessage>매칭 사용자를 불러오는 중...</PanelMessage>;
+  }
+  if (isError) {
     return (
-      <div style={{ fontSize: 12, color: "#94a3b8", padding: "8px 0" }}>
-        불러오는 중...
+      <PanelMessage tone="error">
+        <div style={{ marginBottom: 8 }}>매칭 사용자 목록을 불러오지 못했습니다.</div>
+        <SmallTextButton onClick={onRetry}>재시도</SmallTextButton>
+      </PanelMessage>
+    );
+  }
+
+  const users = data?.content ?? [];
+  if (users.length === 0) {
+    return (
+      <PanelMessage>
+        <div style={{ marginBottom: 6 }}>매칭된 사용자가 없습니다</div>
+        <Tag tone="default" style={{}}>
+          {data?.totalElements ?? 0}명
+        </Tag>
+      </PanelMessage>
+    );
+  }
+
+  const totalPages = Math.max(data?.totalPages ?? 1, 1);
+  const totalElements = data?.totalElements ?? users.length;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 10,
+          fontSize: 12,
+          color: "#64748b",
+        }}
+      >
+        <span>총 {fmtNum(totalElements)}명</span>
+        {isFetching && <span style={{ color: "#94a3b8" }}>갱신 중...</span>}
       </div>
+
+      <div
+        style={{
+          border: "1px solid #e2e8f0",
+          borderRadius: 8,
+          overflow: "hidden",
+        }}
+      >
+        {users.map((user, index) => (
+          <button
+            key={user.userId}
+            type="button"
+            onClick={() => onOpenUser(user.userId)}
+            style={{
+              width: "100%",
+              display: "grid",
+              gridTemplateColumns: "minmax(0, 1fr) auto",
+              gap: 10,
+              alignItems: "center",
+              padding: "10px 12px",
+              background: "#fff",
+              border: 0,
+              borderBottom:
+                index === users.length - 1 ? "none" : "1px solid #f1f5f9",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              textAlign: "left",
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <div
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  color: "#1f2937",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+                title={user.email || user.externalId || `user-${user.userId}`}
+              >
+                {user.email || user.externalId || `사용자 #${user.userId}`}
+              </div>
+              <div
+                style={{
+                  marginTop: 3,
+                  fontSize: 11,
+                  color: "#94a3b8",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {user.externalId ? `${user.externalId} · ` : ""}
+                매칭 {formatDateTime(user.matchedAt)}
+              </div>
+            </div>
+            <span style={{ color: "#94a3b8" }}>{Icon.chevron(12)}</span>
+          </button>
+        ))}
+      </div>
+
+      <Pager
+        page={page}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+      />
+    </div>
+  );
+}
+
+function LinkedCampaignsView({
+  isLoading,
+  isError,
+  data,
+  onRetry,
+  onOpenCampaign,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  data: LinkedCampaignsResponse | undefined;
+  onRetry: () => void;
+  onOpenCampaign: (campaignId: number) => void;
+}) {
+  if (isLoading) {
+    return <PanelMessage>연결된 캠페인을 불러오는 중...</PanelMessage>;
+  }
+  if (isError) {
+    return (
+      <PanelMessage tone="error">
+        <div style={{ marginBottom: 8 }}>연결된 캠페인을 불러오지 못했습니다.</div>
+        <SmallTextButton onClick={onRetry}>재시도</SmallTextButton>
+      </PanelMessage>
     );
   }
   if (!data || data.totalCount === 0) {
     return (
-      <div
-        style={{
-          padding: "12px 0",
-          textAlign: "center",
-          color: "#94a3b8",
-          fontSize: 12,
-        }}
-      >
+      <PanelMessage>
         <div style={{ marginBottom: 6 }}>연결된 캠페인이 없습니다</div>
         <Tag tone="default" style={{}}>
-          Sprint 6 mock store 연동 예정
+          0개
         </Tag>
-      </div>
+      </PanelMessage>
     );
   }
+
+  const groups = [
+    { key: "active", label: "진행 중", items: data.active },
+    { key: "paused", label: "일시정지", items: data.paused },
+    { key: "draft", label: "초안", items: data.draft },
+    { key: "ended", label: "종료", items: data.ended },
+  ] as const;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {data.active.map((c) => (
-        <div
-          key={c.campaignId}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            fontSize: 12,
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: 999,
-              background: "#16a34a",
-            }}
-          />
-          <span style={{ flex: 1, color: "#1f2937" }}>{c.name}</span>
-          <Tag tone="success" dot style={{}}>
-            {c.campaignStatus}
-          </Tag>
-        </div>
-      ))}
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ fontSize: 12, color: "#64748b" }}>
+        총 {fmtNum(data.totalCount)}개 캠페인
+      </div>
+      {groups.map((group) => {
+        if (group.items.length === 0) return null;
+        return (
+          <div key={group.key}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: 6,
+                fontSize: 11,
+                color: "#94a3b8",
+                fontWeight: 700,
+              }}
+            >
+              <span>{group.label}</span>
+              <span>{group.items.length}개</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {group.items.map((campaign) => (
+                <button
+                  key={campaign.campaignId}
+                  type="button"
+                  onClick={() => onOpenCampaign(campaign.campaignId)}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0, 1fr) auto",
+                    gap: 8,
+                    alignItems: "center",
+                    width: "100%",
+                    padding: "9px 10px",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 8,
+                    background: "#fff",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                    textAlign: "left",
+                  }}
+                >
+                  <span
+                    style={{
+                      minWidth: 0,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "#1f2937",
+                      fontSize: 12.5,
+                      fontWeight: 650,
+                    }}
+                    title={campaign.name}
+                  >
+                    {campaign.name}
+                  </span>
+                  <Tag
+                    tone={campaignStatusTone(campaign.campaignStatus)}
+                    dot
+                    style={{}}
+                  >
+                    {campaignStatusLabel(campaign.campaignStatus)}
+                  </Tag>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
+}
+
+function Pager({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        alignItems: "center",
+        gap: 6,
+      }}
+    >
+      <SmallTextButton
+        disabled={page === 0}
+        onClick={() => onPageChange(Math.max(0, page - 1))}
+      >
+        이전
+      </SmallTextButton>
+      <span style={{ fontSize: 11.5, color: "#64748b" }}>
+        {page + 1} / {totalPages}
+      </span>
+      <SmallTextButton
+        disabled={page >= totalPages - 1}
+        onClick={() => onPageChange(Math.min(totalPages - 1, page + 1))}
+      >
+        다음
+      </SmallTextButton>
+    </div>
+  );
+}
+
+function SmallTextButton({
+  children,
+  disabled = false,
+  onClick,
+}: {
+  children: React.ReactNode;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      style={{
+        padding: "5px 8px",
+        border: "1px solid #e2e8f0",
+        borderRadius: 6,
+        background: disabled ? "#f8fafc" : "#fff",
+        color: disabled ? "#cbd5e1" : "#475569",
+        cursor: disabled ? "not-allowed" : "pointer",
+        fontSize: 11.5,
+        fontWeight: 700,
+        fontFamily: "inherit",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function PanelMessage({
+  children,
+  tone = "muted",
+}: {
+  children: React.ReactNode;
+  tone?: "muted" | "error";
+}) {
+  return (
+    <div
+      style={{
+        padding: "16px 0",
+        textAlign: "center",
+        color: tone === "error" ? "#b91c1c" : "#94a3b8",
+        fontSize: 12,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("ko-KR", {
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function campaignStatusLabel(status: string): string {
+  switch (status) {
+    case "ACTIVE":
+      return "진행 중";
+    case "PAUSED":
+      return "일시정지";
+    case "DRAFT":
+      return "초안";
+    case "ENDED":
+      return "종료";
+    default:
+      return status;
+  }
+}
+
+function campaignStatusTone(
+  status: string,
+): "default" | "success" | "warning" | "info" | "error" {
+  switch (status) {
+    case "ACTIVE":
+      return "success";
+    case "PAUSED":
+      return "warning";
+    case "DRAFT":
+      return "default";
+    case "ENDED":
+      return "info";
+    default:
+      return "default";
+  }
 }
 
 const fieldLabelStyle: React.CSSProperties = {

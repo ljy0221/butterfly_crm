@@ -14,6 +14,9 @@ import com.b101.butterfly.payment.application.CreditAccountService;
 import com.b101.butterfly.payment.exception.code.PaymentErrorCode;
 import com.b101.butterfly.segment.port.SegmentAudienceTarget;
 import com.b101.butterfly.segment.port.SegmentMemberLookupPort;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,8 +44,12 @@ public class CampaignSendInstructionProcessor {
     private final CreditAccountService creditAccountService;
 
     public void process(CampaignSendInstruction instruction) {
+        log.info("발송 지시 처리 시작: executionId={}, campaignId={}, channel={}, segmentId={}",
+                instruction.executionId(), instruction.campaignId(),
+                instruction.channel(), instruction.segmentId());
+
         MessageTemplateSnapshot template = messageTemplateLookupPort.lookup(instruction.templateId());
-        log.debug("템플릿 조회 완료: templateId={}, title={}",
+        log.info("템플릿 조회 완료: templateId={}, title={}",
                 instruction.templateId(), template.title());
 
         List<SegmentAudienceTarget> audienceTargets =
@@ -53,12 +60,17 @@ public class CampaignSendInstructionProcessor {
         List<Long> userIds = audienceTargets.stream()
                 .map(SegmentAudienceTarget::userId)
                 .toList();
-        log.debug("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
+        log.info("세그먼트 멤버 조회 완료: segmentId={}, userCount={}",
                 instruction.segmentId(), userIds.size());
 
         if (userIds.isEmpty()) {
-            log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
-                    instruction.executionId(), instruction.segmentId());
+            if (instruction.segmentId() == null) {
+                log.warn("segmentId가 null — 세그먼트 없는 발송은 현재 미지원: executionId={}",
+                        instruction.executionId());
+            } else {
+                log.warn("발송 대상이 없습니다: executionId={}, segmentId={}",
+                        instruction.executionId(), instruction.segmentId());
+            }
             campaignExecutionResultRecorder.recordFailure(instruction.executionId());
             return;
         }
@@ -69,6 +81,8 @@ public class CampaignSendInstructionProcessor {
                 userIds,
                 deliveryChannel
         );
+        log.info("연락처 조회 완료: executionId={}, channel={}, contactCount={}",
+                instruction.executionId(), deliveryChannel, contacts.size());
         if (contacts.isEmpty()) {
             log.warn("발송 가능한 연락처가 없습니다: executionId={}, segmentId={}",
                     instruction.executionId(), instruction.segmentId());
@@ -124,6 +138,9 @@ public class CampaignSendInstructionProcessor {
                     deliveryCommand.targets().size(),
                     CampaignCreditPricePolicy.unitPriceOf(deliveryChannel)
             );
+            log.info("크레딧 예약 완료: executionId={}, targetCount={}, unitPrice={}",
+                    instruction.executionId(), deliveryCommand.targets().size(),
+                    CampaignCreditPricePolicy.unitPriceOf(deliveryChannel));
             return true;
         } catch (BusinessException e) {
             if (e.getErrorCode() == PaymentErrorCode.PAY_INSUFFICIENT_BALANCE) {
@@ -150,15 +167,33 @@ public class CampaignSendInstructionProcessor {
             List<UserContactInfo> contacts,
             Map<Long, Map<String, String>> variablesByUser
     ) {
+        String today = LocalDate.now(ZoneId.of("Asia/Seoul")).toString();
         return contacts.stream()
-                .map(contact -> new DeliveryCommand.DeliveryTarget(
-                        contact.userId(),
-                        contact.deviceId(),
-                        contact.pushToken(),
-                        contact.email(),
-                        contact.phoneNumber(),
-                        variablesByUser.getOrDefault(contact.userId(), Map.of())
-                ))
+                .map(contact -> {
+                    Map<String, String> vars = new HashMap<>(
+                            variablesByUser.getOrDefault(contact.userId(), Map.of()));
+                    vars.putIfAbsent("email", contact.email() != null ? contact.email() : "");
+                    vars.putIfAbsent("phone", contact.phoneNumber() != null ? contact.phoneNumber() : "");
+                    vars.putIfAbsent("today", today);
+                    if (contact.birthDate() != null) vars.putIfAbsent("birth_date", contact.birthDate());
+                    if (contact.signedUpAt() != null) vars.putIfAbsent("signed_up_at", contact.signedUpAt());
+                    log.debug("SYSTEM 변수 해석: userId={}, email={}, phone={}, birth_date={}, signed_up_at={}, today={}, resolvedKeys={}",
+                            contact.userId(),
+                            contact.email() != null ? "있음" : "null",
+                            contact.phoneNumber() != null ? "있음" : "null",
+                            contact.birthDate() != null ? contact.birthDate() : "null",
+                            contact.signedUpAt() != null ? contact.signedUpAt() : "null",
+                            today,
+                            vars.keySet());
+                    return new DeliveryCommand.DeliveryTarget(
+                            contact.userId(),
+                            contact.deviceId(),
+                            contact.pushToken(),
+                            contact.email(),
+                            contact.phoneNumber(),
+                            vars
+                    );
+                })
                 .toList();
     }
 

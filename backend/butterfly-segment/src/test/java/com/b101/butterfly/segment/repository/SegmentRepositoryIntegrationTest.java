@@ -9,6 +9,7 @@ import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabas
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +30,25 @@ class SegmentRepositoryIntegrationTest extends AbstractMySqlContainerTest {
 
     @Autowired private SegmentRepository repository;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // members must exist before projects (projects.owner_id → members)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (100, NULL, 'test-seg@test.com', '테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // projects.owner_id = 100 (member just inserted above)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (1, 'test-project-1', '123-45-67890', 'COMP001', 100, 'FREE')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (2, 'test-project-2', '123-45-67891', 'COMP002', 100, 'FREE')
+                """);
+    }
 
     @Test
     @DisplayName("저장 시 기본값(schemaVersion=4, buildStatus=PENDING, isDeleted=false)이 채워진다")
