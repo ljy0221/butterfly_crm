@@ -2,6 +2,7 @@ package com.b101.butterfly.reporting.service;
 
 import com.b101.butterfly.global.response.PageResponse;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
+import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsHourlyRepository;
 import com.b101.butterfly.reporting.aggregation.repository.ProjectStatsDailyRepository;
 import com.b101.butterfly.reporting.dto.AnalyticsQuery;
 import com.b101.butterfly.reporting.dto.CampaignMetricItem;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.mock;
 class AnalyticsServiceImplTest {
 
     private CampaignStatsDailyRepository campaignRepo;
+    private CampaignStatsHourlyRepository hourlyRepo;
     private ProjectStatsDailyRepository projectRepo;
     private CampaignSegmentPort segmentPort;
     private ReportingNotificationLogRepository notificationLogRepo;
@@ -50,11 +52,12 @@ class AnalyticsServiceImplTest {
     @BeforeEach
     void setUp() {
         campaignRepo = mock(CampaignStatsDailyRepository.class);
+        hourlyRepo = mock(CampaignStatsHourlyRepository.class);
         projectRepo = mock(ProjectStatsDailyRepository.class);
         segmentPort = mock(CampaignSegmentPort.class);
         notificationLogRepo = mock(ReportingNotificationLogRepository.class);
         stub = mock(AnalyticsServiceStub.class);
-        service = new AnalyticsServiceImpl(campaignRepo, projectRepo, segmentPort, notificationLogRepo, stub);
+        service = new AnalyticsServiceImpl(campaignRepo, hourlyRepo, projectRepo, segmentPort, notificationLogRepo, stub);
     }
 
     /** {@link CampaignFunnelRawRow} 는 interface projection — anonymous impl 로 테스트값 주입. */
