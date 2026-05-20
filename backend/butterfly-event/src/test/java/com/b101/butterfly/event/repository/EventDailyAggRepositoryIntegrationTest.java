@@ -4,12 +4,14 @@ import com.b101.butterfly.event.entity.EventDailyAgg;
 import com.b101.butterfly.event.dto.response.EventCategoryStatsRow;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -24,6 +26,43 @@ class EventDailyAggRepositoryIntegrationTest extends AbstractMySqlContainerTest 
 
     @Autowired private EventDailyAggRepository repository;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // 1. member (owner of projects)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (1, NULL, 'agg-test@test.com', '집계테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // 2. projects (project_id=100, 200 used in tests)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (100, 'agg-project-100', '123-45-67890', 'COMP100', 1, 'FREE')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (200, 'agg-project-200', '123-45-67200', 'COMP200', 1, 'FREE')
+                """);
+        // 3. users (user_id=7, 8 used in tests)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO users (user_id, project_id, external_id)
+                VALUES (7, 100, 'ext-7')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO users (user_id, project_id, external_id)
+                VALUES (8, 100, 'ext-8')
+                """);
+        // 4. event_categories (category_id=1, 2 used in tests)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO event_categories (category_id, project_id, name, type)
+                VALUES (1, 100, 'agg-cat-1', 'CUSTOM')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO event_categories (category_id, project_id, name, type)
+                VALUES (2, 100, 'agg-cat-2', 'CUSTOM')
+                """);
+    }
 
     private static final LocalDate LOG_DATE = LocalDate.of(2026, 4, 30);
     private static final LocalDateTime AT_NOON = LocalDateTime.of(2026, 4, 30, 12, 0);

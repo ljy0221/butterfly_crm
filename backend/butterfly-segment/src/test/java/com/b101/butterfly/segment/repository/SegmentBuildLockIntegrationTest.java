@@ -9,11 +9,13 @@ import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -38,6 +40,21 @@ class SegmentBuildLockIntegrationTest extends AbstractMySqlContainerTest {
 
     @Autowired private SegmentRepository repository;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // members must exist before projects (projects.owner_id → members)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (17, NULL, 'lock-test@test.com', '락테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // projects.owner_id = 17
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (1, 'lock-project', '123-45-67890', 'COMP001', 17, 'FREE')
+                """);
+    }
 
     private static final String TOKEN_A = "worker-a-uuid-aaaa";
     private static final String TOKEN_B = "worker-b-uuid-bbbb";

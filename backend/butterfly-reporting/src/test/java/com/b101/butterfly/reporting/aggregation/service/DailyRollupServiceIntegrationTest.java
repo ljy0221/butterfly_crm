@@ -14,12 +14,14 @@ import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -52,6 +54,70 @@ class DailyRollupServiceIntegrationTest extends AbstractMySqlContainerTest {
     @Autowired private ProjectStatsDailyRepository projectDailyRepository;
     @Autowired private CampaignStatsHourlyRepository hourlyRepository;
     @Autowired private ReportingNotificationLogRepository notificationLogRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // 1. member (owner of project and campaign creator)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (1, NULL, 'rollup-test@test.com', '롤업테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // 2. project (project_id=1 used in seedLog)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (1, 'rollup-project', '123-45-67890', 'COMP001', 1, 'FREE')
+                """);
+        // 3. message_template (required by campaigns)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO message_templates
+                    (message_template_id, member_id, project_id, message_template_name,
+                     message_template_description, channel, message_template_title,
+                     message_template_body, required_variables, is_deleted)
+                VALUES (1, 1, 1, 'rollup-tpl', 'rollup-tpl-desc', 'PUSH', 'title', 'body', '[]', false)
+                """);
+        // 4. campaigns (campaign_id=10,20,30,777 used in seedLog; template_stats uses message_template_id=99)
+        // campaign_id=10 (PUSH, default)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (10, 1, 1, NULL, 1, 'campaign-10', 'desc', 'ONE_TIME', 'PUSH', 'DRAFT', 'IMMEDIATE', false)
+                """);
+        // campaign_id=20 (EMAIL)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (20, 1, 1, NULL, 1, 'campaign-20', 'desc', 'ONE_TIME', 'EMAIL', 'DRAFT', 'IMMEDIATE', false)
+                """);
+        // campaign_id=30 (SMS)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (30, 1, 1, NULL, 1, 'campaign-30', 'desc', 'ONE_TIME', 'SMS', 'DRAFT', 'IMMEDIATE', false)
+                """);
+        // campaign_id=777 (PUSH, for deliveryRateIsNullWhenSentIsZero test)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (777, 1, 1, NULL, 1, 'campaign-777', 'desc', 'ONE_TIME', 'PUSH', 'DRAFT', 'IMMEDIATE', false)
+                """);
+        // message_template_id=99 (for templateStatsAreRolledUp test)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO message_templates
+                    (message_template_id, member_id, project_id, message_template_name,
+                     message_template_description, channel, message_template_title,
+                     message_template_body, required_variables, is_deleted)
+                VALUES (99, 1, 1, 'tpl-99', 'tpl-99-desc', 'PUSH', 'title', 'body', '[]', false)
+                """);
+    }
 
     @AfterEach
     void cleanup() {
