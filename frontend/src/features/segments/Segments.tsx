@@ -285,7 +285,7 @@ export default function Segments() {
               <div></div>
               <div>세그먼트</div>
               <div>생성자</div>
-              <div>예상 모수</div>
+              <div>대상자</div>
               <div>캠페인</div>
               <div>빌드 상태</div>
               <div></div>
@@ -374,6 +374,7 @@ function Row({
   onDelete,
 }: RowProps) {
   const buildStatus = segment.buildStatus;
+  const pushStats = segment.audienceStats;
   const reachDisplay =
     buildStatus === "PENDING"
       ? "—"
@@ -381,8 +382,10 @@ function Row({
         ? "..."
         : buildStatus === "FAILED"
           ? "실패"
-          : segment.estimatedCount != null
-            ? fmtNum(segment.estimatedCount)
+          : pushStats?.totalCount != null
+            ? fmtNum(pushStats.totalCount)
+            : segment.estimatedCount != null
+              ? fmtNum(segment.estimatedCount)
             : "—";
 
   return (
@@ -500,25 +503,43 @@ function Row({
           color: buildStatus === "FAILED" ? "#b91c1c" : "#1f2937",
           fontVariantNumeric: "tabular-nums",
           fontWeight: 500,
+          minWidth: 0,
         }}
       >
-        {buildStatus === "BUILDING" && (
-          <span
-            aria-hidden
+        <div>
+          {buildStatus === "BUILDING" && (
+            <span
+              aria-hidden
+              style={{
+                display: "inline-block",
+                width: 10,
+                height: 10,
+                border: "2px solid #e2e8f0",
+                borderTopColor: "#3b5bdb",
+                borderRadius: 999,
+                animation: "spin 0.8s linear infinite",
+                marginRight: 6,
+                verticalAlign: "middle",
+              }}
+            />
+          )}
+          {reachDisplay}
+        </div>
+        {buildStatus === "READY" && pushStats && (
+          <div
+            title="발송가능은 푸시 수신 동의와 유효 디바이스 토큰을 모두 가진 사용자 수입니다."
             style={{
-              display: "inline-block",
-              width: 10,
-              height: 10,
-              border: "2px solid #e2e8f0",
-              borderTopColor: "#3b5bdb",
-              borderRadius: 999,
-              animation: "spin 0.8s linear infinite",
-              marginRight: 6,
-              verticalAlign: "middle",
+              marginTop: 2,
+              fontSize: 10.5,
+              color: "#64748b",
+              fontWeight: 500,
+              lineHeight: 1.35,
             }}
-          />
+          >
+            <div>수신동의 {fmtNum(pushStats.pushOptInCount)}</div>
+            <div>발송가능 {fmtNum(pushStats.pushSendableCount)}</div>
+          </div>
         )}
-        {reachDisplay}
       </div>
       <div>
         <Tag
