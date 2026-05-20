@@ -2,6 +2,7 @@ package com.b101.butterfly.reporting.service;
 
 import com.b101.butterfly.global.response.PageResponse;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
+import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsHourlyRepository;
 import com.b101.butterfly.reporting.aggregation.repository.ProjectStatsDailyRepository;
 import com.b101.butterfly.reporting.dto.AnalyticsQuery;
 import com.b101.butterfly.reporting.dto.CampaignMetricItem;
@@ -32,8 +33,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -70,6 +74,7 @@ import java.util.Map;
 public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final CampaignStatsDailyRepository campaignStatsDailyRepository;
+    private final CampaignStatsHourlyRepository campaignStatsHourlyRepository;
     private final ProjectStatsDailyRepository projectStatsDailyRepository;
     private final CampaignSegmentPort campaignSegmentPort;
     private final ReportingNotificationLogRepository notificationLogRepository;
@@ -82,10 +87,17 @@ public class AnalyticsServiceImpl implements AnalyticsService {
      */
     @Override
     public DashboardResponse getDashboard(Long projectId, AnalyticsQuery query) {
-        PeriodSummaryRow row = projectStatsDailyRepository.aggregatePeriod(
-                projectId, query.from(), query.to());
-        if (row == null) {
-            row = PeriodSummaryRow.zero();
+        LocalDate today = today();
+        LocalDate dailyTo = dailyToBeforeToday(query.to(), today);
+
+        PeriodSummaryRow row = PeriodSummaryRow.zero();
+        if (isValidRange(query.from(), dailyTo)) {
+            PeriodSummaryRow dailyRow = projectStatsDailyRepository.aggregatePeriod(
+                    projectId, query.from(), dailyTo);
+            row = dailyRow == null ? PeriodSummaryRow.zero() : dailyRow;
+        }
+        if (containsDate(query, today)) {
+            row = plus(row, hourlyProjectSummary(projectId, today));
         }
 
         DashboardResponse.Summary summary = new DashboardResponse.Summary(
@@ -102,12 +114,19 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                 rate(row.converted(), row.sent())        // avgConvertRate (ADR-0007)
         );
 
-        List<DailyTrendRow> trendRows = projectStatsDailyRepository.findDailyTrend(
-                projectId, query.from(), query.to());
-        List<DashboardResponse.DailyPoint> dailyTrend = trendRows.stream()
+        List<DailyTrendRow> trendRows = isValidRange(query.from(), dailyTo)
+                ? projectStatsDailyRepository.findDailyTrend(projectId, query.from(), dailyTo)
+                : List.of();
+        List<DashboardResponse.DailyPoint> dailyTrend = new ArrayList<>(trendRows.stream()
                 .map(t -> new DashboardResponse.DailyPoint(
                         t.date(), t.sent(), t.delivered(), t.opened(), t.clicked(), t.converted()))
-                .toList();
+                .toList());
+        if (containsDate(query, today)) {
+            PeriodSummaryRow todayRow = hourlyProjectSummary(projectId, today);
+            dailyTrend.add(new DashboardResponse.DailyPoint(
+                    today, todayRow.sent(), todayRow.delivered(), todayRow.opened(),
+                    todayRow.clicked(), todayRow.converted()));
+        }
 
         return new DashboardResponse(
                 new DashboardResponse.Period(query.from(), query.to()),
@@ -194,6 +213,8 @@ public class AnalyticsServiceImpl implements AnalyticsService {
     public PageResponse<CampaignMetricItem> getCampaignMetrics(
             Long projectId, AnalyticsQuery query, int page, int size) {
         Channel channelFilter = parseChannel(query.channel());
+        LocalDate today = today();
+        LocalDate dailyTo = dailyToBeforeToday(query.to(), today);
 
         // segment 필터 처리 — 92 매트릭스 패턴: segmentId로 캠페인 ID 집합 환원
         List<Long> campaignIdsFilter = null;
@@ -205,15 +226,28 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             }
         }
 
-        long totalCount = campaignStatsDailyRepository.countCampaignChannelPairs(
-                projectId, query.from(), query.to(), channelFilter, campaignIdsFilter);
+        int fetchSize = Math.max((page + 1) * size, size);
+        List<CampaignMetricRow> dailyRows = new ArrayList<>();
+        List<CampaignMetricRow> todayRows = new ArrayList<>();
+        if (isValidRange(query.from(), dailyTo)) {
+            dailyRows.addAll(campaignStatsDailyRepository.aggregateByCampaign(
+                    projectId, query.from(), dailyTo,
+                    channelFilter, campaignIdsFilter,
+                    PageRequest.of(0, fetchSize)));
+        }
+        if (containsDate(query, today)) {
+            todayRows.addAll(campaignStatsHourlyRepository.aggregateByCampaign(
+                    projectId, today.atStartOfDay(), today.plusDays(1).atStartOfDay(),
+                    channelFilter, campaignIdsFilter,
+                    PageRequest.of(0, fetchSize)));
+        }
 
-        List<CampaignMetricRow> rows = campaignStatsDailyRepository.aggregateByCampaign(
-                projectId, query.from(), query.to(),
-                channelFilter, campaignIdsFilter,
-                PageRequest.of(page, size));
+        List<CampaignMetricRow> mergedRows = mergeCampaignRows(dailyRows, todayRows);
+        long totalCount = mergedRows.size();
+        int fromIndex = Math.min(page * size, mergedRows.size());
+        int toIndex = Math.min(fromIndex + size, mergedRows.size());
 
-        List<CampaignMetricItem> content = rows.stream()
+        List<CampaignMetricItem> content = mergedRows.subList(fromIndex, toIndex).stream()
                 .map(r -> new CampaignMetricItem(
                         r.campaignId(),
                         // 캠페인 이름은 SPI 미연결 — 본 PR은 placeholder
@@ -240,10 +274,20 @@ public class AnalyticsServiceImpl implements AnalyticsService {
      */
     @Override
     public ChannelMetricsResponse getChannelMetrics(Long projectId, AnalyticsQuery query) {
-        List<ChannelMetricRow> rows = campaignStatsDailyRepository.aggregateByChannel(
-                projectId, query.from(), query.to());
+        LocalDate today = today();
+        LocalDate dailyTo = dailyToBeforeToday(query.to(), today);
 
-        List<ChannelMetricItem> items = rows.stream()
+        List<ChannelMetricRow> rows = new ArrayList<>();
+        if (isValidRange(query.from(), dailyTo)) {
+            rows.addAll(campaignStatsDailyRepository.aggregateByChannel(
+                    projectId, query.from(), dailyTo));
+        }
+        if (containsDate(query, today)) {
+            rows.addAll(campaignStatsHourlyRepository.aggregateByChannel(
+                    projectId, today.atStartOfDay(), today.plusDays(1).atStartOfDay()));
+        }
+
+        List<ChannelMetricItem> items = mergeChannelRows(rows).stream()
                 .map(r -> new ChannelMetricItem(
                         r.channel().name(),
                         r.sentCount(),
@@ -347,6 +391,83 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         }
     }
 
+    private static final ZoneId DASHBOARD_ZONE = ZoneId.of("Asia/Seoul");
+
+    private static LocalDate today() {
+        return LocalDate.now(DASHBOARD_ZONE);
+    }
+
+    private static boolean containsDate(AnalyticsQuery query, LocalDate date) {
+        return !date.isBefore(query.from()) && !date.isAfter(query.to());
+    }
+
+    private static LocalDate dailyToBeforeToday(LocalDate to, LocalDate today) {
+        return to.isBefore(today) ? to : today.minusDays(1);
+    }
+
+    private static boolean isValidRange(LocalDate from, LocalDate to) {
+        return to != null && !from.isAfter(to);
+    }
+
+    private PeriodSummaryRow hourlyProjectSummary(Long projectId, LocalDate date) {
+        PeriodSummaryRow row = campaignStatsHourlyRepository.aggregateProjectPeriod(
+                projectId, date.atStartOfDay(), date.plusDays(1).atStartOfDay());
+        return row == null ? PeriodSummaryRow.zero() : row;
+    }
+
+    private static PeriodSummaryRow plus(PeriodSummaryRow a, PeriodSummaryRow b) {
+        return new PeriodSummaryRow(
+                a.sent() + b.sent(),
+                a.delivered() + b.delivered(),
+                a.opened() + b.opened(),
+                a.clicked() + b.clicked(),
+                a.converted() + b.converted(),
+                a.failed() + b.failed(),
+                Math.max(a.campaignsSentInPeriod(), b.campaignsSentInPeriod())
+        );
+    }
+
+    private static List<CampaignMetricRow> mergeCampaignRows(
+            List<CampaignMetricRow> dailyRows,
+            List<CampaignMetricRow> todayRows) {
+        Map<CampaignChannelKey, CampaignMetricAccumulator> grouped = new LinkedHashMap<>();
+        for (CampaignMetricRow row : dailyRows) {
+            CampaignChannelKey key = new CampaignChannelKey(row.campaignId(), row.channel());
+            grouped.computeIfAbsent(key, ignored -> new CampaignMetricAccumulator(row.campaignId(), row.channel()))
+                    .add(row, false);
+        }
+        for (CampaignMetricRow row : todayRows) {
+            CampaignChannelKey key = new CampaignChannelKey(row.campaignId(), row.channel());
+            grouped.computeIfAbsent(key, ignored -> new CampaignMetricAccumulator(row.campaignId(), row.channel()))
+                    .add(row, true);
+        }
+        return grouped.values().stream()
+                .sorted((a, b) -> {
+                    int todayCompare = Boolean.compare(b.hasTodayData(), a.hasTodayData());
+                    if (todayCompare != 0) {
+                        return todayCompare;
+                    }
+                    int sentCompare = Long.compare(b.sentCount(), a.sentCount());
+                    if (sentCompare != 0) {
+                        return sentCompare;
+                    }
+                    return Long.compare(a.campaignId(), b.campaignId());
+                })
+                .map(CampaignMetricAccumulator::toRow)
+                .toList();
+    }
+
+    private static List<ChannelMetricRow> mergeChannelRows(List<ChannelMetricRow> rows) {
+        Map<Channel, ChannelMetricAccumulator> grouped = new LinkedHashMap<>();
+        for (ChannelMetricRow row : rows) {
+            grouped.computeIfAbsent(row.channel(), ChannelMetricAccumulator::new).add(row);
+        }
+        return grouped.values().stream()
+                .map(ChannelMetricAccumulator::toRow)
+                .sorted(Comparator.comparingLong(ChannelMetricRow::sentCount).reversed())
+                .toList();
+    }
+
     /** 분모 0이면 null (KPI 정의서 §3, ADR-0007). */
     private static Double rate(long numerator, long denominator) {
         if (denominator == 0) {
@@ -357,6 +478,80 @@ public class AnalyticsServiceImpl implements AnalyticsService {
 
     /** 그룹화 키 — segmentId가 null이면 미지정 캠페인 그룹. record로 equals/hashCode 자동. */
     private record SegmentKey(Long segmentId, String segmentName) {
+    }
+
+    private record CampaignChannelKey(Long campaignId, String channel) {
+    }
+
+    private static final class CampaignMetricAccumulator {
+        final Long campaignId;
+        final String channel;
+        long sent;
+        long delivered;
+        long open;
+        long click;
+        long convert;
+        long failed;
+        boolean hasTodayData;
+
+        CampaignMetricAccumulator(Long campaignId, String channel) {
+            this.campaignId = campaignId;
+            this.channel = channel;
+        }
+
+        Long campaignId() {
+            return campaignId;
+        }
+
+        long sentCount() {
+            return sent;
+        }
+
+        boolean hasTodayData() {
+            return hasTodayData;
+        }
+
+        void add(CampaignMetricRow row, boolean todayData) {
+            sent += row.sentCount();
+            delivered += row.deliveredCount();
+            open += row.openCount();
+            click += row.clickedCount();
+            convert += row.convertCount();
+            failed += row.failedCount();
+            hasTodayData = hasTodayData || todayData;
+        }
+
+        CampaignMetricRow toRow() {
+            return new CampaignMetricRow(
+                    campaignId, channel, sent, delivered, open, click, convert, failed);
+        }
+    }
+
+    private static final class ChannelMetricAccumulator {
+        final Channel channel;
+        long sent;
+        long delivered;
+        long open;
+        long click;
+        long convert;
+        long failed;
+
+        ChannelMetricAccumulator(Channel channel) {
+            this.channel = channel;
+        }
+
+        void add(ChannelMetricRow row) {
+            sent += row.sentCount();
+            delivered += row.deliveredCount();
+            open += row.openCount();
+            click += row.clickedCount();
+            convert += row.convertCount();
+            failed += row.failedCount();
+        }
+
+        ChannelMetricRow toRow() {
+            return new ChannelMetricRow(channel, sent, delivered, open, click, convert, failed);
+        }
     }
 
     /**

@@ -2,7 +2,11 @@ package com.b101.butterfly.reporting.aggregation.repository;
 
 import com.b101.butterfly.reporting.aggregation.dto.DailyCampaignCountRow;
 import com.b101.butterfly.reporting.aggregation.entity.CampaignStatsHourly;
+import com.b101.butterfly.reporting.dto.CampaignMetricRow;
+import com.b101.butterfly.reporting.dto.ChannelMetricRow;
+import com.b101.butterfly.reporting.dto.PeriodSummaryRow;
 import com.b101.butterfly.reporting.notification.entity.Channel;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -100,5 +104,104 @@ public interface CampaignStatsHourlyRepository extends JpaRepository<CampaignSta
     List<DailyCampaignCountRow> rollupByDate(
             @Param("dayStart") LocalDateTime dayStart,
             @Param("dayEnd") LocalDateTime dayEnd
+    );
+
+    /**
+     * 대시보드 당일 보강용 — daily 롤업 전 현재 날짜의 hourly row를 project 단위로 합산한다.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.dto.PeriodSummaryRow(
+                COALESCE(SUM(CAST(h.sentCount AS long)), 0L),
+                COALESCE(SUM(CAST(h.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(h.openCount AS long)), 0L),
+                COALESCE(SUM(CAST(h.clickCount AS long)), 0L),
+                COALESCE(SUM(CAST(h.convertCount AS long)), 0L),
+                COALESCE(SUM(CAST(h.failedCount AS long)), 0L),
+                COUNT(DISTINCT h.campaignId)
+            )
+            FROM CampaignStatsHourly h
+            WHERE h.projectId = :projectId
+              AND h.bucketHour >= :fromInclusive
+              AND h.bucketHour < :toExclusive
+            """)
+    PeriodSummaryRow aggregateProjectPeriod(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive
+    );
+
+    /**
+     * 대시보드 최근 캠페인 당일 보강용 — campaign × channel 단위 합산.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.dto.CampaignMetricRow(
+                h.campaignId,
+                CAST(h.channel AS string),
+                CAST(SUM(h.sentCount) AS long),
+                CAST(SUM(h.deliveredCount) AS long),
+                CAST(SUM(h.openCount) AS long),
+                CAST(SUM(h.clickCount) AS long),
+                CAST(SUM(h.convertCount) AS long),
+                CAST(SUM(h.failedCount) AS long)
+            )
+            FROM CampaignStatsHourly h
+            WHERE h.projectId = :projectId
+              AND h.bucketHour >= :fromInclusive
+              AND h.bucketHour < :toExclusive
+              AND (:channelFilter IS NULL OR h.channel = :channelFilter)
+              AND (:campaignIdsFilter IS NULL OR h.campaignId IN :campaignIdsFilter)
+            GROUP BY h.campaignId, h.channel
+            ORDER BY SUM(h.sentCount) DESC
+            """)
+    List<CampaignMetricRow> aggregateByCampaign(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive,
+            @Param("channelFilter") Channel channelFilter,
+            @Param("campaignIdsFilter") List<Long> campaignIdsFilter,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT COUNT(DISTINCT CONCAT(h.campaignId, '-', h.channel))
+            FROM CampaignStatsHourly h
+            WHERE h.projectId = :projectId
+              AND h.bucketHour >= :fromInclusive
+              AND h.bucketHour < :toExclusive
+              AND (:channelFilter IS NULL OR h.channel = :channelFilter)
+              AND (:campaignIdsFilter IS NULL OR h.campaignId IN :campaignIdsFilter)
+            """)
+    long countCampaignChannelPairs(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive,
+            @Param("channelFilter") Channel channelFilter,
+            @Param("campaignIdsFilter") List<Long> campaignIdsFilter
+    );
+
+    /**
+     * 대시보드 채널 비중 당일 보강용 — channel 단위 합산.
+     */
+    @Query("""
+            SELECT new com.b101.butterfly.reporting.dto.ChannelMetricRow(
+                h.channel,
+                CAST(SUM(h.sentCount) AS long),
+                CAST(SUM(h.deliveredCount) AS long),
+                CAST(SUM(h.openCount) AS long),
+                CAST(SUM(h.clickCount) AS long),
+                CAST(SUM(h.convertCount) AS long),
+                CAST(SUM(h.failedCount) AS long)
+            )
+            FROM CampaignStatsHourly h
+            WHERE h.projectId = :projectId
+              AND h.bucketHour >= :fromInclusive
+              AND h.bucketHour < :toExclusive
+            GROUP BY h.channel
+            ORDER BY SUM(h.sentCount) DESC
+            """)
+    List<ChannelMetricRow> aggregateByChannel(
+            @Param("projectId") Long projectId,
+            @Param("fromInclusive") LocalDateTime fromInclusive,
+            @Param("toExclusive") LocalDateTime toExclusive
     );
 }
