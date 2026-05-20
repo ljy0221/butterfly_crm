@@ -158,10 +158,10 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         } else {
             sent = row.sentCount();
             delivered = row.deliveredCount();
+            failed = row.failedCount();
             open = row.openCount();
             click = row.clickCount();
             convert = row.convertCount();
-            failed = Math.max(0L, sent - delivered);
         }
 
         return new CampaignStatsResponse(

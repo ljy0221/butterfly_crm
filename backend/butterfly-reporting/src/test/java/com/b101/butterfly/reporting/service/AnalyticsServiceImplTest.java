@@ -88,13 +88,13 @@ class AnalyticsServiceImplTest {
         @DisplayName("정상 — daily 우선 조회 시 fallback 미호출, KPI 정의서 비율")
         void normalAggregation() {
             given(campaignRepo.aggregateFunnel(eq(1L), any(), any(), eq(100L), any()))
-                    .willReturn(new FunnelCountRow(1000, 800, 400, 100, 25));
+                    .willReturn(new FunnelCountRow(1000, 800, 200, 400, 100, 25));
 
             CampaignStatsResponse res = service.getCampaignStats(1L, 100L);
 
             assertThat(res.campaignId()).isEqualTo(100L);
             assertThat(res.sentCount()).isEqualTo(1000);
-            assertThat(res.failedCount()).isEqualTo(200);  // sent - delivered
+            assertThat(res.failedCount()).isEqualTo(200);
             assertThat(res.deliveryRate()).isEqualTo(80.0);
             assertThat(res.openRate()).isEqualTo(50.0);     // ADR-0007: open/delivered
             assertThat(res.clickRate()).isEqualTo(25.0);    // ADR-0007: click/open
@@ -145,7 +145,7 @@ class AnalyticsServiceImplTest {
         @DisplayName("daily sent=0 — fallback 시도, raw도 0이면 모든 비율 null")
         void dailyEmptyAndRawEmpty() {
             given(campaignRepo.aggregateFunnel(any(), any(), any(), any(), any()))
-                    .willReturn(new FunnelCountRow(0, 0, 0, 0, 0));
+                    .willReturn(new FunnelCountRow(0, 0, 0, 0, 0, 0));
             given(notificationLogRepo.countCampaignFunnel(1L, 100L))
                     .willReturn(rawRow(0L, 0L, 0L));
 

@@ -75,7 +75,7 @@ class CampaignFunnelServiceTest {
         @DisplayName("정상 — 5단계 모두 반환되며 비율 계산이 KPI 정의서와 일치")
         void normalFunnel() {
             given(repo.aggregateFunnel(eq(1L), any(), any(), any(), any()))
-                    .willReturn(new FunnelCountRow(1000, 800, 400, 100, 25));
+                    .willReturn(new FunnelCountRow(1000, 800, 200, 400, 100, 25));
 
             CampaignFunnelResponse res = service.getFunnel(query());
 
@@ -122,7 +122,7 @@ class CampaignFunnelServiceTest {
             // OPEN→CLICK 사이 75% 이탈, CLICK→CONVERT 사이 75% 이탈 (동률)
             // 첫 발견 단계인 CLICK이 선택되어야 함 (>이지 >=가 아님)
             given(repo.aggregateFunnel(any(), any(), any(), any(), any()))
-                    .willReturn(new FunnelCountRow(1000, 800, 400, 100, 25));
+                    .willReturn(new FunnelCountRow(1000, 800, 200, 400, 100, 25));
             CampaignFunnelResponse res = service.getFunnel(query());
             assertThat(res.biggestDropOffStage()).isEqualTo(FunnelStage.CLICK);
         }
@@ -161,7 +161,7 @@ class CampaignFunnelServiceTest {
         void zeroDenominatorMidStage() {
             // 비현실적 데이터지만 분모 0 방어 검증용
             given(repo.aggregateFunnel(any(), any(), any(), any(), any()))
-                    .willReturn(new FunnelCountRow(100, 0, 50, 10, 1));
+                    .willReturn(new FunnelCountRow(100, 0, 100, 50, 10, 1));
 
             CampaignFunnelResponse res = service.getFunnel(query());
 
@@ -177,7 +177,7 @@ class CampaignFunnelServiceTest {
         @DisplayName("필터 — campaignId/channel 파라미터가 그대로 응답에 반영")
         void filtersAreReflectedInResponse() {
             given(repo.aggregateFunnel(eq(1L), any(), any(), eq(100L), eq(Channel.PUSH)))
-                    .willReturn(new FunnelCountRow(10, 8, 4, 1, 0));
+                    .willReturn(new FunnelCountRow(10, 8, 2, 4, 1, 0));
 
             CampaignFunnelQuery q = new CampaignFunnelQuery(1L,
                     LocalDate.of(2026, 4, 1), LocalDate.of(2026, 4, 30),

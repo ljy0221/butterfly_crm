@@ -38,7 +38,7 @@ class NotificationCountSummaryIntegrationTest extends AbstractReportingMySqlTest
     @Test
     @DisplayName("회차×채널 단위로 actual/sent/failed 카운트 합산")
     void countsActualSentFailed() {
-        // execution=10, PUSH: SENT 2 + DELIVERED 1 + FAILED 1 + PENDING 1 → actual=5, sent=3, failed=1
+        // execution=10, PUSH: SENT 2 + DELIVERED 1 + FAILED 1 + PENDING 1 → actual=5, sent=4, failed=1
         repository.save(row(10L, Channel.PUSH, NotificationStatus.SENT, "k1"));
         repository.save(row(10L, Channel.PUSH, NotificationStatus.SENT, "k2"));
         repository.save(row(10L, Channel.PUSH, NotificationStatus.DELIVERED, "k3"));
@@ -52,7 +52,7 @@ class NotificationCountSummaryIntegrationTest extends AbstractReportingMySqlTest
         NotificationCountSummary summary = repository.countsForReconciliation(10L, Channel.PUSH);
 
         assertThat(summary.actualAsInt()).isEqualTo(5);
-        assertThat(summary.sentAsInt()).isEqualTo(3);
+        assertThat(summary.sentAsInt()).isEqualTo(4);
         assertThat(summary.failedAsInt()).isEqualTo(1);
     }
 

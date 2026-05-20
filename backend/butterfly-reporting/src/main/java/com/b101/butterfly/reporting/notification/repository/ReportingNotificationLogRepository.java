@@ -47,7 +47,7 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
     /**
      * 정합성 검증용 카운트 — 회차×채널 단위 actual/sent/failed 합산.
      *
-     * <p>SENT/DELIVERED 는 sent_count, FAILED 는 failed_count, 전체 row 수가 actual_count.
+     * <p>SENT/DELIVERED/FAILED 는 sent_count, FAILED 는 failed_count, 전체 row 수가 actual_count.
      * 카운트는 SQL 측에서 SUM(CASE WHEN ... THEN 1 ELSE 0 END) 으로 한 번에 계산.
      */
     @Query("""
@@ -55,7 +55,8 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
                 COUNT(n),
                 SUM(CASE WHEN n.status IN (
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
-                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
                     ) THEN 1 ELSE 0 END),
                 SUM(CASE WHEN n.status =
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
@@ -87,11 +88,13 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
                     THEN 1 ELSE 0 END),
                 SUM(CASE WHEN n.status IN (
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
+                    ) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status IN (
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
                     ) THEN 1 ELSE 0 END),
-                SUM(CASE WHEN n.status =
-                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
-                    THEN 1 ELSE 0 END),
                 SUM(CASE WHEN n.status =
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
                     THEN 1 ELSE 0 END)
@@ -112,13 +115,13 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
      * open/click/convert 는 user_action_logs 를 함께 집계한다.
      *
      * <p>HourlyAggregator/CampaignStatsHourly 와 동일한 status 매핑:
-     * sent = DELIVERED + FAILED (최종 처리 완료 row), delivered = DELIVERED only,
-     * failed = FAILED only. Tier-1(campaign_stats_daily) 의 failed = sent - delivered 공식과 일관성 유지.
+     * sent = 전체 발송 로그 row, delivered = SENT/DELIVERED 성공 row, failed = FAILED only.
+     * SENT는 과거 성공 row 호환을 위해 DELIVERED와 동일하게 전달 성공으로 본다.
      */
     @Query(value = """
             SELECT
-                COUNT(DISTINCT CASE WHEN n.status IN ('DELIVERED', 'FAILED') THEN n.log_id END) AS sent_count,
-                COUNT(DISTINCT CASE WHEN n.status = 'DELIVERED' THEN n.log_id END) AS delivered_count,
+                COUNT(DISTINCT n.log_id) AS sent_count,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
                 COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
                 COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
                 COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
@@ -159,11 +162,13 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
                 COUNT(DISTINCT n.campaignId),
                 SUM(CASE WHEN n.status IN (
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED,
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.FAILED
+                    ) THEN 1 ELSE 0 END),
+                SUM(CASE WHEN n.status IN (
+                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.SENT,
                         com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
                     ) THEN 1 ELSE 0 END),
-                SUM(CASE WHEN n.status =
-                        com.b101.butterfly.reporting.notification.entity.NotificationStatus.DELIVERED
-                    THEN 1 ELSE 0 END),
                 0L,
                 0L,
                 0L

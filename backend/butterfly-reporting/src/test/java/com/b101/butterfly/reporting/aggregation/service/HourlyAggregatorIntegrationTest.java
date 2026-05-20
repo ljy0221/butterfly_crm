@@ -75,8 +75,8 @@ class HourlyAggregatorIntegrationTest extends AbstractReportingMySqlTest {
         CampaignStatsHourly stats = row.get();
         assertThat(stats.getProjectId()).isEqualTo(123L);
         assertThat(stats.getPendingCount()).isEqualTo(1);
-        assertThat(stats.getSentCount()).isEqualTo(3); // SENT 2 + DELIVERED 1
-        assertThat(stats.getDeliveredCount()).isEqualTo(1);
+        assertThat(stats.getSentCount()).isEqualTo(4); // SENT 2 + DELIVERED 1 + FAILED 1
+        assertThat(stats.getDeliveredCount()).isEqualTo(3); // SENT 2 + DELIVERED 1
         assertThat(stats.getFailedCount()).isEqualTo(1);
         assertThat(stats.getOpenCount()).isZero();
         assertThat(stats.getClickCount()).isZero();
