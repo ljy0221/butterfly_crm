@@ -24,8 +24,7 @@ public abstract class AbstractReportingMySqlTest {
 
     protected static final MySQLContainer<?> CONTAINER =
             new MySQLContainer<>("mysql:8.0")
-                    .withCommand("--log_bin_trust_function_creators=1")
-                    .withReuse(true);
+                    .withCommand("--log_bin_trust_function_creators=1");
 
     static {
         CONTAINER.start();
