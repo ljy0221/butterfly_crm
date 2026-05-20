@@ -14,6 +14,7 @@ import com.b101.butterfly.segment.dto.request.UpdateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
 import com.b101.butterfly.segment.dto.response.SegmentAudienceStatsResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
+import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
@@ -22,6 +23,7 @@ import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
 import com.b101.butterfly.segment.repository.SegmentAudienceStatsReader;
+import com.b101.butterfly.segment.repository.SegmentCreatorReader;
 import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -60,6 +62,7 @@ class SegmentServiceTest {
     @Mock private com.b101.butterfly.segment.repository.SegmentMemberRepository segmentMemberRepository;
     @Mock private SegmentFavoriteRepository segmentFavoriteRepository;
     @Mock private SegmentAudienceStatsReader segmentAudienceStatsReader;
+    @Mock private SegmentCreatorReader segmentCreatorReader;
     @Mock private ConditionTreeValidator conditionTreeValidator;
     @Mock private LinkedCampaignChecker linkedCampaignChecker;
     @Mock private ConditionTreeHasher conditionTreeHasher;
@@ -81,6 +84,8 @@ class SegmentServiceTest {
         lenient().when(conditionTreeHasher.hash(anyLong(), any())).thenReturn(STUB_HASH);
         lenient().when(segmentAudienceStatsReader.countBySegmentIds(anyLong(), any()))
                 .thenReturn(Map.of());
+        lenient().when(segmentCreatorReader.findNamesByMemberIds(any()))
+                .thenReturn(Map.of(MEMBER_ID, "테스터"));
     }
 
     @Nested
@@ -173,11 +178,13 @@ class SegmentServiceTest {
             when(segmentAudienceStatsReader.countBySegmentIds(PROJECT_ID, List.of(42L)))
                     .thenReturn(Map.of(42L, new SegmentAudienceStatsResponse(10L, 8L, 6L)));
 
-            PageResponse<?> result =
+            PageResponse<SegmentSummaryResponse> result =
                     segmentService.list(PROJECT_ID, MEMBER_ID, PageRequest.of(0, 20));
 
             assertThat(result.totalElements()).isEqualTo(1);
             assertThat(result.content()).hasSize(1);
+            assertThat(result.content().get(0).createdBy().memberId()).isEqualTo(MEMBER_ID);
+            assertThat(result.content().get(0).createdBy().name()).isEqualTo("테스터");
         }
     }
 
@@ -207,6 +214,8 @@ class SegmentServiceTest {
 
             assertThat(response.segmentId()).isEqualTo(42L);
             assertThat(response.audienceStats().pushSendableCount()).isEqualTo(6L);
+            assertThat(response.createdBy().memberId()).isEqualTo(MEMBER_ID);
+            assertThat(response.createdBy().name()).isEqualTo("테스터");
             assertThat(response.favorited()).isTrue();
             assertThat(response.linkedCampaigns()).isEmpty();
         }

@@ -22,6 +22,7 @@ import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
 import com.b101.butterfly.segment.repository.SegmentAudienceStatsReader;
+import com.b101.butterfly.segment.repository.SegmentCreatorReader;
 import com.b101.butterfly.segment.repository.SegmentMemberRepository;
 import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.segment.service.match.ActiveEventSegmentCache;
@@ -60,6 +61,7 @@ public class SegmentService {
     private final SegmentMemberRepository segmentMemberRepository;
     private final SegmentFavoriteRepository segmentFavoriteRepository;
     private final SegmentAudienceStatsReader segmentAudienceStatsReader;
+    private final SegmentCreatorReader segmentCreatorReader;
     private final ConditionTreeValidator conditionTreeValidator;
     private final LinkedCampaignChecker linkedCampaignChecker;
     private final ConditionTreeHasher conditionTreeHasher;
@@ -128,13 +130,16 @@ public class SegmentService {
                 segmentAudienceStatsReader.countBySegmentIds(
                         projectId,
                         page.getContent().stream().map(Segment::getId).toList());
+        Map<Long, String> creatorNamesByMemberId =
+                segmentCreatorReader.findNamesByMemberIds(creatorMemberIds(page.getContent()));
         List<SegmentSummaryResponse> content =
                 page.getContent().stream()
                         .map(s -> toSummary(
                                 s,
                                 memberId,
                                 statsBySegmentId.getOrDefault(
-                                        s.getId(), SegmentAudienceStatsResponse.zero())))
+                                        s.getId(), SegmentAudienceStatsResponse.zero()),
+                                creatorNamesByMemberId))
                         .toList();
         return PageResponse.of(content, page.getNumber(), page.getSize(), page.getTotalElements());
     }
@@ -145,7 +150,7 @@ public class SegmentService {
                 segmentAudienceStatsReader
                         .countBySegmentIds(projectId, List.of(segment.getId()))
                         .getOrDefault(segment.getId(), SegmentAudienceStatsResponse.zero());
-        return toDetail(segment, memberId, audienceStats);
+        return toDetail(segment, memberId, audienceStats, creatorNameMap(segment));
     }
 
     /**
@@ -242,7 +247,7 @@ public class SegmentService {
                 segmentAudienceStatsReader
                         .countBySegmentIds(projectId, List.of(segment.getId()))
                         .getOrDefault(segment.getId(), SegmentAudienceStatsResponse.zero());
-        return toDetail(segment, memberId, audienceStats);
+        return toDetail(segment, memberId, audienceStats, creatorNameMap(segment));
     }
 
     @Transactional
@@ -281,7 +286,8 @@ public class SegmentService {
     private SegmentSummaryResponse toSummary(
             Segment segment,
             Long memberId,
-            SegmentAudienceStatsResponse audienceStats
+            SegmentAudienceStatsResponse audienceStats,
+            Map<Long, String> creatorNamesByMemberId
     ) {
         boolean favorited =
                 memberId != null
@@ -294,7 +300,7 @@ public class SegmentService {
                 segment.getEstimatedCount(),
                 audienceStats,
                 segment.getBuildStatus(),
-                creatorOf(segment),
+                creatorOf(segment, creatorNamesByMemberId),
                 segment.getCreatedAt(),
                 segment.getUpdatedAt(),
                 0,
@@ -304,7 +310,8 @@ public class SegmentService {
     private SegmentDetailResponse toDetail(
             Segment segment,
             Long memberId,
-            SegmentAudienceStatsResponse audienceStats
+            SegmentAudienceStatsResponse audienceStats,
+            Map<Long, String> creatorNamesByMemberId
     ) {
         LinkedCampaignsView linked = linkedCampaignChecker.listLinkedCampaigns(segment.getId());
         boolean favorited =
@@ -335,15 +342,31 @@ public class SegmentService {
                 segment.getBuildStatus(),
                 currentMemberCount,
                 segment.getBuildStartedAt(),
-                creatorOf(segment),
+                creatorOf(segment, creatorNamesByMemberId),
                 segment.getCreatedAt(),
                 segment.getUpdatedAt(),
                 flatten(linked),
                 favorited);
     }
 
-    private static CreatorSummary creatorOf(Segment segment) {
-        return new CreatorSummary(segment.getCreatedBy(), null);
+    private Map<Long, String> creatorNameMap(Segment segment) {
+        return segment.getCreatedBy() == null
+                ? Map.of()
+                : segmentCreatorReader.findNamesByMemberIds(List.of(segment.getCreatedBy()));
+    }
+
+    private static List<Long> creatorMemberIds(List<Segment> segments) {
+        return segments.stream()
+                .map(Segment::getCreatedBy)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private static CreatorSummary creatorOf(Segment segment, Map<Long, String> creatorNamesByMemberId) {
+        return new CreatorSummary(
+                segment.getCreatedBy(),
+                creatorNamesByMemberId.get(segment.getCreatedBy()));
     }
 
     private static List<LinkedCampaignSummary> flatten(LinkedCampaignsView view) {
