@@ -2,6 +2,8 @@ package com.example.notificationtest.butterfly
 
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import com.example.notificationtest.butterfly.device.DeviceManager
@@ -24,6 +26,8 @@ import java.util.TimeZone
 object EventTrigger {
 
     private const val TAG = "EventTrigger"
+    private val MAIN_HANDLER = Handler(Looper.getMainLooper())
+    private val NOTIFICATION_CLICK_RETRY_DELAYS_MS = longArrayOf(1_000L, 3_000L, 5_000L)
 
     private const val DEMO_USER_ID = "user-142"
 
@@ -219,7 +223,7 @@ object EventTrigger {
             userAgent = "android/${Build.VERSION.RELEASE ?: "unknown"}",
             actionAt = nowIsoLocal()
         )
-        ApiClient.api.recordAction(request).enqueue(silentCallback<ActionIngestResponse>("notification_click"))
+        ApiClient.api.recordAction(request).enqueue(notificationClickCallback(messageKey))
     }
 
     private fun productViewPayload(): Map<String, Any> = mapOf(
@@ -305,4 +309,47 @@ object EventTrigger {
                 Log.e(TAG, "[$label] network error", t)
             }
         }
+
+    private fun notificationClickCallback(messageKey: String, attempt: Int = 0): Callback<ApiResponse<ActionIngestResponse>> =
+        object : Callback<ApiResponse<ActionIngestResponse>> {
+            override fun onResponse(
+                call: Call<ApiResponse<ActionIngestResponse>>,
+                response: Response<ApiResponse<ActionIngestResponse>>
+            ) {
+                val body = response.body()
+                if (response.isSuccessful && body?.success == true) {
+                    Log.d(TAG, "[notification_click] OK ${body.data}")
+                    return
+                }
+
+                val errorText = response.errorBody()?.string()
+                Log.w(
+                    TAG,
+                    "[notification_click] FAIL code=${response.code()} err=${body?.error} errorBody=$errorText attempt=$attempt"
+                )
+                retryNotificationClickIfPossible(call, messageKey, attempt)
+            }
+
+            override fun onFailure(call: Call<ApiResponse<ActionIngestResponse>>, t: Throwable) {
+                Log.e(TAG, "[notification_click] network error attempt=$attempt", t)
+                retryNotificationClickIfPossible(call, messageKey, attempt)
+            }
+        }
+
+    private fun retryNotificationClickIfPossible(
+        call: Call<ApiResponse<ActionIngestResponse>>,
+        messageKey: String,
+        attempt: Int
+    ) {
+        if (attempt >= NOTIFICATION_CLICK_RETRY_DELAYS_MS.size) {
+            Log.w(TAG, "[notification_click] giving up messageKey=$messageKey")
+            return
+        }
+
+        val delayMs = NOTIFICATION_CLICK_RETRY_DELAYS_MS[attempt]
+        Log.d(TAG, "[notification_click] retry scheduled in ${delayMs}ms messageKey=$messageKey")
+        MAIN_HANDLER.postDelayed({
+            call.clone().enqueue(notificationClickCallback(messageKey, attempt + 1))
+        }, delayMs)
+    }
 }
