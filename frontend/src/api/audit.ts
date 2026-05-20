@@ -1,4 +1,5 @@
-import { api } from "./client";
+import { api, BASE_URL } from "./client";
+import { useAuthStore } from "@/stores/auth";
 import type { PageResponse } from "./types";
 
 /**
@@ -84,4 +85,40 @@ export async function getAuditLog(
     `/api/v1/audit-logs/${auditId}`,
   );
   return res.data;
+}
+
+/**
+ * 감사 로그 CSV 다운로드 (S14P31B101-35 / S14P31B101-91).
+ * GET /api/v1/audit-logs/export
+ * axios 인터셉터가 text/csv를 ApiResponse로 오인하므로 raw fetch 사용.
+ */
+export async function exportAuditLogsCsv(params: AuditLogListParams = {}): Promise<void> {
+  const state = useAuthStore.getState();
+  const headers: Record<string, string> = {};
+  const token = state.accessToken;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (import.meta.env.DEV && state.member?.memberId != null) {
+    headers["X-Member-Id"] = String(state.member.memberId);
+  }
+
+  const qs = new URLSearchParams();
+  if (params.projectId != null) qs.set("projectId", String(params.projectId));
+  if (params.memberId != null) qs.set("memberId", String(params.memberId));
+  if (params.action) qs.set("action", params.action);
+  if (params.targetType) qs.set("targetType", params.targetType);
+  if (params.startDate) qs.set("startDate", params.startDate);
+  if (params.endDate) qs.set("endDate", params.endDate);
+
+  const res = await fetch(`${BASE_URL}/api/v1/audit-logs/export?${qs}`, { headers });
+  if (!res.ok) throw new Error(`CSV 내보내기 실패 (HTTP ${res.status})`);
+
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = "audit-logs.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
 }

@@ -7,6 +7,7 @@ import type {
   Channel,
   FunnelStage,
 } from "@/api/report";
+import { exportCampaignFunnelCsv } from "@/api/report";
 import { formatPeriod, formatPct, formatRate, getDefaultPeriod } from "@/utils/analytics";
 import { fmtNum } from "@/utils/fmt.js";
 
@@ -62,6 +63,7 @@ export default function CampaignFunnel({ embedded = false }: { embedded?: boolea
 
   const [periodKey, setPeriodKey] = useState<PeriodKey>("30");
   const [channel, setChannel] = useState<Channel | undefined>(undefined);
+  const [csvLoading, setCsvLoading] = useState(false);
 
   const period = useMemo(
     () => getDefaultPeriod(parseInt(periodKey, 10)),
@@ -118,6 +120,26 @@ export default function CampaignFunnel({ embedded = false }: { embedded?: boolea
           })),
         ]}
       />
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={csvLoading || !funnelQ.data}
+        onClick={async () => {
+          if (!projectId) return;
+          setCsvLoading(true);
+          try {
+            await exportCampaignFunnelCsv(projectId, {
+              from: period.from,
+              to: period.to,
+              channel,
+            });
+          } finally {
+            setCsvLoading(false);
+          }
+        }}
+      >
+        {csvLoading ? "다운로드 중..." : "CSV 내보내기"}
+      </Button>
       <span style={{ alignSelf: "center", fontSize: 12, color: "#94a3b8" }}>
         {formatPeriod(period.from, period.to)}
       </span>

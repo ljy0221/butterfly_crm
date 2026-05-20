@@ -8,6 +8,7 @@ import type {
   SegmentChannelMatrixRow,
   SegmentChannelMatrixSortBy,
 } from "@/api/report";
+import { exportSegmentChannelMatrixCsv } from "@/api/report";
 import { formatPeriod, formatPct, formatRate, getDefaultPeriod } from "@/utils/analytics";
 import { fmtNum } from "@/utils/fmt.js";
 
@@ -67,6 +68,7 @@ export default function SegmentChannelMatrix({ embedded = false }: { embedded?: 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [sortBy, setSortBy] = useState<SegmentChannelMatrixSortBy>("SENT_COUNT");
   const [ascending, setAscending] = useState<boolean>(false);
+  const [csvLoading, setCsvLoading] = useState(false);
 
   const period = useMemo(
     () => getDefaultPeriod(parseInt(periodKey, 10)),
@@ -141,6 +143,28 @@ export default function SegmentChannelMatrix({ embedded = false }: { embedded?: 
         onClick={() => matrixQ.refetch()}
       >
         새로고침
+      </Button>
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={csvLoading || !matrixQ.data}
+        onClick={async () => {
+          if (!projectId) return;
+          setCsvLoading(true);
+          try {
+            await exportSegmentChannelMatrixCsv(projectId, {
+              from: period.from,
+              to: period.to,
+              channels: channels.length > 0 ? channels : undefined,
+              sortBy,
+              ascending,
+            });
+          } finally {
+            setCsvLoading(false);
+          }
+        }}
+      >
+        {csvLoading ? "다운로드 중..." : "CSV 내보내기"}
       </Button>
       <span style={{ alignSelf: "center", fontSize: 12, color: "#94a3b8" }}>
         {formatPeriod(period.from, period.to)}

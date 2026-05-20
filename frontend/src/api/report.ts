@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, BASE_URL } from "./client";
 import {
   SegmentChannelMatrixResponseSchema,
   type Channel,
@@ -9,6 +9,36 @@ import {
   CampaignFunnelResponseSchema,
   type CampaignFunnelResponse,
 } from "@/schemas/funnel";
+import { useAuthStore } from "@/stores/auth";
+
+/**
+ * CSV 다운로드 공통 유틸.
+ * axios 인터셉터가 ApiResponse 래퍼를 unwrap하므로 text/csv 응답엔 raw fetch를 사용.
+ * 인증 헤더(Authorization + DEV용 X-Member-Id)는 auth store에서 직접 읽어 첨부.
+ */
+async function downloadCsv(url: string, filename: string): Promise<void> {
+  const state = useAuthStore.getState();
+  const headers: Record<string, string> = {};
+  const token = state.accessToken;
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  if (import.meta.env.DEV && state.member?.memberId != null) {
+    headers["X-Member-Id"] = String(state.member.memberId);
+  }
+
+  const res = await fetch(BASE_URL + url, { headers });
+  if (!res.ok) {
+    throw new Error(`CSV 내보내기 실패 (HTTP ${res.status})`);
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
 
 /**
  * S14P31B101-92 — Reporting (Segment × Channel Matrix) API.
@@ -119,4 +149,48 @@ export async function getCampaignFunnel(
     },
   );
   return CampaignFunnelResponseSchema.parse(res.data);
+}
+
+// ============================================================
+// S14P31B101-91 — CSV 내보내기
+// ============================================================
+
+/**
+ * 세그먼트×채널 매트릭스 CSV 다운로드.
+ * GET /api/v1/projects/{projectId}/reports/segment-channel-matrix/export
+ */
+export async function exportSegmentChannelMatrixCsv(
+  projectId: number,
+  params: SegmentChannelMatrixParams,
+): Promise<void> {
+  const qs = new URLSearchParams();
+  qs.set("from", params.from);
+  qs.set("to", params.to);
+  if (params.channels) params.channels.forEach((c) => qs.append("channels", c));
+  if (params.segmentIds) params.segmentIds.forEach((id) => qs.append("segmentIds", String(id)));
+  if (params.sortBy) qs.set("sortBy", params.sortBy);
+  qs.set("ascending", String(params.ascending ?? false));
+  await downloadCsv(
+    `/api/v1/projects/${projectId}/reports/segment-channel-matrix/export?${qs}`,
+    `segment-channel-matrix-${projectId}.csv`,
+  );
+}
+
+/**
+ * 캠페인 펀널 CSV 다운로드.
+ * GET /api/v1/projects/{projectId}/reports/campaign-funnel/export
+ */
+export async function exportCampaignFunnelCsv(
+  projectId: number,
+  params: CampaignFunnelParams,
+): Promise<void> {
+  const qs = new URLSearchParams();
+  qs.set("from", params.from);
+  qs.set("to", params.to);
+  if (params.campaignId != null) qs.set("campaignId", String(params.campaignId));
+  if (params.channel) qs.set("channel", params.channel);
+  await downloadCsv(
+    `/api/v1/projects/${projectId}/reports/campaign-funnel/export?${qs}`,
+    `campaign-funnel-${projectId}.csv`,
+  );
 }

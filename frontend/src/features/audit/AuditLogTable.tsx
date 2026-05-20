@@ -11,6 +11,7 @@ import { openModal } from "@/lib/ui-bus";
 import { mapAuditError } from "@/lib/audit-errors";
 import { useAuditLogsQuery } from "@/hooks/queries/audit";
 import type { AuditLogListParams } from "@/api/audit";
+import { exportAuditLogsCsv } from "@/api/audit";
 import AuditLogDetailModal from "./AuditLogDetailModal";
 
 /**
@@ -75,6 +76,7 @@ export default function AuditLogTable({ scope, projectId }: Props) {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(0);
+  const [csvLoading, setCsvLoading] = useState(false);
 
   const memberId = memberIdInput.trim() ? Number(memberIdInput.trim()) : undefined;
   const adminProjectId = adminProjectIdInput.trim()
@@ -222,8 +224,25 @@ export default function AuditLogTable({ scope, projectId }: Props) {
           width={150}
           aria-label="종료일"
         />
-        <div style={{ marginLeft: "auto", fontSize: 11, color: "#94a3b8" }}>
-          총 {data?.totalElements ?? 0}건
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 11, color: "#94a3b8" }}>
+            총 {data?.totalElements ?? 0}건
+          </span>
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={csvLoading}
+            onClick={async () => {
+              setCsvLoading(true);
+              try {
+                await exportAuditLogsCsv(params);
+              } finally {
+                setCsvLoading(false);
+              }
+            }}
+          >
+            {csvLoading ? "다운로드 중..." : "CSV 내보내기"}
+          </Button>
         </div>
       </div>
 
