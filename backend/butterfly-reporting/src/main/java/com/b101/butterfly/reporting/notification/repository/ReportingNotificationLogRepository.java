@@ -154,8 +154,8 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
-              AND n.created_at >= :fromInclusive
-              AND n.created_at < :toExclusive
+              AND n.sent_at >= :fromInclusive
+              AND n.sent_at < :toExclusive
             """, nativeQuery = true)
     ProjectFunnelRawRow countProjectFunnelBetween(
             @Param("projectId") Long projectId,
@@ -176,11 +176,11 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
-              AND n.created_at >= :fromInclusive
-              AND n.created_at < :toExclusive
+              AND n.sent_at >= :fromInclusive
+              AND n.sent_at < :toExclusive
               AND (:channelFilter IS NULL OR n.channel = :channelFilter)
             GROUP BY n.campaign_id, n.channel
-            ORDER BY MAX(n.created_at) DESC
+            ORDER BY MAX(n.sent_at) DESC
             """, nativeQuery = true)
     List<CampaignFunnelRawMetricRow> aggregateCampaignFunnelBetween(
             @Param("projectId") Long projectId,
@@ -201,8 +201,8 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
-              AND n.created_at >= :fromInclusive
-              AND n.created_at < :toExclusive
+              AND n.sent_at >= :fromInclusive
+              AND n.sent_at < :toExclusive
             GROUP BY n.channel
             ORDER BY COUNT(DISTINCT n.log_id) DESC
             """, nativeQuery = true)
