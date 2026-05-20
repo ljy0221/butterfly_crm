@@ -147,6 +147,7 @@ public interface CampaignStatsDailyRepository extends JpaRepository<CampaignStat
             SELECT new com.b101.butterfly.reporting.report.dto.FunnelCountRow(
                 COALESCE(SUM(CAST(c.sentCount AS long)), 0L),
                 COALESCE(SUM(CAST(c.deliveredCount AS long)), 0L),
+                COALESCE(SUM(CAST(c.failedCount AS long)), 0L),
                 COALESCE(SUM(CAST(c.openCount AS long)), 0L),
                 COALESCE(SUM(CAST(c.clickCount AS long)), 0L),
                 COALESCE(SUM(CAST(c.convertCount AS long)), 0L)

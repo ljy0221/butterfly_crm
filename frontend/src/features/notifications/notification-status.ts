@@ -14,14 +14,14 @@ export type TagTone =
   | "soft";
 
 export const STATUS_LABEL: Record<NotificationStatus, string> = {
-  SENT: "발송",
+  SENT: "전달",
   DELIVERED: "전달",
   CLICKED: "클릭",
   FAILED: "실패",
 };
 
 export const STATUS_TONE: Record<NotificationStatus, TagTone> = {
-  SENT: "default",
+  SENT: "success",
   DELIVERED: "success",
   CLICKED: "info",
   FAILED: "error",

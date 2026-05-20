@@ -59,10 +59,18 @@ class AnalyticsServiceImplTest {
 
     /** {@link CampaignFunnelRawRow} 는 interface projection — anonymous impl 로 테스트값 주입. */
     private static CampaignFunnelRawRow rawRow(Long sent, Long delivered, Long failed) {
+        return rawRow(sent, delivered, failed, 0L, 0L, 0L);
+    }
+
+    private static CampaignFunnelRawRow rawRow(Long sent, Long delivered, Long failed,
+                                               Long open, Long click, Long convert) {
         return new CampaignFunnelRawRow() {
             @Override public Long getSentCount() { return sent; }
             @Override public Long getDeliveredCount() { return delivered; }
             @Override public Long getFailedCount() { return failed; }
+            @Override public Long getOpenCount() { return open; }
+            @Override public Long getClickCount() { return click; }
+            @Override public Long getConvertCount() { return convert; }
         };
     }
 
@@ -80,13 +88,13 @@ class AnalyticsServiceImplTest {
         @DisplayName("정상 — daily 우선 조회 시 fallback 미호출, KPI 정의서 비율")
         void normalAggregation() {
             given(campaignRepo.aggregateFunnel(eq(1L), any(), any(), eq(100L), any()))
-                    .willReturn(new FunnelCountRow(1000, 800, 400, 100, 25));
+                    .willReturn(new FunnelCountRow(1000, 800, 200, 400, 100, 25));
 
             CampaignStatsResponse res = service.getCampaignStats(1L, 100L);
 
             assertThat(res.campaignId()).isEqualTo(100L);
             assertThat(res.sentCount()).isEqualTo(1000);
-            assertThat(res.failedCount()).isEqualTo(200);  // sent - delivered
+            assertThat(res.failedCount()).isEqualTo(200);
             assertThat(res.deliveryRate()).isEqualTo(80.0);
             assertThat(res.openRate()).isEqualTo(50.0);     // ADR-0007: open/delivered
             assertThat(res.clickRate()).isEqualTo(25.0);    // ADR-0007: click/open
@@ -108,7 +116,6 @@ class AnalyticsServiceImplTest {
             assertThat(res.deliveredCount()).isEqualTo(100L);
             assertThat(res.failedCount()).isEqualTo(20L);
             assertThat(res.deliveryRate()).isEqualTo(83.33);
-            // open/click/convert 는 user_action_logs(123) 머지 전이라 0
             assertThat(res.openCount()).isZero();
             // ADR-0007: 분모(delivered=100)가 0이 아니므로 openRate=0.0 (rate(0,100)=0.0).
             // 분자가 0이어도 null이 아님 — null 은 "정의 불가(분모 0)" 시만.
@@ -118,10 +125,27 @@ class AnalyticsServiceImplTest {
         }
 
         @Test
+        @DisplayName("daily null — raw fallback에서 user_action_logs 카운트도 반영")
+        void rawFallbackIncludesActionCounts() {
+            given(campaignRepo.aggregateFunnel(any(), any(), any(), any(), any())).willReturn(null);
+            given(notificationLogRepo.countCampaignFunnel(1L, 100L))
+                    .willReturn(rawRow(120L, 100L, 20L, 80L, 30L, 10L));
+
+            CampaignStatsResponse res = service.getCampaignStats(1L, 100L);
+
+            assertThat(res.openCount()).isEqualTo(80L);
+            assertThat(res.clickedCount()).isEqualTo(30L);
+            assertThat(res.convertCount()).isEqualTo(10L);
+            assertThat(res.openRate()).isEqualTo(80.0);
+            assertThat(res.clickRate()).isEqualTo(37.5);
+            assertThat(res.convertRate()).isEqualTo(8.33);
+        }
+
+        @Test
         @DisplayName("daily sent=0 — fallback 시도, raw도 0이면 모든 비율 null")
         void dailyEmptyAndRawEmpty() {
             given(campaignRepo.aggregateFunnel(any(), any(), any(), any(), any()))
-                    .willReturn(new FunnelCountRow(0, 0, 0, 0, 0));
+                    .willReturn(new FunnelCountRow(0, 0, 0, 0, 0, 0));
             given(notificationLogRepo.countCampaignFunnel(1L, 100L))
                     .willReturn(rawRow(0L, 0L, 0L));
 

@@ -20,8 +20,6 @@ import java.util.Optional;
  * 자연 키 충돌 처리가 어렵고, MySQL의 `ON DUPLICATE KEY UPDATE` 를 직접 쓰는 것이 멱등성을
  * 가장 명확하게 보장한다.
  *
- * <p>S14P31B101-124 (124-A): open/click/convert 컬럼은 0으로 둔다 — user_action_logs 데이터
- * (123 의존)가 추가되면 본 메서드 시그니처에 같이 채워 넣는 형태로 확장 (124-B 또는 후속).
  */
 public interface CampaignStatsHourlyRepository extends JpaRepository<CampaignStatsHourly, Long> {
 
@@ -44,12 +42,15 @@ public interface CampaignStatsHourlyRepository extends JpaRepository<CampaignSta
             VALUES
                 (:projectId, :campaignId, :channel, :bucketHour,
                  :pendingCount, :sentCount, :deliveredCount, :failedCount,
-                 0, 0, 0, CURRENT_TIMESTAMP)
+                 :openCount, :clickCount, :convertCount, CURRENT_TIMESTAMP)
             ON DUPLICATE KEY UPDATE
                 pending_count   = VALUES(pending_count),
                 sent_count      = VALUES(sent_count),
                 delivered_count = VALUES(delivered_count),
                 failed_count    = VALUES(failed_count),
+                open_count      = VALUES(open_count),
+                click_count     = VALUES(click_count),
+                convert_count   = VALUES(convert_count),
                 updated_at      = CURRENT_TIMESTAMP
             """, nativeQuery = true)
     int upsert(
@@ -60,7 +61,10 @@ public interface CampaignStatsHourlyRepository extends JpaRepository<CampaignSta
             @Param("pendingCount") int pendingCount,
             @Param("sentCount") int sentCount,
             @Param("deliveredCount") int deliveredCount,
-            @Param("failedCount") int failedCount
+            @Param("failedCount") int failedCount,
+            @Param("openCount") int openCount,
+            @Param("clickCount") int clickCount,
+            @Param("convertCount") int convertCount
     );
 
     /**

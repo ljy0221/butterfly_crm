@@ -13,10 +13,13 @@ import androidx.core.app.NotificationCompat;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 
+import java.util.Map;
+
 public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
     private static final String TAG = "FCM_Service";
     private static final String CHANNEL_ID = "fcm_default_channel";
+    private static final String DATA_MESSAGE_KEY = "butterfly_message_key";
 
     @Override
     public void onNewToken(@NonNull String token) {
@@ -39,25 +42,34 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
             String body = remoteMessage.getNotification().getBody();
             Log.d(TAG, "Title: " + title);
             Log.d(TAG, "Body: " + body);
-            showNotification(title, body);
+            showNotification(title, body, remoteMessage.getData());
         }
     }
 
-    private void showNotification(String title, String body) {
+    private void showNotification(String title, String body, Map<String, String> data) {
         Intent intent = new Intent(this, ProductDetailActivity.class);
         intent.putExtra("notification_title", title);
         intent.putExtra("notification_body", body);
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            intent.putExtra(entry.getKey(), entry.getValue());
+        }
         intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
+        int requestCode = data.containsKey(DATA_MESSAGE_KEY)
+                ? data.get(DATA_MESSAGE_KEY).hashCode()
+                : 0;
         PendingIntent pendingIntent = PendingIntent.getActivity(
-                this, 0, intent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+                this, requestCode, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         // 알림 삭제(스와이프) 시 호출될 PendingIntent
         Intent dismissIntent = new Intent(this, NotificationDismissReceiver.class);
         dismissIntent.putExtra("notification_title", title);
         dismissIntent.putExtra("notification_body", body);
+        for (Map.Entry<String, String> entry : data.entrySet()) {
+            dismissIntent.putExtra(entry.getKey(), entry.getValue());
+        }
         PendingIntent dismissPendingIntent = PendingIntent.getBroadcast(
-                this, 1, dismissIntent, PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
+                this, requestCode + 1, dismissIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
         createNotificationChannel();
 
@@ -70,7 +82,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 .setDeleteIntent(dismissPendingIntent);
 
         NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        manager.notify(0, builder.build());
+        manager.notify(requestCode, builder.build());
     }
 
     private void createNotificationChannel() {

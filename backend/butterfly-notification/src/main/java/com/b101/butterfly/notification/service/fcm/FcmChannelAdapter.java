@@ -35,7 +35,7 @@ public class FcmChannelAdapter implements ChannelAdapter {
         log.info("FCM 배치 발송 시작: executionId={}, campaignId={}, targetCount={}",
                 command.executionId(), command.campaignId(), targets.size());
         try {
-            List<TargetOutcome> outcomes = fcmService.sendBatch(command.projectId(), fcm.credentialJson(), command.message(), targets);
+            List<TargetOutcome> outcomes = fcmService.sendBatch(command, fcm.credentialJson(), targets);
             long sent = outcomes.stream().filter(o -> o.result().successful()).count();
             log.info("FCM 배치 발송 완료: executionId={}, sent={}, failed={}",
                     command.executionId(), sent, outcomes.size() - sent);

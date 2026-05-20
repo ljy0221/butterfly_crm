@@ -99,10 +99,10 @@ class UserActionIngestControllerTest {
         }
 
         @Test
-        @DisplayName("필수 필드(logId) 누락 → 400 (jakarta validation, 표준 동작)")
+        @DisplayName("필수 필드(actionType) 누락 → 400 (jakarta validation, 표준 동작)")
         void missingRequiredFieldReturns400() throws Exception {
             String invalid = """
-                    { "actionType": "OPEN", "actionAt": "2026-04-28T10:02:32" }
+                    { "messageKey": "kafka-msg-parent", "actionAt": "2026-04-28T10:02:32" }
                     """;
             mockMvc.perform(post("/api/v1/events/actions")
                             .contentType(MediaType.APPLICATION_JSON)

@@ -44,8 +44,7 @@ public class UserActionIngestService {
      */
     @Transactional
     public UserActionLog record(UserActionIngestRequest request, Long resolvedProjectId) {
-        NotificationLog parent = notificationLogRepository.findById(request.logId())
-                .orElseThrow(() -> new BusinessException(AnalyticsErrorCode.LOG_NOT_FOUND));
+        NotificationLog parent = resolveParent(request);
 
         // 도메인 검증: API Key 소속 projectId 와 부모 logId.projectId 가 일치해야 한다.
         // 다른 프로젝트 logId 노출 방지 (ADR-0017) — 동일 LOG_NOT_FOUND 코드로 통일.
@@ -70,6 +69,18 @@ public class UserActionIngestService {
                 .build();
 
         return userActionLogRepository.save(row);
+    }
+
+    private NotificationLog resolveParent(UserActionIngestRequest request) {
+        if (request.logId() != null) {
+            return notificationLogRepository.findById(request.logId())
+                    .orElseThrow(() -> new BusinessException(AnalyticsErrorCode.LOG_NOT_FOUND));
+        }
+        if (request.messageKey() != null && !request.messageKey().isBlank()) {
+            return notificationLogRepository.findByMessageKey(request.messageKey())
+                    .orElseThrow(() -> new BusinessException(AnalyticsErrorCode.LOG_NOT_FOUND));
+        }
+        throw new BusinessException(AnalyticsErrorCode.LOG_NOT_FOUND);
     }
 
     private static void validateUrl(String actionTarget) {
