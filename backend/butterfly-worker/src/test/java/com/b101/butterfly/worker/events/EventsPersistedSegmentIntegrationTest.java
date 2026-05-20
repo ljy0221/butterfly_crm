@@ -95,6 +95,19 @@ class EventsPersistedSegmentIntegrationTest extends AbstractMySqlContainerTest {
   @Autowired private SegmentMemberRepository segmentMemberRepository;
   @Autowired private StringRedisTemplate redisTemplate;
   @Autowired private TransactionTemplate txTemplate;
+  @Autowired private org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+  @org.junit.jupiter.api.BeforeEach
+  void insertParentFixtures() {
+    jdbcTemplate.execute("""
+        INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+        VALUES (1, NULL, 'worker-e2e-test@test.com', '워커테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+        """);
+    jdbcTemplate.execute("""
+        INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+        VALUES (9101, 'worker-e2e-project', '123-45-99101', 'COMP9101', 1, 'FREE')
+        """);
+  }
 
   @AfterEach
   void cleanUp() {
