@@ -374,6 +374,7 @@ function Row({
   onDelete,
 }: RowProps) {
   const buildStatus = segment.buildStatus;
+  const pushStats = segment.audienceStats;
   const reachDisplay =
     buildStatus === "PENDING"
       ? "—"
@@ -381,10 +382,11 @@ function Row({
         ? "..."
         : buildStatus === "FAILED"
           ? "실패"
-          : segment.estimatedCount != null
-            ? fmtNum(segment.estimatedCount)
+          : pushStats?.totalCount != null
+            ? fmtNum(pushStats.totalCount)
+            : segment.estimatedCount != null
+              ? fmtNum(segment.estimatedCount)
             : "—";
-  const pushStats = segment.audienceStats;
 
   return (
     <div
@@ -525,17 +527,17 @@ function Row({
         </div>
         {buildStatus === "READY" && pushStats && (
           <div
+            title="발송가능은 푸시 수신 동의와 유효 디바이스 토큰을 모두 가진 사용자 수입니다."
             style={{
               marginTop: 2,
               fontSize: 10.5,
               color: "#64748b",
               fontWeight: 500,
-              whiteSpace: "nowrap",
+              lineHeight: 1.35,
             }}
           >
-            푸시 {fmtNum(pushStats.pushSendableCount)}
-            <span style={{ color: "#cbd5e1" }}> / </span>
-            동의 {fmtNum(pushStats.pushOptInCount)}
+            <div>수신동의 {fmtNum(pushStats.pushOptInCount)}</div>
+            <div>발송가능 {fmtNum(pushStats.pushSendableCount)}</div>
           </div>
         )}
       </div>

@@ -737,12 +737,16 @@ function BuilderInner({
                   </span>
                 )}
               </div>
-              {/* S14P31B101-275 — BUILDING/PENDING 동안 진행률 표시. currentMemberCount 가
-                  실시간 적재 건수, estimatedCount 는 이전 빌드 결과 (target proxy). */}
+              {detail.audienceStats && (
+                <AudienceStatsBlock stats={detail.audienceStats} />
+              )}
+              {/* 재빌드는 DELETE 후 INSERT SELECT 단일 statement로 적재되어 select/insert 단계별
+                  진행률을 알 수 없다. 기존 segment_members 때문에 100%로 오해되지 않도록
+                  불확정 진행 표시만 노출한다. */}
               {(detail.buildStatus === "BUILDING" || detail.buildStatus === "PENDING") && (
                 <BuildProgress
-                  current={detail.currentMemberCount ?? 0}
-                  target={detail.estimatedCount ?? null}
+                  current={0}
+                  target={null}
                   startedAt={detail.buildStartedAt}
                 />
               )}
@@ -768,27 +772,21 @@ function BuilderInner({
                       {cancelBuildMut.isPending ? "취소 중..." : "빌드 취소"}
                     </Button>
                   )}
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={onRebuild}
-                    disabled={
-                      rebuildMut.isPending ||
-                      cancelBuildMut.isPending ||
-                      detail.buildStatus === "PENDING" ||
-                      detail.buildStatus === "BUILDING"
-                    }
-                    style={{
-                      width: "100%",
-                      justifyContent: "center",
-                    }}
-                  >
-                    {detail.buildStatus === "PENDING"
-                      ? "대기 중..."
-                      : detail.buildStatus === "BUILDING"
-                        ? "빌드 중..."
-                        : "재계산"}
-                  </Button>
+                  {detail.buildStatus !== "PENDING" &&
+                    detail.buildStatus !== "BUILDING" && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={onRebuild}
+                      disabled={rebuildMut.isPending || cancelBuildMut.isPending}
+                      style={{
+                        width: "100%",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {rebuildMut.isPending ? "요청 중..." : "재계산"}
+                    </Button>
+                  )}
                 </div>
               )}
             </Card>
@@ -1026,6 +1024,79 @@ function countConditions(node: SegmentDraftResponse["conditionTree"]): number {
     }
   }
   return count;
+}
+
+function AudienceStatsBlock({
+  stats,
+}: {
+  stats: NonNullable<SegmentDetail["audienceStats"]>;
+}) {
+  const rows = [
+    {
+      label: "대상자",
+      value: stats.totalCount,
+      help: "현재 세그먼트에 추출된 전체 사용자",
+    },
+    {
+      label: "수신동의",
+      value: stats.pushOptInCount,
+      help: "푸시 수신 동의가 켜진 사용자",
+    },
+    {
+      label: "발송가능",
+      value: stats.pushSendableCount,
+      help: "수신동의와 유효 디바이스 토큰을 모두 가진 사용자",
+    },
+  ];
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+        gap: 8,
+        marginBottom: 12,
+      }}
+    >
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          title={row.help}
+          style={{
+            minWidth: 0,
+            padding: "9px 10px",
+            border: "1px solid #e2e8f0",
+            borderRadius: 8,
+            background: "#f8fafc",
+          }}
+        >
+          <div
+            style={{
+              marginBottom: 3,
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: "#64748b",
+            }}
+          >
+            {row.label}
+          </div>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#1f2937",
+              fontVariantNumeric: "tabular-nums",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {fmtNum(row.value)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function LinkedCampaignsView({

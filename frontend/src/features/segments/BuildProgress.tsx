@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
  * Segment 빌드 진행률 표시 (S14P31B101-275).
  *
  * - target 이 있으면 (current/target)*100% 게이지 + 숫자 표시
- * - target 이 null 이면 indeterminate (현재 적재 수만)
+ * - target 이 null 이면 indeterminate (진행 단계가 서버에서 분리되지 않은 작업)
  * - startedAt 이 있으면 경과 시간 ("Xm Ys") 표시
  */
 interface BuildProgressProps {
@@ -58,7 +58,7 @@ export default function BuildProgress({
         <span>
           {target != null && target > 0
             ? `처리됨 ${fmt(current)} / ${fmt(target)}`
-            : `처리됨 ${fmt(current)}`}
+            : "재계산 진행 중"}
           {pct != null ? ` · ${pct}%` : ""}
         </span>
         {elapsedSec != null && <span>경과 {formatElapsed(elapsedSec)}</span>}
