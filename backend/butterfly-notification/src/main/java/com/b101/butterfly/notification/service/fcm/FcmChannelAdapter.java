@@ -41,11 +41,10 @@ public class FcmChannelAdapter implements ChannelAdapter {
                     command.executionId(), sent, outcomes.size() - sent);
             return outcomes;
         } catch (BusinessException e) {
-            log.warn("FCM credential 오류 — 로컬 stub SENT 처리: projectId={}, error={}",
+            log.warn("FCM credential 오류 — 전체 실패 처리: projectId={}, error={}",
                     command.projectId(), e.getMessage());
-            // 로컬 테스트용: FCM credential 없을 때 SENT로 처리해 notification_logs에 기록되게 함
             return targets.stream()
-                    .map(t -> new TargetOutcome(t, DeliveryResult.success()))
+                    .map(t -> new TargetOutcome(t, DeliveryResult.permanentFailure("FCM_CREDENTIALS_NOT_FOUND", e.getMessage())))
                     .toList();
         }
     }
