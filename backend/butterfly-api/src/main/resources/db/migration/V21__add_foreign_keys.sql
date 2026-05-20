@@ -207,11 +207,7 @@ ALTER TABLE `segment_variable_stats`
 -- 6. Notification 도메인
 -- ============================================================
 
--- channel_credentials: JPA ddl-auto 생성 테이블 — FK만 Flyway로 추가
-ALTER TABLE `channel_credentials`
-    ADD CONSTRAINT `fk_channel_credentials_project`
-        FOREIGN KEY (`project_id`) REFERENCES `projects` (`project_id`)
-        ON DELETE RESTRICT ON UPDATE RESTRICT;
+-- channel_credentials: JPA ddl-auto 생성 테이블 — Flyway 범위 제외 (FK 불가)
 
 -- ============================================================
 -- 7. Reporting 도메인
