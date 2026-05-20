@@ -39,6 +39,11 @@ public interface CampaignRepository
      */
     List<Campaign> findAllBySegmentId(Long segmentId);
 
+    /**
+     * segment 를 사용 중인 전체 캠페인 수 (soft delete 제외, {@code @SQLRestriction} 자동 적용).
+     */
+    long countBySegmentId(Long segmentId);
+
     Optional<Campaign> findByCampaignId(Long campaignId);
 
     default Campaign getByCampaignId(Long campaignId) {

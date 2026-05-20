@@ -17,4 +17,9 @@ public interface LinkedCampaignChecker {
      * 세그먼트를 사용 중인 캠페인을 상태별로 그룹화.
      */
     LinkedCampaignsView listLinkedCampaigns(Long segmentId);
+
+    /**
+     * 세그먼트를 사용 중인 전체 캠페인 수.
+     */
+    int countLinkedCampaigns(Long segmentId);
 }

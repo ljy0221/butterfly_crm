@@ -68,6 +68,15 @@ public class LinkedCampaignCheckerImpl implements LinkedCampaignChecker {
                 grouped.get(CampaignStatus.ENDED));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public int countLinkedCampaigns(Long segmentId) {
+        if (segmentId == null) {
+            return 0;
+        }
+        return Math.toIntExact(campaignRepository.countBySegmentId(segmentId));
+    }
+
     private static LinkedCampaignSummary toSummary(Campaign c) {
         return new LinkedCampaignSummary(
                 c.getCampaignId(), c.getCampaignName(), c.getCampaignStatus().name());

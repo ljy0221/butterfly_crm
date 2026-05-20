@@ -112,6 +112,21 @@ class LinkedCampaignCheckerImplTest {
         assertThat(view.ended().get(0).campaignStatus()).isEqualTo("ENDED");
     }
 
+    @Test
+    @DisplayName("countLinkedCampaigns — 연결 캠페인 수를 count 쿼리로 반환")
+    void countLinkedCampaigns() {
+        given(campaignRepository.countBySegmentId(SEGMENT_ID)).willReturn(5L);
+
+        assertThat(checker.countLinkedCampaigns(SEGMENT_ID)).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("countLinkedCampaigns — segmentId null 이면 0, Repository 호출 없음")
+    void countLinkedCampaigns_nullSegmentId() {
+        assertThat(checker.countLinkedCampaigns(null)).isZero();
+        verifyNoInteractions(campaignRepository);
+    }
+
     private static Campaign mockCampaign(Long id, String name, CampaignStatus status) {
         Campaign c = mock(Campaign.class);
         given(c.getCampaignId()).willReturn(id);
