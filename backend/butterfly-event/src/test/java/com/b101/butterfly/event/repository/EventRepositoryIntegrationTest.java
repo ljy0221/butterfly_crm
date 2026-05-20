@@ -3,12 +3,14 @@ package com.b101.butterfly.event.repository;
 import com.b101.butterfly.event.entity.Event;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,6 +24,49 @@ class EventRepositoryIntegrationTest extends AbstractMySqlContainerTest {
 
     @Autowired private EventRepository repository;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // 1. member (owner of project)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (1, NULL, 'event-test@test.com', '이벤트테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // 2. projects (project_id=100, 999 used in tests)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (100, 'event-project-100', '123-45-67890', 'COMP100', 1, 'FREE')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (999, 'event-project-999', '123-45-67999', 'COMP999', 1, 'FREE')
+                """);
+        // 3. users (user_id=7, 8 used in tests; belong to project 100)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO users (user_id, project_id, external_id)
+                VALUES (7, 100, 'ext-7')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO users (user_id, project_id, external_id)
+                VALUES (8, 100, 'ext-8')
+                """);
+        // 4. event_categories (category_id=1, 2 used in tests)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO event_categories (category_id, project_id, name, type)
+                VALUES (1, 100, 'cat-1', 'CUSTOM')
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO event_categories (category_id, project_id, name, type)
+                VALUES (2, 100, 'cat-2', 'CUSTOM')
+                """);
+        // 5. devices (device_id=42 used in tests; belongs to user 7, project 100)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO devices (device_id, project_id, user_id, platform, push_token,
+                    push_token_updated_at, token_valid, app_version, os_version)
+                VALUES (42, 100, 7, 'ANDROID', 'token-42', NOW(), true, '1.0', '12.0')
+                """);
+    }
 
     private static final LocalDateTime OCCURRED_AT = LocalDateTime.of(2026, 4, 30, 12, 0);
 

@@ -5,12 +5,14 @@ import com.b101.butterfly.reporting.notification.entity.NotificationLog;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
 import com.b101.butterfly.testsupport.containers.AbstractMySqlContainerTest;
 import jakarta.persistence.EntityManager;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -33,6 +35,39 @@ class ReportingNotificationLogRepositoryIntegrationTest extends AbstractMySqlCon
 
     @Autowired private ReportingNotificationLogRepository repository;
     @Autowired private EntityManager entityManager;
+    @Autowired private JdbcTemplate jdbcTemplate;
+
+    @BeforeEach
+    void insertParentFixtures() {
+        // 1. member (owner of project, and campaign creator)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (1, NULL, 'notif-log-test@test.com', '알림로그', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // 2. project (project_id=123 used in newLog)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (123, 'notif-log-project', '123-45-67890', 'COMP123', 1, 'FREE')
+                """);
+        // 3. message_template (required by campaigns)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO message_templates
+                    (message_template_id, member_id, project_id, message_template_name,
+                     message_template_description, channel, message_template_title,
+                     message_template_body, required_variables, is_deleted)
+                VALUES (1, 1, 123, 'tpl-name', 'tpl-desc', 'PUSH', 'title', 'body', '[]', false)
+                """);
+        // 4. campaign (campaign_id=4521 used in newLog)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (4521, 123, 1, NULL, 1,
+                        'notif-log-campaign', 'desc', 'ONE_TIME', 'PUSH',
+                        'DRAFT', 'IMMEDIATE', false)
+                """);
+    }
 
     private NotificationLog newLog(String messageKey) {
         return NotificationLog.create()
