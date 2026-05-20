@@ -271,7 +271,7 @@ public class SegmentService {
                 creatorOf(segment),
                 segment.getCreatedAt(),
                 segment.getUpdatedAt(),
-                0,
+                linkedCampaignChecker.countLinkedCampaigns(segment.getId()),
                 favorited);
     }
 

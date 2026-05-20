@@ -20,4 +20,9 @@ public class StubLinkedCampaignChecker implements LinkedCampaignChecker {
     public LinkedCampaignsView listLinkedCampaigns(Long segmentId) {
         return LinkedCampaignsView.empty();
     }
+
+    @Override
+    public int countLinkedCampaigns(Long segmentId) {
+        return 0;
+    }
 }

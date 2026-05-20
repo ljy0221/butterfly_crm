@@ -13,6 +13,7 @@ import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
 import com.b101.butterfly.segment.dto.request.UpdateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
+import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
 import com.b101.butterfly.segment.entity.Segment;
 import com.b101.butterfly.segment.exception.SegmentErrorCode;
@@ -165,12 +166,14 @@ class SegmentServiceTest {
             when(segmentRepository.findByProjectId(eq(PROJECT_ID), any())).thenReturn(page);
             when(segmentFavoriteRepository.existsBySegmentIdAndMemberId(42L, MEMBER_ID))
                     .thenReturn(true);
+            when(linkedCampaignChecker.countLinkedCampaigns(42L)).thenReturn(3);
 
-            PageResponse<?> result =
+            PageResponse<SegmentSummaryResponse> result =
                     segmentService.list(PROJECT_ID, MEMBER_ID, PageRequest.of(0, 20));
 
             assertThat(result.totalElements()).isEqualTo(1);
             assertThat(result.content()).hasSize(1);
+            assertThat(result.content().get(0).linkedCampaignCount()).isEqualTo(3);
         }
     }
 
