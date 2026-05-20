@@ -90,13 +90,15 @@ public class FcmService {
                                          List<DeliveryCommand.DeliveryTarget> targets) {
         List<TargetOutcome> outcomes = new ArrayList<>();
 
-        // 토큰 없는 대상은 즉시 실패 처리, 유효한 대상만 모아서 배치 발송
+        // 토큰 없는 대상은 즉시 실패 처리, demo 토큰은 stub SENT, 유효한 대상만 모아서 배치 발송
         List<DeliveryCommand.DeliveryTarget> validTargets = new ArrayList<>();
         for (DeliveryCommand.DeliveryTarget target : targets) {
             if (target.pushToken() == null || target.pushToken().isBlank()) {
                 outcomes.add(new TargetOutcome(target, DeliveryResult.permanentFailure(
                         DeliveryErrorCode.FCM_TOKEN_MISSING.getCode(),
                         DeliveryErrorCode.FCM_TOKEN_MISSING.getMessage())));
+            } else if (target.pushToken().startsWith("demo-token-") || target.pushToken().startsWith("fcm-token-")) {
+                outcomes.add(new TargetOutcome(target, DeliveryResult.success()));
             } else {
                 validTargets.add(target);
             }
