@@ -1117,7 +1117,7 @@ function AudienceStatsBlock({
   );
 }
 
-function LinkedCampaignsView({
+function SegmentUsersView({
   isLoading,
   isFetching,
   isError,
