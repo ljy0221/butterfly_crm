@@ -120,12 +120,12 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
      */
     @Query(value = """
             SELECT
-                COUNT(DISTINCT n.log_id) AS sent_count,
-                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
-                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count
+                COUNT(DISTINCT n.log_id) AS sentCount,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS deliveredCount,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failedCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS openCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS clickCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convertCount
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
@@ -144,13 +144,13 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
      */
     @Query(value = """
             SELECT
-                COUNT(DISTINCT n.log_id) AS sent_count,
-                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
-                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count,
-                COUNT(DISTINCT n.campaign_id) AS campaign_count
+                COUNT(DISTINCT n.log_id) AS sentCount,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS deliveredCount,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failedCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS openCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS clickCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convertCount,
+                COUNT(DISTINCT n.campaign_id) AS campaignCount
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
@@ -165,14 +165,14 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
 
     @Query(value = """
             SELECT
-                n.campaign_id AS campaign_id,
+                n.campaign_id AS campaignId,
                 n.channel AS channel,
-                COUNT(DISTINCT n.log_id) AS sent_count,
-                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
-                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count
+                COUNT(DISTINCT n.log_id) AS sentCount,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS deliveredCount,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failedCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS openCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS clickCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convertCount
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
@@ -192,12 +192,12 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
     @Query(value = """
             SELECT
                 n.channel AS channel,
-                COUNT(DISTINCT n.log_id) AS sent_count,
-                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS delivered_count,
-                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS click_count,
-                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convert_count
+                COUNT(DISTINCT n.log_id) AS sentCount,
+                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS deliveredCount,
+                COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failedCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS openCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CLICK' THEN ual.log_id END) AS clickCount,
+                COUNT(DISTINCT CASE WHEN ual.action_type = 'CONVERT' THEN ual.log_id END) AS convertCount
             FROM notification_logs n
             LEFT JOIN user_action_logs ual ON ual.log_id = n.log_id
             WHERE n.project_id = :projectId
