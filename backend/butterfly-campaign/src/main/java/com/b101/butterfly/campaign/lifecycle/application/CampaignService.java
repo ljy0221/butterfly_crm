@@ -94,6 +94,11 @@ public class CampaignService {
         remover.deleteCampaign(campaignId, projectId);
     }
 
+    @Transactional
+    public Long duplicateCampaign(Long campaignId, Long projectId, Long memberId) {
+        return creator.duplicateCampaign(campaignId, projectId, memberId);
+    }
+
     /**
      * 상태 전이를 단일 진입점으로 처리한다.
      *

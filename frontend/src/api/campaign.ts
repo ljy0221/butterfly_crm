@@ -217,6 +217,25 @@ export function resumeCampaign(
   return transitionCampaignStatus(projectId, campaignId, "ACTIVE");
 }
 
+/** `ENDED`로 취소 전이 (ACTIVE/PAUSED → ENDED). */
+export function cancelCampaign(
+  projectId: number,
+  campaignId: number,
+): Promise<StatusTransitionResponse> {
+  return transitionCampaignStatus(projectId, campaignId, "ENDED");
+}
+
+/** POST /api/v1/projects/{projectId}/campaigns/{campaignId}/duplicate — EDITOR↑ (새 초안 복사). */
+export async function duplicateCampaign(
+  projectId: number,
+  campaignId: number,
+): Promise<CampaignCreateResponse> {
+  const res = await api.post<CampaignCreateResponse>(
+    `/api/v1/projects/${projectId}/campaigns/${campaignId}/duplicate`,
+  );
+  return res.data;
+}
+
 // ---------- 도메인 enum re-export (편의) ----------
 export type {
   CampaignStatus,

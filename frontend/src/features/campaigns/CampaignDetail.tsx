@@ -15,7 +15,9 @@ import { useProjectStore } from "@/stores/project";
 import { useTemplateDetailQuery } from "@/hooks/queries/template";
 import {
   useCampaignDetailQuery,
+  useCancelCampaignMutation,
   useDeleteCampaignMutation,
+  useDuplicateCampaignMutation,
   usePauseCampaignMutation,
   useResumeCampaignMutation,
   useStartCampaignMutation,
@@ -108,6 +110,8 @@ export default function CampaignDetail() {
   const startMut = useStartCampaignMutation(projectId);
   const pauseMut = usePauseCampaignMutation(projectId);
   const resumeMut = useResumeCampaignMutation(projectId);
+  const cancelMut = useCancelCampaignMutation(projectId);
+  const duplicateMut = useDuplicateCampaignMutation(projectId);
   const deleteMut = useDeleteCampaignMutation(projectId);
 
   const isOwner = role === "OWNER";
@@ -171,6 +175,47 @@ export default function CampaignDetail() {
     } catch (err) {
       const m = mapCampaignError(err);
       const fallback = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "일시정지 중 오류가 발생했습니다";
+      toast(m.message ?? fallback, "error");
+    }
+  };
+
+  const onCancel = async (): Promise<void> => {
+    if (!campaign) return;
+    const ok = await confirmDialog({
+      title: "캠페인을 취소하시겠습니까?",
+      message: "진행 중인 캠페인이 종료됩니다. 이 작업은 되돌릴 수 없습니다.",
+      confirmText: "취소",
+      cancelText: "닫기",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await cancelMut.mutateAsync(campaignId);
+      toast("캠페인이 취소되었습니다", "success");
+    } catch (err) {
+      const m = mapCampaignError(err);
+      const fallback = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "취소 중 오류가 발생했습니다";
+      toast(m.message ?? fallback, "error");
+    }
+  };
+
+  const onDuplicate = async (): Promise<void> => {
+    if (!campaign) return;
+    const ok = await confirmDialog({
+      title: "캠페인을 재실행하시겠습니까?",
+      message: "현재 캠페인을 복사해 새 초안을 만듭니다. 이름 앞에 \"[재실행]\"이 붙습니다.",
+      confirmText: "새 초안 생성",
+      cancelText: "취소",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      const res = await duplicateMut.mutateAsync(campaignId);
+      toast("새 초안이 생성되었습니다. 목록에서 확인하세요.", "success");
+      navigate(`/p/${projectId}/campaigns/${res.campaignId}`);
+    } catch (err) {
+      const m = mapCampaignError(err);
+      const fallback = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "재실행 초안 생성 중 오류가 발생했습니다";
       toast(m.message ?? fallback, "error");
     }
   };
@@ -251,6 +296,8 @@ export default function CampaignDetail() {
       onStart={onStart}
       onPause={onPause}
       onResume={onResume}
+      onCancel={onCancel}
+      onDuplicate={onDuplicate}
       onDelete={onDelete}
       onBack={() => navigate(`/p/${projectId}/campaigns`)}
       onEdit={() => navigate(`/p/${projectId}/campaigns/${campaignId}/edit`)}
@@ -268,6 +315,8 @@ interface CampaignDetailBodyProps {
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
+  onCancel: () => void;
+  onDuplicate: () => void;
   onDelete: () => void;
   onBack: () => void;
   onEdit: () => void;
@@ -283,6 +332,8 @@ function CampaignDetailBody({
   onStart,
   onPause,
   onResume,
+  onCancel,
+  onDuplicate,
   onDelete,
   onBack,
   onEdit,
@@ -346,6 +397,11 @@ function CampaignDetailBody({
                 삭제
               </Button>
             )}
+            {canEdit && isEnded && (
+              <Button variant="secondary" size="md" onClick={onDuplicate} style={{}}>
+                재실행
+              </Button>
+            )}
             {canEdit && isDraft && (
               <>
                 <Button variant="secondary" size="md" icon={Icon.edit(12)} onClick={onEdit} style={{}}>
@@ -374,14 +430,24 @@ function CampaignDetailBody({
               </>
             )}
             {canEdit && isActive && (
-              <Button variant="secondary" size="md" onClick={onPause} style={{}}>
-                일시정지
-              </Button>
+              <>
+                <Button variant="ghost" size="md" onClick={onCancel} style={{}}>
+                  취소
+                </Button>
+                <Button variant="secondary" size="md" onClick={onPause} style={{}}>
+                  일시정지
+                </Button>
+              </>
             )}
             {canEdit && isPaused && (
-              <Button variant="primaryStrong" size="md" onClick={onResume} style={{}}>
-                재개
-              </Button>
+              <>
+                <Button variant="ghost" size="md" onClick={onCancel} style={{}}>
+                  취소
+                </Button>
+                <Button variant="primaryStrong" size="md" onClick={onResume} style={{}}>
+                  재개
+                </Button>
+              </>
             )}
             {!canEdit && (
               <span style={{ fontSize: 11, color: "#94a3b8" }}>VIEWER 권한으로 액션 불가</span>

@@ -221,6 +221,24 @@ class CampaignControllerWebMvcTest {
     }
 
     @Nested
+    @DisplayName("POST /campaigns/{id}/duplicate — 캠페인 재실행(새 초안 복사)")
+    class DuplicateCampaign {
+
+        @Test
+        @DisplayName("정상 요청 → 201 + 새 campaignId")
+        void duplicateHappy() throws Exception {
+            Long newId = 999L;
+            given(campaignService.duplicateCampaign(CAMPAIGN_ID, PROJECT_ID, MEMBER_ID)).willReturn(newId);
+
+            mockMvc.perform(post(BASE_URL + "/" + CAMPAIGN_ID + "/duplicate"))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.data.campaignId").value(newId));
+
+            verify(campaignService).duplicateCampaign(CAMPAIGN_ID, PROJECT_ID, MEMBER_ID);
+        }
+    }
+
+    @Nested
     @DisplayName("GET /campaigns — 캠페인 목록")
     class GetCampaignList {
 

@@ -150,3 +150,28 @@ export function useResumeCampaignMutation(projectId: number) {
     },
   });
 }
+
+export function useCancelCampaignMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<StatusTransitionResponse, unknown, number>({
+    mutationFn: (campaignId) =>
+      campaignApi.cancelCampaign(projectId, campaignId),
+    onSuccess: (_data, campaignId) => {
+      qc.invalidateQueries({ queryKey: campaignKeys.lists(projectId) });
+      qc.invalidateQueries({
+        queryKey: campaignKeys.detail(projectId, campaignId),
+      });
+    },
+  });
+}
+
+export function useDuplicateCampaignMutation(projectId: number) {
+  const qc = useQueryClient();
+  return useMutation<CampaignCreateResponse, unknown, number>({
+    mutationFn: (campaignId) =>
+      campaignApi.duplicateCampaign(projectId, campaignId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: campaignKeys.lists(projectId) });
+    },
+  });
+}
