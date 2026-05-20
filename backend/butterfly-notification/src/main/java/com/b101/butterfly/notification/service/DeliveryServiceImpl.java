@@ -32,6 +32,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final UserContactPort userContactPort;
     private final UserTagLookupPort userTagLookupPort;
     private final CampaignExecutionResultPublisher campaignExecutionResultPublisher;
+    private final com.b101.butterfly.notification.messaging.NotificationSendResultPublisher notificationSendResultPublisher;
 
     @Override
     public void deliver(DeliveryCommand command) {
@@ -94,5 +95,10 @@ public class DeliveryServiceImpl implements DeliveryService {
         //   외부 IO 라 트랜잭션 밖에서 수행 (Phase 1/2 분리와 같은 원칙).
         log.info("발송 Phase3 시작(실행 결과 발행): executionId={}", command.executionId());
         campaignExecutionResultPublisher.publish(resolved, outcomes);
+
+        // Phase 4: 건별 발송 결과 발행 (notification-send-result 토픽)
+        //   — reporting 모듈 NotificationSendResultConsumer 가 분석용 notification_logs 에 적재.
+        log.info("발송 Phase4 시작(분석 로그 발행): executionId={}", command.executionId());
+        notificationSendResultPublisher.publishAll(resolved, outcomes);
     }
 }
