@@ -31,6 +31,9 @@ public class NotificationLog extends BaseEntity {
     @Column(name = "campaign_id", nullable = false)
     private Long campaignId;
 
+    @Column(name = "campaign_execution_id")
+    private Long campaignExecutionId;
+
     @Column(name = "user_id")
     private Long userId;
 
@@ -57,6 +60,9 @@ public class NotificationLog extends BaseEntity {
     @Column(name = "click_url", length = 500)
     private String clickUrl;
 
+    @Column(name = "message_key", length = 128, unique = true)
+    private String messageKey;
+
     @Column(name = "error_code", length = 50)
     private String errorCode;
 
@@ -71,15 +77,17 @@ public class NotificationLog extends BaseEntity {
     private LocalDateTime clickedAt;
 
     @Builder
-    public NotificationLog(Long projectId, Long campaignId, Long userId,
+    public NotificationLog(Long projectId, Long campaignId, Long campaignExecutionId, Long userId,
                            Long deviceId, DeliveryCommand.Channel channel,
                            String recipient, String title, String body, String clickUrl,
+                           String messageKey,
                            NotificationStatus status,
                            String errorCode, String errorMessage,
                            LocalDateTime sentAt,
                            LocalDateTime deliveredAt) {
         this.projectId = projectId;
         this.campaignId = campaignId;
+        this.campaignExecutionId = campaignExecutionId;
         this.userId = userId;
         this.deviceId = deviceId;
         this.channel = channel;
@@ -87,6 +95,7 @@ public class NotificationLog extends BaseEntity {
         this.title = title;
         this.body = body;
         this.clickUrl = clickUrl;
+        this.messageKey = messageKey;
         this.status = status;
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;

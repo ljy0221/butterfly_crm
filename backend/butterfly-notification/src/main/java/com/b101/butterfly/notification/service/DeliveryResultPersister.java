@@ -6,6 +6,7 @@ import com.b101.butterfly.notification.dto.response.TargetOutcome;
 import com.b101.butterfly.notification.entity.CampaignStats;
 import com.b101.butterfly.notification.entity.NotificationLog;
 import com.b101.butterfly.notification.entity.NotificationStatus;
+import com.b101.butterfly.notification.messaging.NotificationMessageKey;
 import com.b101.butterfly.notification.repository.CampaignStatsRepository;
 import com.b101.butterfly.notification.repository.NotificationLogRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ class DeliveryResultPersister {
             DeliveryResult result = outcome.result();
             LocalDateTime now = LocalDateTime.now();
             String recipient = resolveRecipient(command.channel(), target);
+            String messageKey = NotificationMessageKey.of(command, target);
 
             DeliveryCommand.MessagePayload msg = command.message();
             String title = msg != null ? msg.title() : null;
@@ -53,6 +55,7 @@ class DeliveryResultPersister {
                 logEntries.add(NotificationLog.builder()
                         .projectId(command.projectId())
                         .campaignId(command.campaignId())
+                        .campaignExecutionId(command.executionId())
                         .userId(target.userId())
                         .deviceId(target.deviceId())
                         .channel(command.channel())
@@ -60,6 +63,7 @@ class DeliveryResultPersister {
                         .title(title)
                         .body(body)
                         .clickUrl(clickUrl)
+                        .messageKey(messageKey)
                         .status(NotificationStatus.DELIVERED)
                         .sentAt(now)
                         .deliveredAt(now)
@@ -70,6 +74,7 @@ class DeliveryResultPersister {
                 logEntries.add(NotificationLog.builder()
                         .projectId(command.projectId())
                         .campaignId(command.campaignId())
+                        .campaignExecutionId(command.executionId())
                         .userId(target.userId())
                         .deviceId(target.deviceId())
                         .channel(command.channel())
@@ -77,6 +82,7 @@ class DeliveryResultPersister {
                         .title(title)
                         .body(body)
                         .clickUrl(clickUrl)
+                        .messageKey(messageKey)
                         .status(NotificationStatus.FAILED)
                         .errorCode(result.errorCode())
                         .errorMessage(result.errorMessage())
