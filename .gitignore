@@ -69,3 +69,4 @@ backend/scripts/demo-inject/.env
 
 */node_modules/
 */dist/
+/tmp

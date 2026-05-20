@@ -12,6 +12,7 @@ import com.b101.butterfly.segment.domain.condition.validation.ConditionTreeValid
 import com.b101.butterfly.segment.dto.request.CreateSegmentRequest;
 import com.b101.butterfly.segment.dto.request.UpdateSegmentRequest;
 import com.b101.butterfly.segment.dto.response.CreateSegmentResponse;
+import com.b101.butterfly.segment.dto.response.SegmentAudienceStatsResponse;
 import com.b101.butterfly.segment.dto.response.SegmentDetailResponse;
 import com.b101.butterfly.segment.dto.response.SegmentSummaryResponse;
 import com.b101.butterfly.segment.entity.BuildStatus;
@@ -21,6 +22,8 @@ import com.b101.butterfly.segment.messaging.SegmentRebuildAcceptedEvent;
 import com.b101.butterfly.segment.port.LinkedCampaignChecker;
 import com.b101.butterfly.segment.port.LinkedCampaignsView;
 import com.b101.butterfly.segment.repository.SegmentFavoriteRepository;
+import com.b101.butterfly.segment.repository.SegmentAudienceStatsReader;
+import com.b101.butterfly.segment.repository.SegmentCreatorReader;
 import com.b101.butterfly.segment.repository.SegmentRepository;
 import com.b101.butterfly.segment.service.preview.ConditionTreeHasher;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
@@ -58,6 +61,8 @@ class SegmentServiceTest {
     @Mock private SegmentRepository segmentRepository;
     @Mock private com.b101.butterfly.segment.repository.SegmentMemberRepository segmentMemberRepository;
     @Mock private SegmentFavoriteRepository segmentFavoriteRepository;
+    @Mock private SegmentAudienceStatsReader segmentAudienceStatsReader;
+    @Mock private SegmentCreatorReader segmentCreatorReader;
     @Mock private ConditionTreeValidator conditionTreeValidator;
     @Mock private LinkedCampaignChecker linkedCampaignChecker;
     @Mock private ConditionTreeHasher conditionTreeHasher;
@@ -77,6 +82,10 @@ class SegmentServiceTest {
         // 모든 케이스에서 같은 hash를 반환 — 본 단위 테스트는 audit 발행 여부·핵심 필드 검증이 목적이고
         // hash 동일성에 의존하는 케이스(no-op update)는 별도로 다룬다.
         lenient().when(conditionTreeHasher.hash(anyLong(), any())).thenReturn(STUB_HASH);
+        lenient().when(segmentAudienceStatsReader.countBySegmentIds(anyLong(), any()))
+                .thenReturn(Map.of());
+        lenient().when(segmentCreatorReader.findNamesByMemberIds(any()))
+                .thenReturn(Map.of(MEMBER_ID, "테스터"));
     }
 
     @Nested
@@ -166,14 +175,16 @@ class SegmentServiceTest {
             when(segmentRepository.findByProjectId(eq(PROJECT_ID), any())).thenReturn(page);
             when(segmentFavoriteRepository.existsBySegmentIdAndMemberId(42L, MEMBER_ID))
                     .thenReturn(true);
-            when(linkedCampaignChecker.countLinkedCampaigns(42L)).thenReturn(3);
+            when(segmentAudienceStatsReader.countBySegmentIds(PROJECT_ID, List.of(42L)))
+                    .thenReturn(Map.of(42L, new SegmentAudienceStatsResponse(10L, 8L, 6L)));
 
             PageResponse<SegmentSummaryResponse> result =
                     segmentService.list(PROJECT_ID, MEMBER_ID, PageRequest.of(0, 20));
 
             assertThat(result.totalElements()).isEqualTo(1);
             assertThat(result.content()).hasSize(1);
-            assertThat(result.content().get(0).linkedCampaignCount()).isEqualTo(3);
+            assertThat(result.content().get(0).createdBy().memberId()).isEqualTo(MEMBER_ID);
+            assertThat(result.content().get(0).createdBy().name()).isEqualTo("테스터");
         }
     }
 
@@ -195,11 +206,16 @@ class SegmentServiceTest {
             when(segmentRepository.findById(42L)).thenReturn(Optional.of(seg));
             when(segmentFavoriteRepository.existsBySegmentIdAndMemberId(42L, MEMBER_ID))
                     .thenReturn(true);
+            when(segmentAudienceStatsReader.countBySegmentIds(PROJECT_ID, List.of(42L)))
+                    .thenReturn(Map.of(42L, new SegmentAudienceStatsResponse(10L, 8L, 6L)));
 
             SegmentDetailResponse response =
                     segmentService.detail(PROJECT_ID, 42L, MEMBER_ID);
 
             assertThat(response.segmentId()).isEqualTo(42L);
+            assertThat(response.audienceStats().pushSendableCount()).isEqualTo(6L);
+            assertThat(response.createdBy().memberId()).isEqualTo(MEMBER_ID);
+            assertThat(response.createdBy().name()).isEqualTo("테스터");
             assertThat(response.favorited()).isTrue();
             assertThat(response.linkedCampaigns()).isEmpty();
         }

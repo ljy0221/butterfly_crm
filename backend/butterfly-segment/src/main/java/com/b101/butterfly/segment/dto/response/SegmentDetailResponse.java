@@ -16,6 +16,7 @@ public record SegmentDetailResponse(
         GroupNode conditionTree,
         Integer schemaVersion,
         Integer estimatedCount,
+        SegmentAudienceStatsResponse audienceStats,
         LocalDateTime estimatedAt,
         LocalDateTime lastBuiltAt,
         BuildStatus buildStatus,

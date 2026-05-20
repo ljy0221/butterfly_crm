@@ -90,6 +90,22 @@ class SegmentTest {
     }
 
     @Test
+    @DisplayName("markPending — 새 재빌드 대기 진입 시 이전 시작 시각과 락 필드 정리")
+    void markPendingClearsPreviousBuildTiming() {
+        Segment segment = sample();
+        LocalDateTime startedAt = LocalDateTime.of(2026, 5, 4, 10, 0);
+        segment.startBuild("abcd", startedAt);
+        segment.markReady(15000, startedAt.plusMinutes(5));
+
+        segment.markPending();
+
+        assertThat(segment.getBuildStatus()).isEqualTo(BuildStatus.PENDING);
+        assertThat(segment.getBuildToken()).isNull();
+        assertThat(segment.getBuildStartedAt()).isNull();
+        assertThat(segment.getBuildHeartbeatAt()).isNull();
+    }
+
+    @Test
     @DisplayName("초기 상태 — buildToken/heartbeat/startedAt 모두 null, status PENDING")
     void freshSegmentHasNoBuildFields() {
         Segment segment = sample();

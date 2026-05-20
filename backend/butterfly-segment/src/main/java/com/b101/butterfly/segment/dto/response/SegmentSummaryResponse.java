@@ -12,6 +12,7 @@ public record SegmentSummaryResponse(
         String name,
         String description,
         Integer estimatedCount,
+        SegmentAudienceStatsResponse audienceStats,
         BuildStatus buildStatus,
         CreatorSummary createdBy,
         LocalDateTime createdAt,
