@@ -7,6 +7,8 @@ import com.b101.butterfly.notification.entity.NotificationLog;
 import com.b101.butterfly.notification.entity.NotificationStatus;
 import com.b101.butterfly.notification.exception.DeliveryErrorCode;
 import com.b101.butterfly.notification.repository.NotificationLogRepository;
+import com.b101.butterfly.notification.repository.NotificationLogRepository.CampaignNotificationLogRow;
+import com.b101.butterfly.notification.repository.NotificationLogRepository.NotificationLogDetailRow;
 import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,27 +30,17 @@ public class NotificationLogService {
             DeliveryCommand.Channel channel, NotificationStatus status,
             int page, int size) {
 
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sentAt"));
-        Page<NotificationLog> logPage;
-
-        if (channel != null && status != null) {
-            logPage = notificationLogRepository
-                    .findByProjectIdAndCampaignIdAndChannelAndStatus(
-                            projectId, campaignId, channel, status, pageable);
-        } else if (channel != null) {
-            logPage = notificationLogRepository
-                    .findByProjectIdAndCampaignIdAndChannel(
-                            projectId, campaignId, channel, pageable);
-        } else if (status != null) {
-            logPage = notificationLogRepository
-                    .findByProjectIdAndCampaignIdAndStatus(projectId, campaignId, status, pageable);
-        } else {
-            logPage = notificationLogRepository
-                    .findByProjectIdAndCampaignId(projectId, campaignId, pageable);
-        }
+        PageRequest pageable = PageRequest.of(page, size);
+        Page<CampaignNotificationLogRow> logPage = notificationLogRepository.findCampaignLogRows(
+                projectId,
+                campaignId,
+                channel != null ? channel.name() : null,
+                status != null ? status.name() : null,
+                pageable
+        );
 
         return PageResponse.of(
-                logPage.getContent().stream().map(NotificationLogResponse::from).toList(),
+                logPage.getContent().stream().map(NotificationLogService::toResponse).toList(),
                 logPage.getNumber(),
                 logPage.getSize(),
                 logPage.getTotalElements()
@@ -56,11 +48,10 @@ public class NotificationLogService {
     }
 
     public NotificationLogDetailResponse getLogDetail(Long projectId, Long logId) {
-        NotificationLog log = notificationLogRepository.findById(logId)
-                .filter(l -> l.getProjectId().equals(projectId))
+        NotificationLogDetailRow log = notificationLogRepository.findLogDetailRow(projectId, logId)
                 .orElseThrow(() -> new BusinessException(DeliveryErrorCode.LOG_NOT_FOUND));
 
-        return NotificationLogDetailResponse.from(log);
+        return toDetailResponse(log);
     }
 
     public PageResponse<NotificationLogResponse> getUserLogs(
@@ -75,6 +66,39 @@ public class NotificationLogService {
                 logPage.getNumber(),
                 logPage.getSize(),
                 logPage.getTotalElements()
+        );
+    }
+
+    private static NotificationLogResponse toResponse(CampaignNotificationLogRow row) {
+        return new NotificationLogResponse(
+                row.getLogId(),
+                row.getCampaignId(),
+                row.getUserId(),
+                row.getDeviceId(),
+                row.getChannel(),
+                row.getStatus(),
+                row.getSentAt(),
+                row.getDeliveredAt(),
+                row.getClickedAt()
+        );
+    }
+
+    private static NotificationLogDetailResponse toDetailResponse(NotificationLogDetailRow row) {
+        return new NotificationLogDetailResponse(
+                row.getLogId(),
+                row.getProjectId(),
+                row.getCampaignId(),
+                row.getUserId(),
+                row.getDeviceId(),
+                row.getChannel(),
+                row.getRecipient(),
+                row.getStatus(),
+                row.getErrorCode(),
+                row.getErrorMessage(),
+                row.getSentAt(),
+                row.getDeliveredAt(),
+                row.getClickedAt(),
+                row.getCreatedAt()
         );
     }
 }

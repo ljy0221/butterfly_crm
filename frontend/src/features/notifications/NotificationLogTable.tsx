@@ -39,7 +39,6 @@ const CHANNEL_OPTIONS: Array<{ value: "" | NotificationChannel; label: string }>
 
 const STATUS_OPTIONS: Array<{ value: "" | NotificationStatus; label: string }> = [
   { value: "", label: "전체 상태" },
-  { value: "SENT", label: "발송" },
   { value: "DELIVERED", label: "전달" },
   { value: "CLICKED", label: "클릭" },
   { value: "FAILED", label: "실패" },

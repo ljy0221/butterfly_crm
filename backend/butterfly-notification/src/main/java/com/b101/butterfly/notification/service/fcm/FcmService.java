@@ -8,6 +8,7 @@ import com.b101.butterfly.notification.dto.response.FcmSendResponse;
 import com.b101.butterfly.notification.dto.response.FcmTokenResult;
 import com.b101.butterfly.notification.dto.response.TargetOutcome;
 import com.b101.butterfly.notification.exception.DeliveryErrorCode;
+import com.b101.butterfly.notification.messaging.NotificationMessageKey;
 import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.FirebaseMessagingException;
@@ -29,6 +30,10 @@ import java.util.List;
 public class FcmService {
 
     private static final int BATCH_SIZE = 500;
+    private static final String DATA_MESSAGE_KEY = "butterfly_message_key";
+    private static final String DATA_CLICK_URL = "butterfly_click_url";
+    private static final String DATA_CAMPAIGN_ID = "butterfly_campaign_id";
+    private static final String DATA_EXECUTION_ID = "butterfly_execution_id";
 
     private final FcmAppManager fcmAppManager;
 
@@ -85,10 +90,11 @@ public class FcmService {
         return new FcmSendResponse(successCount, failureCount, allResults);
     }
 
-    public List<TargetOutcome> sendBatch(Long projectId, String credentialJson,
-                                         DeliveryCommand.MessagePayload messagePayload,
+    public List<TargetOutcome> sendBatch(DeliveryCommand command, String credentialJson,
                                          List<DeliveryCommand.DeliveryTarget> targets) {
         List<TargetOutcome> outcomes = new ArrayList<>();
+        Long projectId = command.projectId();
+        DeliveryCommand.MessagePayload messagePayload = command.message();
 
         // 토큰 없는 대상은 즉시 실패 처리, 유효한 대상만 모아서 배치 발송
         List<DeliveryCommand.DeliveryTarget> validTargets = new ArrayList<>();
@@ -117,8 +123,9 @@ public class FcmService {
         boolean hasVariables = VariableSubstitutor.hasVariablePattern(messagePayload.title())
                 || VariableSubstitutor.hasVariablePattern(messagePayload.body())
                 || VariableSubstitutor.hasVariablePattern(messagePayload.imageUrl());
+        boolean hasTracking = command.executionId() != null;
 
-        Notification notification = hasVariables ? null : Notification.builder()
+        Notification notification = hasVariables || hasTracking ? null : Notification.builder()
                 .setTitle(messagePayload.title())
                 .setBody(messagePayload.body())
                 .setImage(messagePayload.imageUrl())
@@ -129,8 +136,8 @@ public class FcmService {
                     validTargets.subList(i, Math.min(i + BATCH_SIZE, validTargets.size()));
 
             try {
-                BatchResponse batchResponse = hasVariables
-                        ? sendEachPersonalized(messaging, messagePayload, chunk)
+                BatchResponse batchResponse = hasVariables || hasTracking
+                        ? sendEachTracked(messaging, command, messagePayload, chunk)
                         : sendMulticast(messaging, notification, messagePayload, chunk);
                 List<SendResponse> responses = batchResponse.getResponses();
 
@@ -182,9 +189,10 @@ public class FcmService {
      * 변수 있는 경우의 per-target send — 각 target 의 variables 로 치환된 별도 Message 를 만들어
      * {@code sendEach(List<Message>)} 호출 (multicast 단일 message 의 효율은 잃지만 정확한 개인화).
      */
-    private BatchResponse sendEachPersonalized(FirebaseMessaging messaging,
-                                               DeliveryCommand.MessagePayload messagePayload,
-                                               List<DeliveryCommand.DeliveryTarget> chunk
+    private BatchResponse sendEachTracked(FirebaseMessaging messaging,
+                                          DeliveryCommand command,
+                                          DeliveryCommand.MessagePayload messagePayload,
+                                          List<DeliveryCommand.DeliveryTarget> chunk
     ) throws FirebaseMessagingException {
         List<Message> messages = chunk.stream().map(target -> {
             DeliveryCommand.MessagePayload personalized = messagePayload.personalize(target.variables());
@@ -196,12 +204,44 @@ public class FcmService {
             Message.Builder mb = Message.builder()
                     .setToken(target.pushToken())
                     .setNotification(n);
-            if (personalized.data() != null) {
-                mb.putData("customData", personalized.data());
-            }
+            putTrackingData(mb, command, target, personalized);
             return mb.build();
         }).toList();
         return messaging.sendEach(messages);
+    }
+
+    private void putTrackingData(Message.Builder builder,
+                                 DeliveryCommand command,
+                                 DeliveryCommand.DeliveryTarget target,
+                                 DeliveryCommand.MessagePayload messagePayload) {
+        if (messagePayload.data() != null) {
+            builder.putData("customData", messagePayload.data());
+        }
+
+        String messageKey = NotificationMessageKey.of(command, target);
+        if (messageKey == null) {
+            return;
+        }
+
+        builder.putData(DATA_MESSAGE_KEY, messageKey);
+        builder.putData(DATA_CLICK_URL, resolveClickUrl(command, messagePayload, messageKey));
+        if (command.campaignId() != null) {
+            builder.putData(DATA_CAMPAIGN_ID, command.campaignId().toString());
+        }
+        if (command.executionId() != null) {
+            builder.putData(DATA_EXECUTION_ID, command.executionId().toString());
+        }
+    }
+
+    private String resolveClickUrl(DeliveryCommand command,
+                                   DeliveryCommand.MessagePayload messagePayload,
+                                   String messageKey) {
+        if (messagePayload.data() != null && messagePayload.data().startsWith("http")) {
+            return messagePayload.data();
+        }
+        return "https://k14b101.p.ssafy.io/p/" + command.projectId()
+                + "/campaigns/" + command.campaignId()
+                + "?messageKey=" + messageKey;
     }
 
     private DeliveryResult mapFcmError(FirebaseMessagingException e) {

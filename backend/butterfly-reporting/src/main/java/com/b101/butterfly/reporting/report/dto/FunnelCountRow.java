@@ -8,12 +8,13 @@ package com.b101.butterfly.reporting.report.dto;
 public record FunnelCountRow(
         long sentCount,
         long deliveredCount,
+        long failedCount,
         long openCount,
         long clickCount,
         long convertCount
 ) {
 
     public static FunnelCountRow zero() {
-        return new FunnelCountRow(0, 0, 0, 0, 0);
+        return new FunnelCountRow(0, 0, 0, 0, 0, 0);
     }
 }

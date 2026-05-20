@@ -76,7 +76,8 @@ public class NotificationLog extends BaseEntity {
                            String recipient, String title, String body, String clickUrl,
                            NotificationStatus status,
                            String errorCode, String errorMessage,
-                           LocalDateTime sentAt) {
+                           LocalDateTime sentAt,
+                           LocalDateTime deliveredAt) {
         this.projectId = projectId;
         this.campaignId = campaignId;
         this.userId = userId;
@@ -90,6 +91,7 @@ public class NotificationLog extends BaseEntity {
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
         this.sentAt = sentAt;
+        this.deliveredAt = deliveredAt;
     }
 
     public void markDelivered(LocalDateTime deliveredAt) {

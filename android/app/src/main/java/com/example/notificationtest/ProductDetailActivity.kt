@@ -31,6 +31,8 @@ class ProductDetailActivity : AppCompatActivity() {
         private const val TAG = "ProductDetail"
         private const val NOTIFICATION_PERMISSION_CODE = 100
         private const val CHANNEL_ID = "fcm_default_channel"
+        private const val EXTRA_MESSAGE_KEY = "butterfly_message_key"
+        private const val EXTRA_CLICK_URL = "butterfly_click_url"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +62,7 @@ class ProductDetailActivity : AppCompatActivity() {
 
         // savedInstanceState == null 일 때만 — rotation/recreate 시 중복 발사 방지
         if (savedInstanceState == null) {
+            handleNotificationClick(intent)
             if (BuildConfig.IS_QA_BUILD && productId != null) {
                 invokeQaProductView(productId)
             } else {
@@ -96,6 +99,23 @@ class ProductDetailActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.btnBuyNow).setOnClickListener {
             android.widget.Toast.makeText(this, "바로구매 (시뮬레이션)", android.widget.Toast.LENGTH_SHORT).show()
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleNotificationClick(intent)
+    }
+
+    private fun handleNotificationClick(intent: Intent?) {
+        val messageKey = intent?.getStringExtra(EXTRA_MESSAGE_KEY)
+        if (messageKey.isNullOrBlank()) {
+            return
+        }
+
+        val clickUrl = intent.getStringExtra(EXTRA_CLICK_URL)
+        EventTrigger.recordNotificationClickSilently(this, messageKey, clickUrl)
+        Log.d(TAG, "notification click recorded: messageKey=$messageKey")
     }
 
     private fun requestNotificationPermission() {

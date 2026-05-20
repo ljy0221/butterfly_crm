@@ -84,6 +84,21 @@ class UserActionIngestServiceIntegrationTest extends AbstractReportingMySqlTest 
     }
 
     @Test
+    @DisplayName("messageKey 요청 → 부모 notification_logs 조회 후 CLICK 적재")
+    void insertsByMessageKey() {
+        UserActionIngestRequest request = new UserActionIngestRequest(
+                null, "kafka-msg-parent", null, null, ActionType.CLICK,
+                "https://shop.example.com/promo", "android/17", ACTION_AT
+        );
+
+        UserActionLog saved = service.record(request, 123L);
+
+        assertThat(saved.getLogId()).isEqualTo(parentLogId);
+        assertThat(saved.getCampaignId()).isEqualTo(4521L);
+        assertThat(saved.getActionType()).isEqualTo(ActionType.CLICK);
+    }
+
+    @Test
     @DisplayName("logId 미존재 → BusinessException(LOG_NOT_FOUND)")
     void missingParentThrows400() {
         UserActionIngestRequest request = new UserActionIngestRequest(
