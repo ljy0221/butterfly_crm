@@ -30,7 +30,7 @@ public class SegmentAudienceStatsReader {
                      AND d.user_id IS NOT NULL THEN sm.user_id
                 END) AS push_sendable_count
             FROM segment_members sm
-            JOIN users u
+            LEFT JOIN users u
               ON u.user_id = sm.user_id
              AND u.project_id = :projectId
             LEFT JOIN devices d
