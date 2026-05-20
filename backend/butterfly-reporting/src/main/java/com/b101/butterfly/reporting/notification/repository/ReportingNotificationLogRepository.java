@@ -109,13 +109,15 @@ public interface ReportingNotificationLogRepository extends JpaRepository<Notifi
      * sent/delivered/failed 를 반환한다.
      *
      * <p>kpi-and-attribution.md §3 분모 0 ⇒ null 정책은 호출자(Service) 책임. 본 쿼리는 카운트만.
+     * open/click/convert 는 user_action_logs 를 함께 집계한다.
+     *
      * <p>HourlyAggregator/CampaignStatsHourly 와 동일한 status 매핑:
-     * sent = SENT + DELIVERED (발송 성공 row), delivered = DELIVERED only,
-     * failed = FAILED only.
+     * sent = DELIVERED + FAILED (최종 처리 완료 row), delivered = DELIVERED only,
+     * failed = FAILED only. Tier-1(campaign_stats_daily) 의 failed = sent - delivered 공식과 일관성 유지.
      */
     @Query(value = """
             SELECT
-                COUNT(DISTINCT CASE WHEN n.status IN ('SENT', 'DELIVERED') THEN n.log_id END) AS sent_count,
+                COUNT(DISTINCT CASE WHEN n.status IN ('DELIVERED', 'FAILED') THEN n.log_id END) AS sent_count,
                 COUNT(DISTINCT CASE WHEN n.status = 'DELIVERED' THEN n.log_id END) AS delivered_count,
                 COUNT(DISTINCT CASE WHEN n.status = 'FAILED' THEN n.log_id END) AS failed_count,
                 COUNT(DISTINCT CASE WHEN ual.action_type = 'OPEN' THEN ual.log_id END) AS open_count,
