@@ -2,7 +2,6 @@ package com.b101.butterfly.reporting.service;
 
 import com.b101.butterfly.global.response.PageResponse;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
-import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsHourlyRepository;
 import com.b101.butterfly.reporting.aggregation.repository.ProjectStatsDailyRepository;
 import com.b101.butterfly.reporting.dto.AnalyticsQuery;
 import com.b101.butterfly.reporting.dto.CampaignMetricItem;
@@ -19,7 +18,10 @@ import com.b101.butterfly.reporting.dto.SegmentMetricItem;
 import com.b101.butterfly.reporting.dto.SegmentMetricsResponse;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawMetricRow;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawRow;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.ChannelFunnelRawMetricRow;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.ProjectFunnelRawRow;
 import com.b101.butterfly.reporting.report.dto.CampaignChannelStatsRow;
 import com.b101.butterfly.reporting.report.dto.FunnelCountRow;
 import com.b101.butterfly.reporting.report.port.CampaignSegmentInfo;
@@ -74,7 +76,6 @@ import java.util.Map;
 public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final CampaignStatsDailyRepository campaignStatsDailyRepository;
-    private final CampaignStatsHourlyRepository campaignStatsHourlyRepository;
     private final ProjectStatsDailyRepository projectStatsDailyRepository;
     private final CampaignSegmentPort campaignSegmentPort;
     private final ReportingNotificationLogRepository notificationLogRepository;
@@ -97,7 +98,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
             row = dailyRow == null ? PeriodSummaryRow.zero() : dailyRow;
         }
         if (containsDate(query, today)) {
-            row = plus(row, hourlyProjectSummary(projectId, today));
+            row = plus(row, rawProjectSummary(projectId, today));
         }
 
         DashboardResponse.Summary summary = new DashboardResponse.Summary(
@@ -122,7 +123,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                         t.date(), t.sent(), t.delivered(), t.opened(), t.clicked(), t.converted()))
                 .toList());
         if (containsDate(query, today)) {
-            PeriodSummaryRow todayRow = hourlyProjectSummary(projectId, today);
+            PeriodSummaryRow todayRow = rawProjectSummary(projectId, today);
             dailyTrend.add(new DashboardResponse.DailyPoint(
                     today, todayRow.sent(), todayRow.delivered(), todayRow.opened(),
                     todayRow.clicked(), todayRow.converted()));
@@ -236,10 +237,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                     PageRequest.of(0, fetchSize)));
         }
         if (containsDate(query, today)) {
-            todayRows.addAll(campaignStatsHourlyRepository.aggregateByCampaign(
-                    projectId, today.atStartOfDay(), today.plusDays(1).atStartOfDay(),
-                    channelFilter, campaignIdsFilter,
-                    PageRequest.of(0, fetchSize)));
+            todayRows.addAll(rawCampaignRows(projectId, today, channelFilter, campaignIdsFilter));
         }
 
         List<CampaignMetricRow> mergedRows = mergeCampaignRows(dailyRows, todayRows);
@@ -283,8 +281,7 @@ public class AnalyticsServiceImpl implements AnalyticsService {
                     projectId, query.from(), dailyTo));
         }
         if (containsDate(query, today)) {
-            rows.addAll(campaignStatsHourlyRepository.aggregateByChannel(
-                    projectId, today.atStartOfDay(), today.plusDays(1).atStartOfDay()));
+            rows.addAll(rawChannelRows(projectId, today));
         }
 
         List<ChannelMetricItem> items = mergeChannelRows(rows).stream()
@@ -409,10 +406,63 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         return to != null && !from.isAfter(to);
     }
 
-    private PeriodSummaryRow hourlyProjectSummary(Long projectId, LocalDate date) {
-        PeriodSummaryRow row = campaignStatsHourlyRepository.aggregateProjectPeriod(
+    private PeriodSummaryRow rawProjectSummary(Long projectId, LocalDate date) {
+        ProjectFunnelRawRow row = notificationLogRepository.countProjectFunnelBetween(
                 projectId, date.atStartOfDay(), date.plusDays(1).atStartOfDay());
-        return row == null ? PeriodSummaryRow.zero() : row;
+        if (row == null) {
+            return PeriodSummaryRow.zero();
+        }
+        return new PeriodSummaryRow(
+                nullSafe(row.getSentCount()),
+                nullSafe(row.getDeliveredCount()),
+                nullSafe(row.getOpenCount()),
+                nullSafe(row.getClickCount()),
+                nullSafe(row.getConvertCount()),
+                nullSafe(row.getFailedCount()),
+                nullSafe(row.getCampaignCount())
+        );
+    }
+
+    private List<CampaignMetricRow> rawCampaignRows(
+            Long projectId,
+            LocalDate date,
+            Channel channelFilter,
+            List<Long> campaignIdsFilter) {
+        List<CampaignFunnelRawMetricRow> rows = notificationLogRepository.aggregateCampaignFunnelBetween(
+                projectId,
+                date.atStartOfDay(),
+                date.plusDays(1).atStartOfDay(),
+                channelFilter == null ? null : channelFilter.name());
+
+        return rows.stream()
+                .filter(r -> campaignIdsFilter == null || campaignIdsFilter.contains(r.getCampaignId()))
+                .map(r -> new CampaignMetricRow(
+                        r.getCampaignId(),
+                        r.getChannel(),
+                        nullSafe(r.getSentCount()),
+                        nullSafe(r.getDeliveredCount()),
+                        nullSafe(r.getOpenCount()),
+                        nullSafe(r.getClickCount()),
+                        nullSafe(r.getConvertCount()),
+                        nullSafe(r.getFailedCount())
+                ))
+                .toList();
+    }
+
+    private List<ChannelMetricRow> rawChannelRows(Long projectId, LocalDate date) {
+        return notificationLogRepository.aggregateChannelFunnelBetween(
+                        projectId, date.atStartOfDay(), date.plusDays(1).atStartOfDay())
+                .stream()
+                .map(r -> new ChannelMetricRow(
+                        Channel.valueOf(r.getChannel()),
+                        nullSafe(r.getSentCount()),
+                        nullSafe(r.getDeliveredCount()),
+                        nullSafe(r.getOpenCount()),
+                        nullSafe(r.getClickCount()),
+                        nullSafe(r.getConvertCount()),
+                        nullSafe(r.getFailedCount())
+                ))
+                .toList();
     }
 
     private static PeriodSummaryRow plus(PeriodSummaryRow a, PeriodSummaryRow b) {
