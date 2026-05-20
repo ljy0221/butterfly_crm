@@ -20,17 +20,15 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", "BUTTERFLY_API_BASE_URL", "\"http://10.0.2.2:8080/\""
+        buildConfigField "String", "BUTTERFLY_API_BASE_URL", "\"https://k14b101.p.ssafy.io/\""
+        buildConfigField "String", "BUTTERFLY_API_KEY", "\"pk_live_5038efceb69e453f8363d5c2\""
     }
 
     buildTypes {
-        debug {
-            // BUTTERFLY_API_BASE_URL은 defaultConfig 한 곳에서만 관리 — D-3 LAN IP 교체 시 sync 누락 방지
-        }
+        debug {}
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            // 시연 D-3 에 LAN IP 로 교체 시 defaultConfig 의 buildConfigField 한 줄만 수정
         }
     }
     flavorDimensions = ["purpose"]
