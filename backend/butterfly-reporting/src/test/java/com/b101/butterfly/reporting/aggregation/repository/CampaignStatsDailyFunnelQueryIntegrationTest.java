@@ -37,6 +37,45 @@ class CampaignStatsDailyFunnelQueryIntegrationTest extends AbstractMySqlContaine
     private static final long CAMPAIGN_B = 90_101L;
 
     @BeforeEach
+    void insertParentFixtures() {
+        // 1. member (owner of projects)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO members (member_id, project_id, email, name, phone, birth_date, role_type, member_status)
+                VALUES (1, NULL, 'funnel-test@test.com', '펀넬테스트', '01012345678', '1990-01-01', 'OWNER', 'ACTIVE')
+                """);
+        // 2. project (project_id=90001 used as PROJECT_ID)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO projects (project_id, name, business_no, company_auth_no, owner_id, plan)
+                VALUES (90001, 'funnel-project', '123-45-90001', 'COMP9001', 1, 'FREE')
+                """);
+        // 3. message_template (required by campaigns)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO message_templates
+                    (message_template_id, member_id, project_id, message_template_name,
+                     message_template_description, channel, message_template_title,
+                     message_template_body, required_variables, is_deleted)
+                VALUES (1, 1, 90001, 'funnel-tpl', 'funnel-tpl-desc', 'PUSH', 'title', 'body', '[]', false)
+                """);
+        // 4. campaigns (campaign_id=90100, 90101 used as CAMPAIGN_A, CAMPAIGN_B)
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (90100, 90001, 1, NULL, 1, 'campaign-a', 'desc', 'ONE_TIME', 'PUSH', 'DRAFT', 'IMMEDIATE', false)
+                """);
+        jdbcTemplate.execute("""
+                INSERT IGNORE INTO campaigns
+                    (campaign_id, project_id, message_template_id, segment_id, member_id,
+                     campaign_name, campaign_description, campaign_type, channel,
+                     campaign_status, send_mode, is_deleted)
+                VALUES (90101, 90001, 1, NULL, 1, 'campaign-b', 'desc', 'ONE_TIME', 'EMAIL', 'DRAFT', 'IMMEDIATE', false)
+                """);
+        // clean isolated range before test
+        jdbcTemplate.update(
+                "DELETE FROM campaign_stats_daily WHERE project_id = ?", PROJECT_ID);
+    }
+
     @AfterEach
     void cleanIsolatedRange() {
         jdbcTemplate.update(
