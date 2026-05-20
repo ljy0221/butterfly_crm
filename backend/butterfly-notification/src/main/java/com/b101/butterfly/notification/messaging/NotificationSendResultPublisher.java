@@ -54,9 +54,9 @@ public class NotificationSendResultPublisher {
                     target.userId(),
                     target.deviceId(),
                     command.channel(),
-                    success ? NotificationStatus.SENT : NotificationStatus.FAILED,
+                    success ? NotificationStatus.DELIVERED : NotificationStatus.FAILED,
                     now,
-                    null,
+                    success ? now : null,
                     success ? null : outcome.result().errorCode(),
                     success ? null : outcome.result().errorMessage()
             );

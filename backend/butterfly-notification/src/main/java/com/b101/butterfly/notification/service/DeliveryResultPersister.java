@@ -60,10 +60,12 @@ class DeliveryResultPersister {
                         .title(title)
                         .body(body)
                         .clickUrl(clickUrl)
-                        .status(NotificationStatus.SENT)
+                        .status(NotificationStatus.DELIVERED)
                         .sentAt(now)
+                        .deliveredAt(now)
                         .build());
                 stats.incrementSent();
+                stats.incrementDelivered();
             } else {
                 logEntries.add(NotificationLog.builder()
                         .projectId(command.projectId())
