@@ -4,6 +4,8 @@ import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
 import com.b101.butterfly.reporting.exception.AnalyticsErrorCode;
 import com.b101.butterfly.reporting.notification.entity.Channel;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawMetricRow;
 import com.b101.butterfly.reporting.report.dto.CampaignFunnelQuery;
 import com.b101.butterfly.reporting.report.dto.CampaignFunnelResponse;
 import com.b101.butterfly.reporting.report.dto.CampaignFunnelStageRow;
@@ -16,6 +18,8 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,12 +32,14 @@ import static org.mockito.Mockito.mock;
 class CampaignFunnelServiceTest {
 
     private CampaignStatsDailyRepository repo;
+    private ReportingNotificationLogRepository notificationLogRepo;
     private CampaignFunnelService service;
 
     @BeforeEach
     void setUp() {
         repo = mock(CampaignStatsDailyRepository.class);
-        service = new CampaignFunnelService(repo);
+        notificationLogRepo = mock(ReportingNotificationLogRepository.class);
+        service = new CampaignFunnelService(repo, notificationLogRepo);
     }
 
     private CampaignFunnelQuery query() {
@@ -187,5 +193,79 @@ class CampaignFunnelServiceTest {
             assertThat(res.campaignId()).isEqualTo(100L);
             assertThat(res.channel()).isEqualTo(Channel.PUSH);
         }
+
+        @Test
+        @DisplayName("오늘이 포함된 기간 — daily 집계에 오늘 raw 발송/클릭을 더한다")
+        void includesTodayRawFunnel() {
+            LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+            LocalDate yesterday = today.minusDays(1);
+            given(repo.aggregateFunnel(eq(1L), eq(yesterday), eq(yesterday), any(), any()))
+                    .willReturn(new FunnelCountRow(10, 9, 1, 4, 2, 1));
+            given(notificationLogRepo.aggregateCampaignFunnelBetween(
+                    eq(1L),
+                    eq(today.atStartOfDay()),
+                    eq(today.plusDays(1).atStartOfDay()),
+                    any()
+            )).willReturn(List.of(rawMetric(567L, "PUSH", 389L, 7L, 382L, 0L, 3L, 0L)));
+
+            CampaignFunnelResponse res = service.getFunnel(new CampaignFunnelQuery(
+                    1L, yesterday, today, null, null));
+
+            assertThat(res.stages()).extracting(CampaignFunnelStageRow::count)
+                    .containsExactly(399L, 16L, 4L, 5L, 1L);
+        }
+    }
+
+    private static CampaignFunnelRawMetricRow rawMetric(
+            Long campaignId,
+            String channel,
+            Long sent,
+            Long delivered,
+            Long failed,
+            Long open,
+            Long click,
+            Long convert
+    ) {
+        return new CampaignFunnelRawMetricRow() {
+            @Override
+            public Long getCampaignId() {
+                return campaignId;
+            }
+
+            @Override
+            public String getChannel() {
+                return channel;
+            }
+
+            @Override
+            public Long getSentCount() {
+                return sent;
+            }
+
+            @Override
+            public Long getDeliveredCount() {
+                return delivered;
+            }
+
+            @Override
+            public Long getFailedCount() {
+                return failed;
+            }
+
+            @Override
+            public Long getOpenCount() {
+                return open;
+            }
+
+            @Override
+            public Long getClickCount() {
+                return click;
+            }
+
+            @Override
+            public Long getConvertCount() {
+                return convert;
+            }
+        };
     }
 }

@@ -3,6 +3,8 @@ package com.b101.butterfly.reporting.report.service;
 import com.b101.butterfly.global.error.BusinessException;
 import com.b101.butterfly.reporting.aggregation.repository.CampaignStatsDailyRepository;
 import com.b101.butterfly.reporting.exception.AnalyticsErrorCode;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
+import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository.CampaignFunnelRawMetricRow;
 import com.b101.butterfly.reporting.report.dto.CampaignFunnelQuery;
 import com.b101.butterfly.reporting.report.dto.CampaignFunnelResponse;
 import com.b101.butterfly.reporting.report.dto.CampaignFunnelStageRow;
@@ -14,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,23 +44,32 @@ public class CampaignFunnelService {
     private static final int RATE_SCALE = 2;
     private static final long MAX_RANGE_DAYS = 366;
     private static final BigDecimal HUNDRED = BigDecimal.valueOf(100);
+    private static final ZoneId SERVICE_ZONE = ZoneId.of("Asia/Seoul");
 
     private final CampaignStatsDailyRepository campaignStatsDailyRepository;
+    private final ReportingNotificationLogRepository notificationLogRepository;
 
     @Transactional(readOnly = true)
     public CampaignFunnelResponse getFunnel(CampaignFunnelQuery query) {
         validate(query);
 
-        FunnelCountRow row = campaignStatsDailyRepository.aggregateFunnel(
-                query.projectId(),
-                query.from(),
-                query.to(),
-                query.campaignId(),
-                query.channel()
-        );
-        // JPQL이 매칭 row 0건이어도 COALESCE 덕분에 zero가 반환되지만, 방어적으로 한 번 더.
-        if (row == null) {
-            row = FunnelCountRow.zero();
+        LocalDate today = LocalDate.now(SERVICE_ZONE);
+        LocalDate dailyTo = query.to().isBefore(today) ? query.to() : today.minusDays(1);
+        FunnelCountRow row = FunnelCountRow.zero();
+        if (!query.from().isAfter(dailyTo)) {
+            row = campaignStatsDailyRepository.aggregateFunnel(
+                    query.projectId(),
+                    query.from(),
+                    dailyTo,
+                    query.campaignId(),
+                    query.channel()
+            );
+            if (row == null) {
+                row = FunnelCountRow.zero();
+            }
+        }
+        if (!query.from().isAfter(today) && !query.to().isBefore(today)) {
+            row = plus(row, rawFunnelForDate(query, today));
         }
 
         List<CampaignFunnelStageRow> stages = buildStages(row);
@@ -83,6 +97,54 @@ public class CampaignFunnelService {
         if (days > MAX_RANGE_DAYS) {
             throw new BusinessException(AnalyticsErrorCode.DATE_RANGE_TOO_LARGE);
         }
+    }
+
+    private FunnelCountRow rawFunnelForDate(CampaignFunnelQuery query, LocalDate date) {
+        LocalDateTime from = date.atStartOfDay();
+        LocalDateTime to = date.plusDays(1).atStartOfDay();
+        String channelFilter = query.channel() == null ? null : query.channel().name();
+
+        List<CampaignFunnelRawMetricRow> rows = notificationLogRepository.aggregateCampaignFunnelBetween(
+                query.projectId(),
+                from,
+                to,
+                channelFilter
+        );
+
+        long sent = 0L;
+        long delivered = 0L;
+        long failed = 0L;
+        long open = 0L;
+        long click = 0L;
+        long convert = 0L;
+
+        for (CampaignFunnelRawMetricRow row : rows) {
+            if (query.campaignId() != null && !query.campaignId().equals(row.getCampaignId())) {
+                continue;
+            }
+            sent += value(row.getSentCount());
+            delivered += value(row.getDeliveredCount());
+            failed += value(row.getFailedCount());
+            open += value(row.getOpenCount());
+            click += value(row.getClickCount());
+            convert += value(row.getConvertCount());
+        }
+        return new FunnelCountRow(sent, delivered, failed, open, click, convert);
+    }
+
+    private static long value(Long value) {
+        return value == null ? 0L : value;
+    }
+
+    private static FunnelCountRow plus(FunnelCountRow left, FunnelCountRow right) {
+        return new FunnelCountRow(
+                left.sentCount() + right.sentCount(),
+                left.deliveredCount() + right.deliveredCount(),
+                left.failedCount() + right.failedCount(),
+                left.openCount() + right.openCount(),
+                left.clickCount() + right.clickCount(),
+                left.convertCount() + right.convertCount()
+        );
     }
 
     private static List<CampaignFunnelStageRow> buildStages(FunnelCountRow row) {
