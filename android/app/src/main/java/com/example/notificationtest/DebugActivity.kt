@@ -126,7 +126,10 @@ class DebugActivity : AppCompatActivity() {
                     prefsClass.getMethod("setCurrentUserId",
                         android.content.Context::class.java, String::class.java)
                         .invoke(instance, this@DebugActivity, newUser)
-                    EventTrigger.fireLoginSilently(this@DebugActivity, newUser)
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                        val token = if (task.isSuccessful && task.result != null) task.result else "no_token"
+                        EventTrigger.registerDeviceSilently(this@DebugActivity, token!!)
+                    }
                 }
                 override fun onNothingSelected(parent: android.widget.AdapterView<*>?) {}
             }
