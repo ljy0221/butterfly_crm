@@ -195,7 +195,7 @@ class BaselineMigrationIntegrationTest extends AbstractMySqlContainerTest {
                 Integer count = jdbc.queryForObject(
                                 "SELECT COUNT(*) FROM information_schema.referential_constraints "
                                                 + "WHERE constraint_schema = ? "
-                                                + "AND constraint_name IN ('fk_projects_owner', 'fk_refresh_token_member', 'fk_campaigns_project')",
+                                                + "AND constraint_name IN ('fk_projects_owner', 'fk_refresh_tokens_member', 'fk_campaigns_project')",
                                 Integer.class, CONTAINER.getDatabaseName());
                 assertThat(count).isEqualTo(3);
         }
