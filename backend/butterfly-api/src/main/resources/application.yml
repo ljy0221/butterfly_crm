@@ -89,6 +89,7 @@ spring:
         # 같은 KafkaProperties를 공유하므로 butterfly 하위 패키지 전체를 신뢰.
         spring.json.trusted.packages: com.b101.butterfly.*
         spring.json.value.default.type: com.b101.butterfly.event.messaging.EventPayload
+        max.poll.records: 500
 
   # Mail (로컬: MailHog)
   mail:

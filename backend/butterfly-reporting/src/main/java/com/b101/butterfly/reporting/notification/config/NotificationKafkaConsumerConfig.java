@@ -76,7 +76,8 @@ public class NotificationKafkaConsumerConfig {
         ConcurrentKafkaListenerContainerFactory<String, NotificationSendResultPayload> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(notificationSendResultConsumerFactory);
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
+        factory.setBatchListener(true);
         factory.setCommonErrorHandler(notificationSendResultErrorHandler);
         return factory;
     }

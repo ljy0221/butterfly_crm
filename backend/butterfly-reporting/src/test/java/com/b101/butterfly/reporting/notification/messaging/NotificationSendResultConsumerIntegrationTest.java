@@ -4,18 +4,17 @@ import com.b101.butterfly.reporting.ReportingTestApplication;
 import com.b101.butterfly.reporting.notification.entity.Channel;
 import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
 import com.b101.butterfly.reporting.notification.repository.ReportingNotificationLogRepository;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -23,11 +22,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
@@ -36,10 +33,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * Kafka → NotificationSendResultConsumer → notification_logs 끝-단 통합 테스트.
+ * Kafka 배치 리스너 → NotificationSendResultConsumer → notification_logs 끝-단 통합 테스트.
  *
- * <p>EmbeddedKafka + Testcontainers MySQL + Testcontainers Redis 조합으로 실제 직렬화/
- * 역직렬화, UNIQUE 중복 방어, Redis 보조 멱등성(S14P31B101-180)까지 검증한다.
+ * <p>EmbeddedKafka + Testcontainers MySQL 조합으로 실제 직렬화/역직렬화,
+ * INSERT IGNORE 기반 멱등성까지 검증한다.
+ *
+ * <p>Redis 가드는 배치 리스너 전환(bulk INSERT IGNORE)으로 제거됐으므로 관련 검증 생략.
  */
 @Tag("integration")
 @SpringBootTest(classes = ReportingTestApplication.class)
@@ -55,19 +54,12 @@ class NotificationSendResultConsumerIntegrationTest {
             .withUsername("test")
             .withPassword("test");
 
-    @Container
-    static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-            .withExposedPorts(6379);
-
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", mysql::getJdbcUrl);
         registry.add("spring.datasource.username", mysql::getUsername);
         registry.add("spring.datasource.password", mysql::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
 
         registry.add("spring.kafka.bootstrap-servers",
                 () -> System.getProperty("spring.embedded.kafka.brokers"));
@@ -93,15 +85,11 @@ class NotificationSendResultConsumerIntegrationTest {
     private TransactionTemplate txTemplate;
 
     @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
 
     @AfterEach
     void cleanUp() {
         txTemplate.executeWithoutResult(s -> notificationLogRepository.deleteAll());
-        redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
     }
 
     private NotificationSendResultPayload payload(String messageKey) {
@@ -135,12 +123,12 @@ class NotificationSendResultConsumerIntegrationTest {
     }
 
     @Test
-    @DisplayName("멱등 보장 — 동일 messageKey 재발행 시 notification_logs는 1행 유지")
+    @DisplayName("멱등 보장 — 동일 messageKey 재발행 시 notification_logs는 1행 유지 (INSERT IGNORE)")
     void duplicateMessageKeyResultsInSingleRow() {
         NotificationSendResultPayload p = payload("msg-key-dup");
 
-        send(NotificationSendResultConsumer.TOPIC, "key-dup", p);
-        send(NotificationSendResultConsumer.TOPIC, "key-dup", p);
+        send(NotificationSendResultConsumer.TOPIC, "key-dup-1", p);
+        send(NotificationSendResultConsumer.TOPIC, "key-dup-2", p);
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
                 assertThat(notificationLogRepository.findAll()).hasSize(1));
@@ -176,27 +164,17 @@ class NotificationSendResultConsumerIntegrationTest {
     }
 
     @Test
-    @DisplayName("Redis 가드 — 메시지 처리 후 messageKey가 Redis에 7일 TTL로 점유된다")
-    void redisGuardHoldsKeyAfterIngest() {
-        String key = "msg-key-redis-guard";
-        send(NotificationSendResultConsumer.TOPIC, "k", payload(key));
+    @DisplayName("blank messageKey — 해당 레코드만 건너뛰고 나머지 정상 적재")
+    void blankMessageKeyIsSkipped() {
+        send(NotificationSendResultConsumer.TOPIC, "key-blank", payload(""));
+        send(NotificationSendResultConsumer.TOPIC, "key-valid", payload("msg-key-valid"));
 
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
-                assertThat(notificationLogRepository.findByMessageKey(key)).isPresent());
+                assertThat(notificationLogRepository.findByMessageKey("msg-key-valid")).isPresent());
 
-        Boolean exists = redisTemplate.hasKey(RedisMessageKeyGuard.KEY_PREFIX + key);
-        assertThat(exists).isTrue();
-        Long ttl = redisTemplate.getExpire(RedisMessageKeyGuard.KEY_PREFIX + key);
-        // 정확히 7일이 아니라, 7일에 가까운 양수면 OK (테스트 실행 지연 감안).
-        assertThat(ttl).isGreaterThan(60L * 60 * 24 * 6); // 6일 이상 남음
+        assertThat(notificationLogRepository.findAll()).hasSize(1);
     }
 
-    /**
-     * Spring 컨테이너의 {@code KafkaTemplate} 빈을 거치지 않고 직접 producer를 만들어 보낸다.
-     * 본 모듈이 byte[] 전용 ProducerFactory(notificationDlqProducerFactory)를 추가하면서
-     * KafkaAutoConfiguration의 default {@code kafkaTemplate}이 더 이상 자동 등록되지 않기
-     * 때문이다.
-     */
     private void send(String topic, String key, NotificationSendResultPayload payload) {
         java.util.Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafkaBroker);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
