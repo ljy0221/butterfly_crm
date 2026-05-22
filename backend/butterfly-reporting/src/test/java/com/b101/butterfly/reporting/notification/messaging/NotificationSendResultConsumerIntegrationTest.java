@@ -41,7 +41,9 @@ import static org.awaitility.Awaitility.await;
  * <p>Redis 가드는 배치 리스너 전환(bulk INSERT IGNORE)으로 제거됐으므로 관련 검증 생략.
  */
 @Tag("integration")
-@SpringBootTest(classes = ReportingTestApplication.class)
+@SpringBootTest(classes = ReportingTestApplication.class, properties = {
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration"
+})
 @ActiveProfiles({"worker"})
 @EmbeddedKafka(partitions = 1, topics = {NotificationSendResultConsumer.TOPIC})
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -76,11 +78,6 @@ class NotificationSendResultConsumerIntegrationTest {
                 () -> "org.apache.kafka.common.serialization.StringSerializer");
         registry.add("spring.kafka.producer.value-serializer",
                 () -> "org.springframework.kafka.support.serializer.JsonSerializer");
-        // RedisMessageKeyGuard는 @Profile("worker")로 등록되지만 StringRedisTemplate 자동설정은
-        // Redis 연결을 시도하므로 테스트 환경에서 비활성화한다.
-        registry.add("spring.autoconfigure.exclude",
-                () -> "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
-                      "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration");
     }
 
     @Autowired

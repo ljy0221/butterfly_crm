@@ -60,7 +60,9 @@ import static org.awaitility.Awaitility.await;
  * </ul>
  */
 @Tag("integration")
-@SpringBootTest(classes = ReportingTestApplication.class)
+@SpringBootTest(classes = ReportingTestApplication.class, properties = {
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration,org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration"
+})
 @ActiveProfiles({"worker"})
 @EmbeddedKafka(partitions = 1, topics = {
         NotificationSendResultConsumer.TOPIC,
@@ -101,10 +103,6 @@ class NotificationSendResultDlqIntegrationTest {
                 () -> "org.apache.kafka.common.serialization.StringSerializer");
         registry.add("spring.kafka.producer.value-serializer",
                 () -> "org.springframework.kafka.support.serializer.JsonSerializer");
-        // Redis 자동설정 제외 — 배치 리스너 전환 후 컨슈머에서 Redis 가드를 제거했으므로 불필요.
-        registry.add("spring.autoconfigure.exclude",
-                () -> "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
-                      "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration");
     }
 
     @Autowired
