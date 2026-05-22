@@ -2,6 +2,7 @@ package com.b101.butterfly.reporting.notification.messaging;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -24,6 +25,7 @@ import java.time.Duration;
 @Slf4j
 @Component
 @Profile("worker")
+@ConditionalOnBean(StringRedisTemplate.class)
 @RequiredArgsConstructor
 public class RedisMessageKeyGuard {
 
