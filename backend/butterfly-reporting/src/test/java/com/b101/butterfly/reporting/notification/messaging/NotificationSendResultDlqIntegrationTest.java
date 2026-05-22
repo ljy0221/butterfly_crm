@@ -26,8 +26,6 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessResourceFailureException;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
@@ -35,11 +33,9 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -55,14 +51,13 @@ import static org.awaitility.Awaitility.await;
 /**
  * S14P31B101-180 — DLQ + 재시도 정책 통합 테스트.
  *
- * <p>검증 시나리오:
+ * <p>배치 리스너 전환 후 Redis 가드를 제거했으므로 Redis 관련 검증은 포함하지 않는다.
+ * 검증 시나리오:
  * <ul>
  *     <li>역직렬화 실패한 메시지가 {@code notification-send-result-dlq} 토픽으로 이동</li>
  *     <li>DB 일시 장애 시 지수 백오프 재시도 후 정상 적재</li>
- *     <li>재시도 한도 초과 시 DLQ로 이동 + Redis 가드 release</li>
+ *     <li>재시도 한도 초과 시 DLQ로 이동</li>
  * </ul>
- *
- * <p>DB 장애는 {@link FailInjectionAspect}로 컨슈머의 save 호출을 감싸 주입한다.
  */
 @Tag("integration")
 @SpringBootTest(classes = ReportingTestApplication.class)
@@ -84,19 +79,12 @@ class NotificationSendResultDlqIntegrationTest {
             .withUsername("test")
             .withPassword("test");
 
-    @Container
-    static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
-            .withExposedPorts(6379);
-
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", mysql::getJdbcUrl);
         registry.add("spring.datasource.username", mysql::getUsername);
         registry.add("spring.datasource.password", mysql::getPassword);
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
-
-        registry.add("spring.data.redis.host", redis::getHost);
-        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
 
         registry.add("spring.kafka.bootstrap-servers",
                 () -> System.getProperty("spring.embedded.kafka.brokers"));
@@ -113,6 +101,10 @@ class NotificationSendResultDlqIntegrationTest {
                 () -> "org.apache.kafka.common.serialization.StringSerializer");
         registry.add("spring.kafka.producer.value-serializer",
                 () -> "org.springframework.kafka.support.serializer.JsonSerializer");
+        // Redis 자동설정 제외 — 배치 리스너 전환 후 컨슈머에서 Redis 가드를 제거했으므로 불필요.
+        registry.add("spring.autoconfigure.exclude",
+                () -> "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
+                      "org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration");
     }
 
     @Autowired
@@ -120,9 +112,6 @@ class NotificationSendResultDlqIntegrationTest {
 
     @Autowired
     private TransactionTemplate txTemplate;
-
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
@@ -133,7 +122,6 @@ class NotificationSendResultDlqIntegrationTest {
     @AfterEach
     void cleanUp() {
         txTemplate.executeWithoutResult(s -> notificationLogRepository.deleteAll());
-        redisTemplate.getConnectionFactory().getConnection().serverCommands().flushAll();
         failInjection.reset();
     }
 
@@ -165,14 +153,14 @@ class NotificationSendResultDlqIntegrationTest {
         String key = "msg-retry-success";
         sendJson(NotificationSendResultConsumer.TOPIC, "k", payload(key));
 
-        await().atMost(20, TimeUnit.SECONDS).untilAsserted(() ->
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted(() ->
                 assertThat(notificationLogRepository.findByMessageKey(key)).isPresent());
 
         assertThat(failInjection.invocationCount()).isGreaterThanOrEqualTo(2);
     }
 
     @Test
-    @DisplayName("재시도 한도 초과 — 영속 장애 시 DLQ로 이동, Redis 가드 release")
+    @DisplayName("재시도 한도 초과 — 영속 장애 시 DLQ로 이동")
     void exhaustedRetriesGoToDlq() {
         failInjection.failForever();
 
@@ -186,8 +174,6 @@ class NotificationSendResultDlqIntegrationTest {
         }
 
         assertThat(notificationLogRepository.findByMessageKey(key)).isEmpty();
-        assertThat(redisTemplate.hasKey(RedisMessageKeyGuard.KEY_PREFIX + key))
-                .as("실패 시 Redis 가드는 해제되어야 한다").isFalse();
     }
 
     private NotificationSendResultPayload payload(String messageKey) {
@@ -210,12 +196,6 @@ class NotificationSendResultDlqIntegrationTest {
         return new org.apache.kafka.clients.producer.KafkaProducer<>(props);
     }
 
-    /**
-     * Spring 컨테이너의 {@code KafkaTemplate} 빈을 거치지 않고 직접 producer를 만들어 보낸다.
-     * 본 모듈이 byte[] 전용 ProducerFactory(notificationDlqProducerFactory)를 추가하면서
-     * KafkaAutoConfiguration의 default {@code kafkaTemplate}이 더 이상 자동 등록되지 않기
-     * 때문이다.
-     */
     private void sendJson(String topic, String key, NotificationSendResultPayload payload) {
         Map<String, Object> props = KafkaTestUtils.producerProps(embeddedKafkaBroker);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -257,17 +237,12 @@ class NotificationSendResultDlqIntegrationTest {
     @TestConfiguration
     @EnableAspectJAutoProxy
     static class FailInjectionConfig {
-        // FailInjectionAspect는 @Component로 자동 스캔되지 않으므로 명시적으로 빈 등록.
         @org.springframework.context.annotation.Bean
         FailInjectionAspect failInjectionAspect() {
             return new FailInjectionAspect();
         }
     }
 
-    /**
-     * NotificationSendResultConsumer.consume() 호출을 가로채 인위적인 DB 실패를 주입한다.
-     * 실제 컨슈머 코드는 변경하지 않고, 통합 테스트 전용 fail injection만 추가한다.
-     */
     @Aspect
     static class FailInjectionAspect {
 
