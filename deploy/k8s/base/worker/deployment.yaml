@@ -86,6 +86,8 @@ spec:
             # 도메인 모듈의 emailService 빈 등록 시 placeholder 해결 — api와 동일 이유
             - name: MAIL_FROM
               value: "noreply@butterfly.local"
+            - name: MAIL_BASE_URL
+              value: "https://k14b101.p.ssafy.io"
             - name: MAIL_PASSWORD
               value: ""
             # ClickHouse 토글 (S14P31B101-300, ADR-0023).
