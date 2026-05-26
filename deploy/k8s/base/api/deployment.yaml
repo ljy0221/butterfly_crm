@@ -160,7 +160,7 @@ spec:
             # jib.container.jvmFlags가 진실의 소스이므로 그쪽에서 60으로 설정됨.
             # 여기는 OOM 시 즉시 종료(restart로 복구)만 보강.
             - name: JAVA_TOOL_OPTIONS
-              value: "-XX:+ExitOnOutOfMemoryError"
+              value: "-XX:+ExitOnOutOfMemoryError -Duser.timezone=Asia/Seoul"
           resources:
             requests:
               cpu: 250m
