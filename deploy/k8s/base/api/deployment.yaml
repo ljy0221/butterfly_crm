@@ -60,6 +60,8 @@ spec:
               value: "redis.butterfly.svc.cluster.local"
             - name: SPRING_DATA_REDIS_PORT
               value: "6379"
+            - name: REDIS_PORT
+              value: "6379"
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
