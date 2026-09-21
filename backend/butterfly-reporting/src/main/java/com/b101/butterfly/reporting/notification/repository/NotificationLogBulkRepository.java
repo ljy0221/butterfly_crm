@@ -32,11 +32,11 @@ public class NotificationLogBulkRepository {
             INSERT IGNORE INTO notification_logs
                 (project_id, campaign_id, campaign_execution_id, message_template_id,
                  user_id, device_id, channel, status, error_code, error_message,
-                 sent_at, delivered_at, created_at, updated_at, message_key)
+                 sent_at, delivered_at, created_at, message_key)
             VALUES
                 (:projectId, :campaignId, :campaignExecutionId, :messageTemplateId,
                  :userId, :deviceId, :channel, :status, :errorCode, :errorMessage,
-                 :sentAt, :deliveredAt, :createdAt, :createdAt, :messageKey)
+                 :sentAt, :deliveredAt, :createdAt, :messageKey)
             """;
 
     /**
