@@ -1,0 +1,5 @@
+# After 8b213378 (+ALTER updated_at in bench), 2026-09-21 local run
+    BENCH warmup n=500 rows=500 produce=0.17s total=0.77s tps=651.4
+    BENCH run1 n=10000 rows=10000 produce=0.31s total=7.07s tps=1413.9
+    BENCH run2 n=10000 rows=10000 produce=0.23s total=6.60s tps=1514.9
+    BENCH run3 n=10000 rows=10000 produce=0.15s total=6.55s tps=1527.1

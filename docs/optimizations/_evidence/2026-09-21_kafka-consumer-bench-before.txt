@@ -1,0 +1,5 @@
+# Before a4780eeb, 2026-09-21 local run
+    BENCH warmup n=500 rows=500 produce=0.20s total=5.42s tps=92.2
+    BENCH run1 n=10000 rows=10000 produce=0.26s total=67.93s tps=147.2
+    BENCH run2 n=10000 rows=10000 produce=0.10s total=150.24s tps=66.6
+    BENCH run3 n=10000 rows=10000 produce=0.09s total=162.39s tps=61.6

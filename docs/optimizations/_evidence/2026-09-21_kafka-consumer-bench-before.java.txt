@@ -1,0 +1,99 @@
+package com.b101.butterfly.reporting.notification.messaging;
+
+import com.b101.butterfly.reporting.ReportingTestApplication;
+import com.b101.butterfly.reporting.notification.entity.Channel;
+import com.b101.butterfly.reporting.notification.entity.NotificationStatus;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+@Tag("integration")
+@SpringBootTest(classes = ReportingTestApplication.class)
+@ActiveProfiles({"worker"})
+@EmbeddedKafka(partitions = 1, topics = {NotificationSendResultConsumer.TOPIC})
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+class KafkaThroughputBenchTest {
+
+    @Container
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+            .withDatabaseName("butterfly_test").withUsername("test").withPassword("test");
+    @Container
+    static GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
+
+    @DynamicPropertySource
+    static void props(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", mysql::getJdbcUrl);
+        registry.add("spring.datasource.username", mysql::getUsername);
+        registry.add("spring.datasource.password", mysql::getPassword);
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
+        registry.add("spring.data.redis.host", redis::getHost);
+        registry.add("spring.data.redis.port", () -> redis.getMappedPort(6379));
+        registry.add("spring.kafka.bootstrap-servers", () -> System.getProperty("spring.embedded.kafka.brokers"));
+        registry.add("spring.kafka.consumer.auto-offset-reset", () -> "earliest");
+        registry.add("spring.kafka.consumer.key-deserializer", () -> "org.apache.kafka.common.serialization.StringDeserializer");
+        registry.add("spring.kafka.consumer.value-deserializer", () -> "org.springframework.kafka.support.serializer.JsonDeserializer");
+        registry.add("spring.kafka.consumer.properties.spring.json.trusted.packages", () -> "com.b101.butterfly.reporting.notification.messaging");
+        registry.add("spring.kafka.consumer.properties.spring.json.value.default.type", () -> "com.b101.butterfly.reporting.notification.messaging.NotificationSendResultPayload");
+    }
+
+    @Autowired JdbcTemplate jdbc;
+    @Autowired EmbeddedKafkaBroker broker;
+
+    @Test
+    void bench() throws Exception {
+        int n = Integer.getInteger("bench.n", 10000);
+        int runs = Integer.getInteger("bench.runs", 3);
+        // warm-up (500건)
+        run(500, "warmup");
+        for (int i = 1; i <= runs; i++) run(n, "run" + i);
+    }
+
+    private void run(int n, String label) throws Exception {
+        jdbc.execute("DELETE FROM notification_logs");
+        var props = KafkaTestUtils.producerProps(broker);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.springframework.kafka.support.serializer.JsonSerializer.class);
+        String prefix = UUID.randomUUID().toString();
+        long t0 = System.nanoTime();
+        try (Producer<String, NotificationSendResultPayload> p = new KafkaProducer<>(props)) {
+            for (int i = 0; i < n; i++) {
+                p.send(new ProducerRecord<>(NotificationSendResultConsumer.TOPIC, prefix + i, new NotificationSendResultPayload(
+                        prefix + i, 1L, 10L + (i % 5), 100L, 5L, 200L + i, 300L, Channel.PUSH, NotificationStatus.SENT,
+                        LocalDateTime.of(2026, 5, 6, 10, 0), null, null, null)));
+            }
+            p.flush();
+        }
+        long tProduced = System.nanoTime();
+        long cnt;
+        long deadline = t0 + 600_000_000_000L;
+        while ((cnt = jdbc.queryForObject("SELECT COUNT(*) FROM notification_logs", Long.class)) < n && System.nanoTime() < deadline) {
+            Thread.sleep(50);
+        }
+        long t1 = System.nanoTime();
+        double sec = (t1 - t0) / 1e9;
+        System.out.printf("BENCH %s n=%d rows=%d produce=%.2fs total=%.2fs tps=%.1f%n", label, n, cnt, (tProduced - t0) / 1e9, sec, cnt / sec);
+    }
+}
